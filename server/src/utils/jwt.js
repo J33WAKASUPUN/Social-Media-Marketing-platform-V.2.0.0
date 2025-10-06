@@ -1,5 +1,3 @@
-/* eslint-disable no-use-before-define */
-/* eslint-disable no-return-await */
 const jwt = require('jsonwebtoken');
 const { promisify } = require('util');
 const redisClient = require('../config/redis');
@@ -61,7 +59,8 @@ const blacklistToken = async (token) => {
     
     const ttl = decoded.exp - Math.floor(Date.now() / 1000);
     if (ttl > 0) {
-      await redisClient.setex(`blacklist:${token}`, ttl, 'true');
+      const cacheClient = redisClient.getCache();
+      await cacheClient.setEx(`blacklist:${token}`, ttl, 'true');
     }
     
     return true;
@@ -76,8 +75,8 @@ const blacklistToken = async (token) => {
  */
 const isTokenBlacklisted = async (token) => {
   try {
-    const result = await redisClient.get(`blacklist:${token}`);
-    return !!result;
+    const cacheClient = redisClient.getCache();
+    const result = await cacheClient.get(`blacklist:${token}`);
   } catch (error) {
     console.error('Error checking token blacklist:', error);
     return false;
