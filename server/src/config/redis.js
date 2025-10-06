@@ -1,8 +1,3 @@
-/* eslint-disable linebreak-style */
-/* eslint-disable padded-blocks */
-/* eslint-disable comma-dangle */
-/* eslint-disable object-curly-newline */
-/* eslint-disable class-methods-use-this */
 const redis = require('redis');
 const logger = require('../utils/logger');
 

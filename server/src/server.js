@@ -1,5 +1,3 @@
-/* eslint-disable linebreak-style */
-/* eslint-disable padded-blocks */
 require('dotenv').config();
 const { validateEnv } = require('./config/env');
 const database = require('./config/database');

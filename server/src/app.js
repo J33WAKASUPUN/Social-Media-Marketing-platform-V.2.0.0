@@ -1,12 +1,12 @@
-/* eslint-disable linebreak-style */
-/* eslint-disable padded-blocks */
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const mongoSanitize = require('express-mongo-sanitize');
+const path = require('path');
 const logger = require('./utils/logger');
+const authRoutes = require('./routes/authRoute');
 
 /**
  * Initialize Express Application
@@ -78,6 +78,8 @@ function createApp() {
       status: 'active',
     });
   });
+  app.use('/api/v1/auth', authRoutes);
+  app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
   // TODO: Import and use route modules
   // app.use('/api/v1/auth', authRoutes);

@@ -1,7 +1,3 @@
-/* eslint-disable linebreak-style */
-/* eslint-disable padded-blocks */
-/* eslint-disable comma-dangle */
-/* eslint-disable object-curly-newline */
 const winston = require('winston');
 const path = require('path');
 const fs = require('fs');
