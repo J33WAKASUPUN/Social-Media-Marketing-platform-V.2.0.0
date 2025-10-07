@@ -6,9 +6,6 @@ const compression = require("compression");
 const mongoSanitize = require("express-mongo-sanitize");
 const path = require("path");
 const logger = require("./utils/logger");
-const authRoutes = require("./routes/auth");
-const organizationRoutes = require("./routes/organizations");
-const brandRoutes = require("./routes/brands");
 
 /**
  * Initialize Express Application
@@ -19,24 +16,16 @@ function createApp() {
   // ============================================
   // SECURITY MIDDLEWARE
   // ============================================
-  app.use(
-    helmet({
-      contentSecurityPolicy: false,
-      crossOriginEmbedderPolicy: false,
-    })
-  );
-
-  // Sanitize MongoDB queries
+  app.use(helmet());
   app.use(mongoSanitize());
 
   // ============================================
   // CORS CONFIGURATION
   // ============================================
   const corsOptions = {
-    origin: process.env.CORS_ORIGIN?.split(",") || ["http://localhost:5173"],
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
     credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    optionsSuccessStatus: 200,
   };
   app.use(cors(corsOptions));
 
@@ -61,6 +50,11 @@ function createApp() {
   }
 
   // ============================================
+  // SERVE STATIC FILES
+  // ============================================
+  app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+  // ============================================
   // HEALTH CHECK ENDPOINT
   // ============================================
   app.get("/health", (req, res) => {
@@ -73,26 +67,32 @@ function createApp() {
   });
 
   // ============================================
-  // API ROUTES (TO BE ADDED)
+  // API ROUTES
   // ============================================
+  const authRoutes = require('./routes/auth');
+  const organizationRoutes = require('./routes/organizations');
+  const brandRoutes = require('./routes/brands');
+  const channelRoutes = require('./routes/channels');
+
+  app.use('/api/v1/auth', authRoutes);
+  app.use('/api/v1/organizations', organizationRoutes);
+  app.use('/api/v1/brands', brandRoutes);
+  app.use('/api/v1/channels', channelRoutes);
+
+  // API Info Endpoint
   app.get("/api/v1", (req, res) => {
     res.json({
       message: "Social Media Marketing Platform API",
       version: "2.0.0",
       status: "active",
+      endpoints: {
+        auth: "/api/v1/auth",
+        organizations: "/api/v1/organizations",
+        brands: "/api/v1/brands",
+        channels: "/api/v1/channels",
+      },
     });
   });
-  app.use("/api/v1/auth", authRoutes);
-  app.use("/api/v1/organizations", organizationRoutes);
-  app.use("/api/v1/brands", brandRoutes);
-  app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
-
-  // TODO: Import and use route modules
-  // app.use('/api/v1/auth', authRoutes);
-  // app.use('/api/v1/brands', brandRoutes);
-  // app.use('/api/v1/channels', channelRoutes);
-  // app.use('/api/v1/posts', postRoutes);
-  // app.use('/api/v1/analytics', analyticsRoutes);
 
   // ============================================
   // 404 HANDLER
@@ -108,7 +108,6 @@ function createApp() {
   // ============================================
   // GLOBAL ERROR HANDLER
   // ============================================
-  // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
     logger.error("Error:", err);
 
@@ -117,7 +116,7 @@ function createApp() {
 
     res.status(statusCode).json({
       success: false,
-      message,
+      message: message,
       ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
     });
   });

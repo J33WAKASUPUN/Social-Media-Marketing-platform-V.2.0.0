@@ -6,15 +6,17 @@ const logger = require('../utils/logger');
  */
 const envSchema = Joi.object({
   // Application
-  NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
-  APP_NAME: Joi.string().required(),
+  NODE_ENV: Joi.string()
+    .valid('development', 'production', 'test')
+    .default('development'),
+  APP_NAME: Joi.string().default('Social Media Marketing Platform'),
   APP_PORT: Joi.number().default(5000),
-  APP_URL: Joi.string().uri().required(),
-  CLIENT_URL: Joi.string().uri().required(),
+  APP_URL: Joi.string().default('http://localhost:5000'),
+  CLIENT_URL: Joi.string().default('http://localhost:5173'),
 
   // MongoDB
   MONGODB_URI: Joi.string().required(),
-  MONGODB_DB_NAME: Joi.string().required(),
+  MONGODB_DB_NAME: Joi.string().default('social_media_platform'),
 
   // Redis
   REDIS_HOST: Joi.string().default('127.0.0.1'),
@@ -31,9 +33,9 @@ const envSchema = Joi.object({
   JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
 
   // Google OAuth
-  GOOGLE_AUTH_CLIENT_ID: Joi.string().optional(),
-  GOOGLE_AUTH_CLIENT_SECRET: Joi.string().optional(),
-  GOOGLE_AUTH_CALLBACK_URL: Joi.string().uri().optional(),
+  GOOGLE_AUTH_CLIENT_ID: Joi.string().required(),
+  GOOGLE_AUTH_CLIENT_SECRET: Joi.string().required(),
+  GOOGLE_CALLBACK_URL: Joi.string().required(),
 
   // Session
   SESSION_SECRET: Joi.string().min(32).required(),
@@ -43,35 +45,40 @@ const envSchema = Joi.object({
   // File Upload
   UPLOAD_DIR: Joi.string().default('uploads'),
   MAX_FILE_SIZE: Joi.number().default(10485760),
+  ALLOWED_IMAGE_TYPES: Joi.string().default('image/jpeg,image/png,image/gif,image/webp'),
+  ALLOWED_VIDEO_TYPES: Joi.string().default('video/mp4,video/mpeg,video/quicktime'),
 
   // Email
   MAIL_HOST: Joi.string().required(),
   MAIL_PORT: Joi.number().required(),
-  MAIL_USER: Joi.string().email().required(),
+  MAIL_SECURE: Joi.boolean().default(false),
+  MAIL_USER: Joi.string().required(),
   MAIL_PASSWORD: Joi.string().required(),
+  MAIL_FROM_ADDRESS: Joi.string().email().required(),
+  MAIL_FROM_NAME: Joi.string().default('Social Media Marketing Platform'),
 
-  // Social Media
+  // Encryption
+  ENCRYPTION_KEY: Joi.string().length(64).required(),
+  ENCRYPTION_ALGORITHM: Joi.string().default('aes-256-gcm'),
+
+  // LinkedIn OAuth
   LINKEDIN_CLIENT_ID: Joi.string().optional(),
   LINKEDIN_CLIENT_SECRET: Joi.string().optional(),
+  LINKEDIN_CALLBACK_URL: Joi.string().optional(),
+
+  // Facebook OAuth
   FACEBOOK_APP_ID: Joi.string().optional(),
   FACEBOOK_APP_SECRET: Joi.string().optional(),
-
-  // Features
-  ENABLE_EMAIL_NOTIFICATIONS: Joi.boolean().default(true),
-  ENABLE_QUEUE_PROCESSING: Joi.boolean().default(true),
-  RATE_LIMIT_ENABLED: Joi.boolean().default(true),
-
-  // Logging
-  LOG_LEVEL: Joi.string().valid('error', 'warn', 'info', 'debug').default('info'),
-}).unknown(true); // Allow other env variables
+  FACEBOOK_CALLBACK_URL: Joi.string().optional(),
+}).unknown(true);
 
 /**
- * Validate environment variables
+ * Validate Environment Variables
  */
 function validateEnv() {
   const { error, value } = envSchema.validate(process.env, {
     abortEarly: false,
-    stripUnknown: false,
+    stripUnknown: true,
   });
 
   if (error) {
@@ -79,10 +86,10 @@ function validateEnv() {
     error.details.forEach((detail) => {
       logger.error(`   - ${detail.message}`);
     });
-    process.exit(1);
+    throw new Error('Invalid environment configuration');
   }
 
-  logger.info('✅ Environment variables validated');
+  logger.info('✅ Environment validation passed');
   return value;
 }
 
