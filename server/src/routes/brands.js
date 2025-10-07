@@ -4,7 +4,11 @@ const brandController = require('../controllers/brandController');
 const { requireAuth } = require('../middlewares/auth');
 const { checkBrandAccess, requirePermission } = require('../middlewares/rbac');
 
-// All brand routes require authentication
+// Invitation endpoints
+router.get('/invitations/:token', brandController.getInvitationDetails);
+router.post('/invitations/:token/accept', brandController.acceptInvitation);
+
+// All other brand routes require authentication
 router.use(requireAuth);
 
 // Brand management

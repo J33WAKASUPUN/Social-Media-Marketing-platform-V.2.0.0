@@ -13,7 +13,8 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: function() {
-      return !this.googleId; // Password not required for Google OAuth users
+      // Password required only if not pending and not Google OAuth user
+      return this.status !== 'pending' && !this.googleId;
     },
   },
   name: {
@@ -25,7 +26,7 @@ const userSchema = new mongoose.Schema({
   // Profile
   avatar: {
     type: String,
-    default: null, // URL to uploaded image or null
+    default: null,
   },
   timezone: {
     type: String,
@@ -36,14 +37,14 @@ const userSchema = new mongoose.Schema({
   googleId: {
     type: String,
     unique: true,
-    sparse: true, // Allows null values
+    sparse: true,
   },
   googleEmail: {
     type: String,
     sparse: true,
   },
   googleAvatar: {
-    type: String, // Google profile picture URL
+    type: String,
   },
   
   // Account Status
@@ -65,6 +66,10 @@ const userSchema = new mongoose.Schema({
   verificationToken: String,
   verificationTokenExpires: Date,
   
+  // Invitation Token
+  invitationToken: String,
+  invitationTokenExpires: Date,
+  
   // Metadata
   lastLogin: Date,
   loginAttempts: {
@@ -80,6 +85,9 @@ const userSchema = new mongoose.Schema({
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
   
+  // Skip hashing if password is not set (pending user)
+  if (!this.password) return next();
+  
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
@@ -91,13 +99,14 @@ userSchema.pre('save', async function(next) {
 
 // Compare password method
 userSchema.methods.comparePassword = async function(candidatePassword) {
+  // Return false if no password is set
+  if (!this.password) return false;
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
 // Get avatar URL (prefer uploaded avatar, fallback to Google avatar)
 userSchema.methods.getAvatarUrl = function() {
   if (this.avatar) {
-    // If it's a local file, prepend the base URL
     if (!this.avatar.startsWith('http')) {
       return `${process.env.APP_URL}/uploads/avatars/${this.avatar}`;
     }
@@ -113,7 +122,6 @@ userSchema.methods.isLocked = function() {
 
 // Increment login attempts
 userSchema.methods.incrementLoginAttempts = async function() {
-  // If lock has expired, restart at 1
   if (this.lockUntil && this.lockUntil < Date.now()) {
     return this.updateOne({
       $set: { loginAttempts: 1 },
@@ -125,7 +133,6 @@ userSchema.methods.incrementLoginAttempts = async function() {
   const maxAttempts = 5;
   const lockTime = 2 * 60 * 60 * 1000; // 2 hours
   
-  // Lock account after max attempts
   if (this.loginAttempts + 1 >= maxAttempts && !this.isLocked()) {
     updates.$set = { lockUntil: Date.now() + lockTime };
   }
@@ -141,10 +148,11 @@ userSchema.methods.toJSON = function() {
   delete user.resetPasswordExpires;
   delete user.verificationToken;
   delete user.verificationTokenExpires;
+  delete user.invitationToken;
+  delete user.invitationTokenExpires;
   delete user.loginAttempts;
   delete user.lockUntil;
   
-  // Add computed avatar URL
   user.avatarUrl = this.getAvatarUrl();
   
   return user;

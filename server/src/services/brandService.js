@@ -196,14 +196,23 @@ class BrandService {
 
     // Generate invitation token
     const inviteToken = crypto.randomBytes(32).toString('hex');
+    const inviteTokenExpires = Date.now() + 7 * 24 * 60 * 60 * 1000; // 7 days
 
     if (!user) {
       // Create pending user
       user = await User.create({
         email: email.toLowerCase(),
-        name: email.split('@')[0],
+        name: email.split('@')[0], // Temporary name from email
         status: 'pending',
+        invitationToken: inviteToken,
+        invitationTokenExpires: inviteTokenExpires,
+        emailVerified: false,
       });
+    } else {
+      // User exists, update invitation token
+      user.invitationToken = inviteToken;
+      user.invitationTokenExpires = inviteTokenExpires;
+      await user.save();
     }
 
     // Check if membership already exists
@@ -237,6 +246,7 @@ class BrandService {
 
     return membership;
   }
+
 
   /**
    * Update member role

@@ -6,7 +6,7 @@ const compression = require("compression");
 const mongoSanitize = require("express-mongo-sanitize");
 const path = require("path");
 const logger = require("./utils/logger");
-const authRoutes = require("./routes/authRoute");
+const authRoutes = require("./routes/auth");
 const organizationRoutes = require("./routes/organizations");
 const brandRoutes = require("./routes/brands");
 
