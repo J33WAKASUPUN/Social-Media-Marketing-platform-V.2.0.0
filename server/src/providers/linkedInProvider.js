@@ -11,7 +11,8 @@ class LinkedInProvider extends BaseProvider {
       authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
       tokenUrl: 'https://www.linkedin.com/oauth/v2/accessToken',
       apiUrl: 'https://api.linkedin.com/rest',
-      // Use w_member_social for full access
+      // ✅ UPDATED: Use latest API version
+      apiVersion: '202410', // Updated to October 2024 version
       scopes: ['openid', 'profile', 'email', 'w_member_social'],
     };
   }
@@ -97,7 +98,7 @@ class LinkedInProvider extends BaseProvider {
     }
   }
 
-  // Upload image to LinkedIn
+  // ✅ UPDATED: Upload image with correct API version
   async uploadImage(imageUrl) {
     try {
       const accessToken = this.getAccessToken();
@@ -115,7 +116,7 @@ class LinkedInProvider extends BaseProvider {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
-            'LinkedIn-Version': '202405',
+            'LinkedIn-Version': config.apiVersion, // ✅ Use config version
             'X-Restli-Protocol-Version': '2.0.0',
           },
         }
@@ -143,7 +144,7 @@ class LinkedInProvider extends BaseProvider {
     }
   }
 
-  // Upload video to LinkedIn
+  // ✅ UPDATED: Upload video with correct API version
   async uploadVideo(videoUrl) {
     try {
       const accessToken = this.getAccessToken();
@@ -155,7 +156,7 @@ class LinkedInProvider extends BaseProvider {
         {
           initializeUploadRequest: {
             owner: `urn:li:person:${this.channel.platformUserId}`,
-            fileSizeBytes: 0, // Will be set during upload
+            fileSizeBytes: 0,
             uploadCaptions: false,
             uploadThumbnail: false,
           },
@@ -164,7 +165,7 @@ class LinkedInProvider extends BaseProvider {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
-            'LinkedIn-Version': '202405',
+            'LinkedIn-Version': config.apiVersion, // ✅ Use config version
             'X-Restli-Protocol-Version': '2.0.0',
           },
         }
@@ -172,6 +173,7 @@ class LinkedInProvider extends BaseProvider {
 
       const uploadUrl = initResponse.data.value.uploadUrl;
       const videoUrn = initResponse.data.value.video;
+      const uploadToken = initResponse.data.value.uploadToken;
 
       // Step 2: Download video from URL
       const videoResponse = await axios.get(videoUrl, { responseType: 'arraybuffer' });
@@ -180,7 +182,7 @@ class LinkedInProvider extends BaseProvider {
       // Step 3: Upload video to LinkedIn's CDN
       await axios.put(uploadUrl, videoBuffer, {
         headers: {
-          'Content-Type': videoResponse.headers['content-type'],
+          'Content-Type': videoResponse.headers['content-type'] || 'video/mp4',
         },
       });
 
@@ -190,21 +192,20 @@ class LinkedInProvider extends BaseProvider {
         {
           finalizeUploadRequest: {
             video: videoUrn,
-            uploadToken: initResponse.data.value.uploadToken,
-            uploadedPartIds: [initResponse.data.value.uploadInstructions[0].uploadPartId],
+            uploadToken: uploadToken,
           },
         },
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
-            'LinkedIn-Version': '202405',
+            'LinkedIn-Version': config.apiVersion, // ✅ Use config version
             'X-Restli-Protocol-Version': '2.0.0',
           },
         }
       );
 
-      this.log('Video uploaded', { videoUrn });
+      this.log('Video uploaded and finalized', { videoUrn });
       return videoUrn;
     } catch (error) {
       this.logError('Video upload failed', error);
@@ -212,7 +213,7 @@ class LinkedInProvider extends BaseProvider {
     }
   }
 
-  // Publish post with text, images, and videos
+  // ✅ UPDATED: Publish post with correct API version
   async publish(post) {
     try {
       const accessToken = this.getAccessToken();
@@ -250,12 +251,14 @@ class LinkedInProvider extends BaseProvider {
         }
 
         // Add media to post
-        payload.content = {
-          media: {
-            title: post.title || 'Social Media Post',
-            id: mediaUrns[0].media, // Primary media
-          },
-        };
+        if (mediaUrns.length > 0) {
+          payload.content = {
+            media: {
+              title: post.title || 'Social Media Post',
+              id: mediaUrns[0].media,
+            },
+          };
+        }
       }
 
       // Create post
@@ -266,7 +269,7 @@ class LinkedInProvider extends BaseProvider {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
-            'LinkedIn-Version': '202405',
+            'LinkedIn-Version': config.apiVersion, // ✅ Use config version
             'X-Restli-Protocol-Version': '2.0.0',
           },
         }
@@ -280,7 +283,7 @@ class LinkedInProvider extends BaseProvider {
       return {
         success: true,
         platformPostId: postUrn,
-        platformUrl: null, // LinkedIn doesn't return direct URL
+        platformUrl: null,
       };
     } catch (error) {
       this.logError('Publish failed', error);
@@ -288,7 +291,7 @@ class LinkedInProvider extends BaseProvider {
     }
   }
 
-  // Update existing post
+  // ✅ UPDATED: Update post with correct API version
   async updatePost(platformPostId, newContent) {
     try {
       const accessToken = this.getAccessToken();
@@ -309,7 +312,7 @@ class LinkedInProvider extends BaseProvider {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
-            'LinkedIn-Version': '202405',
+            'LinkedIn-Version': config.apiVersion, // ✅ Use config version
             'X-Restli-Protocol-Version': '2.0.0',
             'X-RestLi-Method': 'PARTIAL_UPDATE',
           },
@@ -328,7 +331,7 @@ class LinkedInProvider extends BaseProvider {
     }
   }
 
-  // Delete post
+  // ✅ UPDATED: Delete post with correct API version
   async deletePost(platformPostId) {
     try {
       const accessToken = this.getAccessToken();
@@ -339,7 +342,7 @@ class LinkedInProvider extends BaseProvider {
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
-            'LinkedIn-Version': '202405',
+            'LinkedIn-Version': config.apiVersion, // ✅ Use config version
             'X-Restli-Protocol-Version': '2.0.0',
           },
         }
@@ -356,7 +359,6 @@ class LinkedInProvider extends BaseProvider {
     }
   }
 
-  // ⚠️ Analytics still limited - LinkedIn doesn't provide public analytics API
   async getPostAnalytics(platformPostId) {
     this.log('getPostAnalytics', 'LinkedIn analytics require Organization access (not available for personal profiles)');
     return null;

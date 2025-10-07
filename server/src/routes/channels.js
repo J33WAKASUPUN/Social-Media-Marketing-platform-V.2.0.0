@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const channelController = require('../controllers/channelController');
 const { requireAuth } = require('../middlewares/auth');
-const { checkBrandAccess } = require('../middlewares/rbac');
 
 // OAuth Flow (requires authentication)
 router.get(
@@ -24,5 +23,10 @@ router.get('/', channelController.getBrandChannels);
 router.get('/:id/test', channelController.testConnection);
 router.delete('/:id', channelController.disconnectChannel);
 router.post('/:id/refresh', channelController.refreshToken);
+
+// TEMPORARY TEST ENDPOINTS (for testing LinkedIn publishing)
+router.post('/:id/test-publish', channelController.testPublish);
+router.patch('/:id/test-update', channelController.testUpdate);
+router.delete('/:id/test-delete', channelController.testDelete);
 
 module.exports = router;

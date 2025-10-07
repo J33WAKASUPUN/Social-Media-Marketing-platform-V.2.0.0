@@ -1,4 +1,6 @@
 const channelService = require('../services/channelService');
+const ProviderFactory = require('../providers/ProviderFactory');
+const Channel = require('../models/Channel');
 
 class ChannelController {
   /**
@@ -138,6 +140,123 @@ class ChannelController {
       res.json({
         success: true,
         message: 'Token refreshed successfully',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Temporary test endpoints for publishing
+
+  /**
+   * POST /api/v1/channels/:id/test-publish
+   * Test publishing a post
+   */
+  async testPublish(req, res, next) {
+    try {
+      const { content, mediaUrls, title } = req.body;
+
+      if (!content) {
+        return res.status(400).json({
+          success: false,
+          message: 'Content is required',
+        });
+      }
+
+      const channel = await Channel.findById(req.params.id);
+      if (!channel) {
+        return res.status(404).json({
+          success: false,
+          message: 'Channel not found',
+        });
+      }
+
+      const provider = ProviderFactory.getProvider(channel.provider, channel);
+
+      const result = await provider.publish({
+        content,
+        mediaUrls: mediaUrls || [],
+        title: title || 'Test Post',
+      });
+
+      res.json({
+        success: true,
+        message: 'Post published successfully',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * PATCH /api/v1/channels/:id/test-update
+   * Test updating a post
+   */
+  async testUpdate(req, res, next) {
+    try {
+      const { platformPostId, content } = req.body;
+
+      if (!platformPostId || !content) {
+        return res.status(400).json({
+          success: false,
+          message: 'platformPostId and content are required',
+        });
+      }
+
+      const channel = await Channel.findById(req.params.id);
+      if (!channel) {
+        return res.status(404).json({
+          success: false,
+          message: 'Channel not found',
+        });
+      }
+
+      const provider = ProviderFactory.getProvider(channel.provider, channel);
+
+      const result = await provider.updatePost(platformPostId, content);
+
+      res.json({
+        success: true,
+        message: 'Post updated successfully',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * DELETE /api/v1/channels/:id/test-delete
+   * Test deleting a post
+   */
+  async testDelete(req, res, next) {
+    try {
+      const { platformPostId } = req.body;
+
+      if (!platformPostId) {
+        return res.status(400).json({
+          success: false,
+          message: 'platformPostId is required',
+        });
+      }
+
+      const channel = await Channel.findById(req.params.id);
+      if (!channel) {
+        return res.status(404).json({
+          success: false,
+          message: 'Channel not found',
+        });
+      }
+
+      const provider = ProviderFactory.getProvider(channel.provider, channel);
+
+      const result = await provider.deletePost(platformPostId);
+
+      res.json({
+        success: true,
+        message: 'Post deleted successfully',
         data: result,
       });
     } catch (error) {
