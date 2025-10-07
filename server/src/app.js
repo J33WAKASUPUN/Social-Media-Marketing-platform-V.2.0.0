@@ -1,12 +1,14 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const compression = require('compression');
-const mongoSanitize = require('express-mongo-sanitize');
-const path = require('path');
-const logger = require('./utils/logger');
-const authRoutes = require('./routes/authRoute');
+const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
+const morgan = require("morgan");
+const compression = require("compression");
+const mongoSanitize = require("express-mongo-sanitize");
+const path = require("path");
+const logger = require("./utils/logger");
+const authRoutes = require("./routes/authRoute");
+const organizationRoutes = require("./routes/organizations");
+const brandRoutes = require("./routes/brands");
 
 /**
  * Initialize Express Application
@@ -17,10 +19,12 @@ function createApp() {
   // ============================================
   // SECURITY MIDDLEWARE
   // ============================================
-  app.use(helmet({
-    contentSecurityPolicy: false,
-    crossOriginEmbedderPolicy: false,
-  }));
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+    })
+  );
 
   // Sanitize MongoDB queries
   app.use(mongoSanitize());
@@ -29,18 +33,18 @@ function createApp() {
   // CORS CONFIGURATION
   // ============================================
   const corsOptions = {
-    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:5173'],
+    origin: process.env.CORS_ORIGIN?.split(",") || ["http://localhost:5173"],
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   };
   app.use(cors(corsOptions));
 
   // ============================================
   // BODY PARSING
   // ============================================
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  app.use(express.json({ limit: "10mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
   // ============================================
   // COMPRESSION
@@ -50,18 +54,18 @@ function createApp() {
   // ============================================
   // HTTP REQUEST LOGGING
   // ============================================
-  if (process.env.NODE_ENV === 'development') {
-    app.use(morgan('dev'));
+  if (process.env.NODE_ENV === "development") {
+    app.use(morgan("dev"));
   } else {
-    app.use(morgan('combined', { stream: logger.stream }));
+    app.use(morgan("combined", { stream: logger.stream }));
   }
 
   // ============================================
   // HEALTH CHECK ENDPOINT
   // ============================================
-  app.get('/health', (req, res) => {
+  app.get("/health", (req, res) => {
     res.status(200).json({
-      status: 'ok',
+      status: "ok",
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       environment: process.env.NODE_ENV,
@@ -71,15 +75,17 @@ function createApp() {
   // ============================================
   // API ROUTES (TO BE ADDED)
   // ============================================
-  app.get('/api/v1', (req, res) => {
+  app.get("/api/v1", (req, res) => {
     res.json({
-      message: 'Social Media Marketing Platform API',
-      version: '2.0.0',
-      status: 'active',
+      message: "Social Media Marketing Platform API",
+      version: "2.0.0",
+      status: "active",
     });
   });
-  app.use('/api/v1/auth', authRoutes);
-  app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+  app.use("/api/v1/auth", authRoutes);
+  app.use("/api/v1/organizations", organizationRoutes);
+  app.use("/api/v1/brands", brandRoutes);
+  app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
   // TODO: Import and use route modules
   // app.use('/api/v1/auth', authRoutes);
@@ -94,7 +100,7 @@ function createApp() {
   app.use((req, res) => {
     res.status(404).json({
       success: false,
-      message: 'Route not found',
+      message: "Route not found",
       path: req.originalUrl,
     });
   });
@@ -104,15 +110,15 @@ function createApp() {
   // ============================================
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
-    logger.error('Error:', err);
+    logger.error("Error:", err);
 
     const statusCode = err.statusCode || 500;
-    const message = err.message || 'Internal Server Error';
+    const message = err.message || "Internal Server Error";
 
     res.status(statusCode).json({
       success: false,
       message,
-      ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+      ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
     });
   });
 
