@@ -1,12 +1,9 @@
-const channelService = require('../services/channelService');
-const ProviderFactory = require('../providers/ProviderFactory');
-const Channel = require('../models/Channel');
+const channelService = require("../services/channelService");
+const ProviderFactory = require("../providers/ProviderFactory");
+const Channel = require("../models/Channel");
+const path = require("path");
 
 class ChannelController {
-  /**
-   * GET /api/v1/channels/oauth/:provider
-   * Get OAuth authorization URL
-   */
   async getAuthorizationUrl(req, res, next) {
     try {
       const { provider } = req.params;
@@ -15,7 +12,7 @@ class ChannelController {
       if (!brandId) {
         return res.status(400).json({
           success: false,
-          message: 'Brand ID is required',
+          message: "Brand ID is required",
         });
       }
 
@@ -35,33 +32,29 @@ class ChannelController {
     }
   }
 
-  /**
-   * GET /api/v1/channels/oauth/:provider/callback
-   * Handle OAuth callback
-   */
   async handleCallback(req, res, next) {
     try {
       const { provider } = req.params;
       const { code, state, error, error_description } = req.query;
 
-      // Handle OAuth errors
       if (error) {
-        const frontendUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+        const frontendUrl = process.env.CLIENT_URL || "http://localhost:5173";
         return res.redirect(
-          `${frontendUrl}/channels?error=${encodeURIComponent(error_description || error)}`
+          `${frontendUrl}/channels?error=${encodeURIComponent(
+            error_description || error
+          )}`
         );
       }
 
       if (!code || !state) {
         return res.status(400).json({
           success: false,
-          message: 'Authorization code and state are required',
+          message: "Authorization code and state are required",
         });
       }
 
       const result = await channelService.handleCallback(provider, code, state);
 
-      // Redirect to frontend with success
       const redirectUrl = `${result.returnUrl}/channels?success=true&provider=${provider}&new=${result.isNew}`;
       res.redirect(redirectUrl);
     } catch (error) {
@@ -69,10 +62,6 @@ class ChannelController {
     }
   }
 
-  /**
-   * GET /api/v1/channels
-   * Get all channels for a brand
-   */
   async getBrandChannels(req, res, next) {
     try {
       const { brandId } = req.query;
@@ -80,11 +69,14 @@ class ChannelController {
       if (!brandId) {
         return res.status(400).json({
           success: false,
-          message: 'Brand ID is required',
+          message: "Brand ID is required",
         });
       }
 
-      const channels = await channelService.getBrandChannels(brandId, req.user._id);
+      const channels = await channelService.getBrandChannels(
+        brandId,
+        req.user._id
+      );
 
       res.json({
         success: true,
@@ -95,13 +87,12 @@ class ChannelController {
     }
   }
 
-  /**
-   * GET /api/v1/channels/:id/test
-   * Test channel connection
-   */
   async testConnection(req, res, next) {
     try {
-      const result = await channelService.testConnection(req.params.id, req.user._id);
+      const result = await channelService.testConnection(
+        req.params.id,
+        req.user._id
+      );
 
       res.json({
         success: true,
@@ -112,34 +103,29 @@ class ChannelController {
     }
   }
 
-  /**
-   * DELETE /api/v1/channels/:id
-   * Disconnect channel
-   */
   async disconnectChannel(req, res, next) {
     try {
       await channelService.disconnectChannel(req.params.id, req.user._id);
 
       res.json({
         success: true,
-        message: 'Channel disconnected successfully',
+        message: "Channel disconnected successfully",
       });
     } catch (error) {
       next(error);
     }
   }
 
-  /**
-   * POST /api/v1/channels/:id/refresh
-   * Refresh channel access token
-   */
   async refreshToken(req, res, next) {
     try {
-      const result = await channelService.refreshToken(req.params.id, req.user._id);
+      const result = await channelService.refreshToken(
+        req.params.id,
+        req.user._id
+      );
 
       res.json({
         success: true,
-        message: 'Token refreshed successfully',
+        message: "Token refreshed successfully",
         data: result,
       });
     } catch (error) {
@@ -147,20 +133,15 @@ class ChannelController {
     }
   }
 
-  // Temporary test endpoints for publishing
-
-  /**
-   * POST /api/v1/channels/:id/test-publish
-   * Test publishing a post
-   */
   async testPublish(req, res, next) {
     try {
-      const { content, mediaUrls, title } = req.body;
+      const content = req.body.content;
+      const title = req.body.title || "Test Post";
 
       if (!content) {
         return res.status(400).json({
           success: false,
-          message: 'Content is required',
+          message: "Content is required",
         });
       }
 
@@ -168,21 +149,35 @@ class ChannelController {
       if (!channel) {
         return res.status(404).json({
           success: false,
-          message: 'Channel not found',
+          message: "Channel not found",
         });
       }
 
       const provider = ProviderFactory.getProvider(channel.provider, channel);
 
+      let mediaUrls = [];
+
+      if (req.body.mediaUrls) {
+        if (Array.isArray(req.body.mediaUrls)) {
+          mediaUrls = req.body.mediaUrls;
+        } else if (typeof req.body.mediaUrls === "string") {
+          mediaUrls = req.body.mediaUrls.split(",").map((url) => url.trim());
+        }
+      }
+
+      if (req.files && req.files.length > 0) {
+        mediaUrls = req.files.map((file) => file.path);
+      }
+
       const result = await provider.publish({
         content,
-        mediaUrls: mediaUrls || [],
-        title: title || 'Test Post',
+        mediaUrls,
+        title,
       });
 
       res.json({
         success: true,
-        message: 'Post published successfully',
+        message: "Post published successfully",
         data: result,
       });
     } catch (error) {
@@ -190,10 +185,6 @@ class ChannelController {
     }
   }
 
-  /**
-   * PATCH /api/v1/channels/:id/test-update
-   * Test updating a post
-   */
   async testUpdate(req, res, next) {
     try {
       const { platformPostId, content } = req.body;
@@ -201,7 +192,7 @@ class ChannelController {
       if (!platformPostId || !content) {
         return res.status(400).json({
           success: false,
-          message: 'platformPostId and content are required',
+          message: "platformPostId and content are required",
         });
       }
 
@@ -209,7 +200,7 @@ class ChannelController {
       if (!channel) {
         return res.status(404).json({
           success: false,
-          message: 'Channel not found',
+          message: "Channel not found",
         });
       }
 
@@ -219,7 +210,7 @@ class ChannelController {
 
       res.json({
         success: true,
-        message: 'Post updated successfully',
+        message: "Post updated successfully",
         data: result,
       });
     } catch (error) {
@@ -227,10 +218,6 @@ class ChannelController {
     }
   }
 
-  /**
-   * DELETE /api/v1/channels/:id/test-delete
-   * Test deleting a post
-   */
   async testDelete(req, res, next) {
     try {
       const { platformPostId } = req.body;
@@ -238,7 +225,7 @@ class ChannelController {
       if (!platformPostId) {
         return res.status(400).json({
           success: false,
-          message: 'platformPostId is required',
+          message: "platformPostId is required",
         });
       }
 
@@ -246,7 +233,7 @@ class ChannelController {
       if (!channel) {
         return res.status(404).json({
           success: false,
-          message: 'Channel not found',
+          message: "Channel not found",
         });
       }
 
@@ -256,8 +243,51 @@ class ChannelController {
 
       res.json({
         success: true,
-        message: 'Post deleted successfully',
+        message: "Post deleted successfully",
         data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get published posts
+  async getPosts(req, res, next) {
+    try {
+      const { count, start } = req.query;
+
+      const channel = await Channel.findById(req.params.id);
+      if (!channel) {
+        return res.status(404).json({
+          success: false,
+          message: "Channel not found",
+        });
+      }
+
+      const provider = ProviderFactory.getProvider(channel.provider, channel);
+
+      // Check if provider supports getPosts
+      if (typeof provider.getPosts !== "function") {
+        return res.status(501).json({
+          success: false,
+          message: `${channel.provider} does not support retrieving posts`,
+        });
+      }
+
+      const posts = await provider.getPosts({
+        count: parseInt(count) || 50,
+        start: parseInt(start) || 0,
+        // Removed sortBy - LinkedIn doesn't support it
+      });
+
+      res.json({
+        success: true,
+        message: "Posts retrieved successfully",
+        data: {
+          posts,
+          count: posts.length,
+          provider: channel.provider,
+        },
       });
     } catch (error) {
       next(error);

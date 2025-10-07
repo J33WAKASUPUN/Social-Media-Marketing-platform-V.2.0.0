@@ -1,6 +1,7 @@
-const axios = require('axios');
-const FormData = require('form-data');
-const BaseProvider = require('../providers/baseProvider');
+const axios = require("axios");
+const fs = require("fs").promises;
+const path = require("path");
+const BaseProvider = require("../providers/baseProvider");
 
 class LinkedInProvider extends BaseProvider {
   getConfig() {
@@ -8,23 +9,22 @@ class LinkedInProvider extends BaseProvider {
       clientId: process.env.LINKEDIN_CLIENT_ID,
       clientSecret: process.env.LINKEDIN_CLIENT_SECRET,
       callbackUrl: process.env.LINKEDIN_CALLBACK_URL,
-      authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
-      tokenUrl: 'https://www.linkedin.com/oauth/v2/accessToken',
-      apiUrl: 'https://api.linkedin.com/rest',
-      // ✅ UPDATED: Use latest API version
-      apiVersion: '202410', // Updated to October 2024 version
-      scopes: ['openid', 'profile', 'email', 'w_member_social'],
+      authUrl: "https://www.linkedin.com/oauth/v2/authorization",
+      tokenUrl: "https://www.linkedin.com/oauth/v2/accessToken",
+      apiUrl: "https://api.linkedin.com/rest",
+      apiVersion: "202410",
+      scopes: ["openid", "profile", "email", "w_member_social"],
     };
   }
 
   getAuthorizationUrl(state) {
     const config = this.getConfig();
     const params = new URLSearchParams({
-      response_type: 'code',
+      response_type: "code",
       client_id: config.clientId,
       redirect_uri: config.callbackUrl,
       state: state,
-      scope: config.scopes.join(' '),
+      scope: config.scopes.join(" "),
     });
 
     return `${config.authUrl}?${params.toString()}`;
@@ -34,11 +34,10 @@ class LinkedInProvider extends BaseProvider {
     const config = this.getConfig();
 
     try {
-      // Exchange code for access token
       const tokenResponse = await axios.post(
         config.tokenUrl,
         new URLSearchParams({
-          grant_type: 'authorization_code',
+          grant_type: "authorization_code",
           code: code,
           redirect_uri: config.callbackUrl,
           client_id: config.clientId,
@@ -46,19 +45,21 @@ class LinkedInProvider extends BaseProvider {
         }),
         {
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            "Content-Type": "application/x-www-form-urlencoded",
           },
         }
       );
 
       const { access_token, expires_in } = tokenResponse.data;
 
-      // Get user profile
-      const profileResponse = await axios.get('https://api.linkedin.com/v2/userinfo', {
-        headers: {
-          'Authorization': `Bearer ${access_token}`,
-        },
-      });
+      const profileResponse = await axios.get(
+        "https://api.linkedin.com/v2/userinfo",
+        {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+          },
+        }
+      );
 
       const profile = profileResponse.data;
 
@@ -68,43 +69,92 @@ class LinkedInProvider extends BaseProvider {
         expiresIn: expires_in,
         platformUserId: profile.sub,
         displayName: profile.name,
-        profileUrl: `https://www.linkedin.com/in/${profile.given_name || profile.sub}`,
+        profileUrl: `https://www.linkedin.com/in/${
+          profile.given_name || profile.sub
+        }`,
         avatar: profile.picture,
       };
     } catch (error) {
-      this.logError('OAuth callback', error);
-      throw new Error(`LinkedIn OAuth failed: ${error.response?.data?.error_description || error.message}`);
+      this.logError("OAuth callback", error);
+      throw new Error(
+        `LinkedIn OAuth failed: ${
+          error.response?.data?.error_description || error.message
+        }`
+      );
     }
   }
 
   async refreshAccessToken() {
-    throw new Error('LinkedIn does not support token refresh. Please reconnect your account.');
+    throw new Error(
+      "LinkedIn does not support token refresh. Please reconnect your account."
+    );
   }
 
   async testConnection() {
     try {
       const accessToken = this.getAccessToken();
 
-      const response = await axios.get('https://api.linkedin.com/v2/userinfo', {
+      const response = await axios.get("https://api.linkedin.com/v2/userinfo", {
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
       });
 
       return response.status === 200;
     } catch (error) {
-      this.logError('Connection test', error);
+      this.logError("Connection test", error);
       return false;
     }
   }
 
-  // ✅ UPDATED: Upload image with correct API version
-  async uploadImage(imageUrl) {
+  async getMediaBuffer(mediaSource) {
+    if (typeof mediaSource === "string" && /^https?:\/\//i.test(mediaSource)) {
+      this.log("Downloading from URL", { url: mediaSource });
+      const response = await axios.get(mediaSource, {
+        responseType: "arraybuffer",
+      });
+      return {
+        buffer: Buffer.from(response.data),
+        contentType: response.headers["content-type"],
+      };
+    }
+
+    if (typeof mediaSource === "string" && !mediaSource.startsWith("http")) {
+      this.log("Reading local file", { path: mediaSource });
+      const buffer = await fs.readFile(mediaSource);
+      const ext = path.extname(mediaSource).toLowerCase();
+      const contentType = this.getContentTypeFromExtension(ext);
+      return { buffer, contentType };
+    }
+
+    if (Buffer.isBuffer(mediaSource)) {
+      this.log("Using provided buffer");
+      return { buffer: mediaSource, contentType: "application/octet-stream" };
+    }
+
+    throw new Error("Invalid media source: must be URL, file path, or Buffer");
+  }
+
+  getContentTypeFromExtension(ext) {
+    const mimeTypes = {
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".gif": "image/gif",
+      ".webp": "image/webp",
+      ".mp4": "video/mp4",
+      ".mov": "video/quicktime",
+      ".avi": "video/x-msvideo",
+      ".wmv": "video/x-ms-wmv",
+    };
+    return mimeTypes[ext] || "application/octet-stream";
+  }
+
+  async uploadImage(mediaSource) {
     try {
       const accessToken = this.getAccessToken();
       const config = this.getConfig();
 
-      // Step 1: Initialize image upload
       const initResponse = await axios.post(
         `${config.apiUrl}/images?action=initializeUpload`,
         {
@@ -114,10 +164,10 @@ class LinkedInProvider extends BaseProvider {
         },
         {
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-            'LinkedIn-Version': config.apiVersion, // ✅ Use config version
-            'X-Restli-Protocol-Version': '2.0.0',
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+            "LinkedIn-Version": config.apiVersion,
+            "X-Restli-Protocol-Version": "2.0.0",
           },
         }
       );
@@ -125,160 +175,247 @@ class LinkedInProvider extends BaseProvider {
       const uploadUrl = initResponse.data.value.uploadUrl;
       const imageUrn = initResponse.data.value.image;
 
-      // Step 2: Download image from URL
-      const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-      const imageBuffer = Buffer.from(imageResponse.data);
+      const { buffer, contentType } = await this.getMediaBuffer(mediaSource);
 
-      // Step 3: Upload image to LinkedIn's CDN
-      await axios.put(uploadUrl, imageBuffer, {
+      await axios.put(uploadUrl, buffer, {
         headers: {
-          'Content-Type': imageResponse.headers['content-type'],
+          "Content-Type": contentType,
         },
       });
 
-      this.log('Image uploaded', { imageUrn });
+      this.log("Image uploaded", { imageUrn, size: buffer.length });
       return imageUrn;
     } catch (error) {
-      this.logError('Image upload failed', error);
-      throw new Error(`LinkedIn image upload failed: ${error.response?.data?.message || error.message}`);
+      this.logError("Image upload failed", error);
+      throw new Error(
+        `LinkedIn image upload failed: ${
+          error.response?.data?.message || error.message
+        }`
+      );
     }
   }
 
-  // ✅ UPDATED: Upload video with correct API version
-  async uploadVideo(videoUrl) {
+  // Video Upload Implementation
+  async uploadVideo(mediaSource) {
     try {
       const accessToken = this.getAccessToken();
       const config = this.getConfig();
 
-      // Step 1: Initialize video upload
-      const initResponse = await axios.post(
+      // Step 1: Get video buffer and metadata
+      const { buffer, contentType } = await this.getMediaBuffer(mediaSource);
+
+      this.log("Video file loaded", {
+        size: buffer.length,
+        contentType,
+        sizeMB: (buffer.length / 1024 / 1024).toFixed(2),
+      });
+
+      // Step 2: Register video upload
+      const registerResponse = await axios.post(
         `${config.apiUrl}/videos?action=initializeUpload`,
         {
           initializeUploadRequest: {
             owner: `urn:li:person:${this.channel.platformUserId}`,
-            fileSizeBytes: 0,
+            fileSizeBytes: buffer.length,
             uploadCaptions: false,
             uploadThumbnail: false,
           },
         },
         {
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-            'LinkedIn-Version': config.apiVersion, // ✅ Use config version
-            'X-Restli-Protocol-Version': '2.0.0',
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+            "LinkedIn-Version": config.apiVersion,
+            "X-Restli-Protocol-Version": "2.0.0",
           },
         }
       );
 
-      const uploadUrl = initResponse.data.value.uploadUrl;
-      const videoUrn = initResponse.data.value.video;
-      const uploadToken = initResponse.data.value.uploadToken;
+      this.log("Video upload initialized", registerResponse.data);
 
-      // Step 2: Download video from URL
-      const videoResponse = await axios.get(videoUrl, { responseType: 'arraybuffer' });
-      const videoBuffer = Buffer.from(videoResponse.data);
+      const { value } = registerResponse.data;
+      const uploadInstructions = value.uploadInstructions;
+      const videoUrn = value.video;
+      const uploadToken = value.uploadToken;
 
-      // Step 3: Upload video to LinkedIn's CDN
-      await axios.put(uploadUrl, videoBuffer, {
-        headers: {
-          'Content-Type': videoResponse.headers['content-type'] || 'video/mp4',
-        },
+      if (!uploadInstructions || uploadInstructions.length === 0) {
+        throw new Error("No upload instructions received from LinkedIn");
+      }
+
+      // Step 3: Upload video parts and collect ETags
+      const uploadedPartIds = [];
+
+      for (let i = 0; i < uploadInstructions.length; i++) {
+        const instruction = uploadInstructions[i];
+        const { uploadUrl, firstByte, lastByte } = instruction;
+
+        // Extract the chunk for this part
+        const start = firstByte || 0;
+        const end = lastByte ? lastByte + 1 : buffer.length;
+        const chunk = buffer.slice(start, end);
+
+        this.log(`Uploading part ${i + 1}/${uploadInstructions.length}`, {
+          size: chunk.length,
+          range: `${start}-${end - 1}`,
+        });
+
+        // Upload the chunk
+        const uploadResponse = await axios.put(uploadUrl, chunk, {
+          headers: {
+            "Content-Type": contentType || "application/octet-stream",
+            ...(instruction.headers || {}),
+          },
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+        });
+
+        // Get ETag from response headers (CRITICAL!)
+        const etag = uploadResponse.headers["etag"];
+        if (etag) {
+          uploadedPartIds.push(etag.replace(/"/g, "")); // Remove quotes if present
+          this.log(`Part ${i + 1} uploaded`, { etag });
+        } else {
+          this.log(`Warning: No ETag received for part ${i + 1}`);
+          // Fallback: use part number if ETag not available
+          uploadedPartIds.push(String(i + 1));
+        }
+      }
+
+      this.log("All video parts uploaded successfully", {
+        partsCount: uploadedPartIds.length,
       });
 
-      // Step 4: Finalize upload
-      await axios.post(
+      // Step 4: Finalize upload with correct uploadedPartIds
+      const finalizeResponse = await axios.post(
         `${config.apiUrl}/videos?action=finalizeUpload`,
         {
           finalizeUploadRequest: {
             video: videoUrn,
             uploadToken: uploadToken,
+            uploadedPartIds: uploadedPartIds, // using ETags
           },
         },
         {
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-            'LinkedIn-Version': config.apiVersion, // ✅ Use config version
-            'X-Restli-Protocol-Version': '2.0.0',
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+            "LinkedIn-Version": config.apiVersion,
+            "X-Restli-Protocol-Version": "2.0.0",
           },
         }
       );
 
-      this.log('Video uploaded and finalized', { videoUrn });
+      this.log("Video finalized", {
+        videoUrn,
+        response: finalizeResponse.data,
+      });
+
       return videoUrn;
     } catch (error) {
-      this.logError('Video upload failed', error);
-      throw new Error(`LinkedIn video upload failed: ${error.response?.data?.message || error.message}`);
+      this.logError("Video upload failed", error);
+
+      // Enhanced error logging
+      if (error.response) {
+        this.logError("LinkedIn API Error Details", {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data,
+          headers: error.response.headers,
+        });
+      }
+
+      throw new Error(
+        `LinkedIn video upload failed: ${
+          error.response?.data?.message || error.message
+        }`
+      );
     }
   }
 
-  // ✅ UPDATED: Publish post with correct API version
   async publish(post) {
     try {
       const accessToken = this.getAccessToken();
       const config = this.getConfig();
 
-      // Build post payload
       const payload = {
         author: `urn:li:person:${this.channel.platformUserId}`,
         commentary: post.content,
-        visibility: 'PUBLIC',
+        visibility: "PUBLIC",
         distribution: {
-          feedDistribution: 'MAIN_FEED',
+          feedDistribution: "MAIN_FEED",
           targetEntities: [],
           thirdPartyDistributionChannels: [],
         },
-        lifecycleState: 'PUBLISHED',
+        lifecycleState: "PUBLISHED",
         isReshareDisabledByAuthor: false,
       };
 
-      // Upload and attach media if present
       if (post.mediaUrls && post.mediaUrls.length > 0) {
-        const mediaUrns = [];
+        const imageUrls = [];
+        const videoUrls = [];
 
-        for (const mediaUrl of post.mediaUrls) {
-          // Detect if image or video based on extension
-          const isVideo = /\.(mp4|mov|avi|wmv)$/i.test(mediaUrl);
-
+        for (const mediaSource of post.mediaUrls) {
+          const isVideo = this.isVideoSource(mediaSource);
           if (isVideo) {
-            const videoUrn = await this.uploadVideo(mediaUrl);
-            mediaUrns.push({ media: videoUrn });
+            videoUrls.push(mediaSource);
           } else {
-            const imageUrn = await this.uploadImage(mediaUrl);
-            mediaUrns.push({ media: imageUrn });
+            imageUrls.push(mediaSource);
           }
         }
 
-        // Add media to post
-        if (mediaUrns.length > 0) {
+        if (imageUrls.length > 1 && videoUrls.length === 0) {
+          const imageUrns = [];
+          for (const imageUrl of imageUrls.slice(0, 20)) {
+            const imageUrn = await this.uploadImage(imageUrl);
+            imageUrns.push(imageUrn);
+          }
+
           payload.content = {
-            media: {
-              title: post.title || 'Social Media Post',
-              id: mediaUrns[0].media,
+            multiImage: {
+              images: imageUrns.map((urn) => ({ id: urn })),
             },
           };
+
+          this.log("Multiple images attached", { count: imageUrns.length });
+        } else if (imageUrls.length === 1 && videoUrls.length === 0) {
+          const imageUrn = await this.uploadImage(imageUrls[0]);
+
+          payload.content = {
+            media: {
+              title: post.title || "Image Post",
+              id: imageUrn,
+            },
+          };
+
+          this.log("Single image attached");
+        } else if (videoUrls.length > 0) {
+          this.log("Starting video upload process...");
+          const videoUrn = await this.uploadVideo(videoUrls[0]);
+
+          payload.content = {
+            media: {
+              title: post.title || "Video Post",
+              id: videoUrn,
+            },
+          };
+
+          this.log("Video attached to post");
         }
       }
 
-      // Create post
-      const response = await axios.post(
-        `${config.apiUrl}/posts`,
-        payload,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-            'LinkedIn-Version': config.apiVersion, // ✅ Use config version
-            'X-Restli-Protocol-Version': '2.0.0',
-          },
-        }
-      );
+      const response = await axios.post(`${config.apiUrl}/posts`, payload, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          "LinkedIn-Version": config.apiVersion,
+          "X-Restli-Protocol-Version": "2.0.0",
+        },
+      });
 
-      const postId = response.headers['x-restli-id'];
+      const postId = response.headers["x-restli-id"];
       const postUrn = `urn:li:share:${postId}`;
 
-      this.log('Post published', { postUrn });
+      this.log("Post published", { postUrn });
 
       return {
         success: true,
@@ -286,12 +423,22 @@ class LinkedInProvider extends BaseProvider {
         platformUrl: null,
       };
     } catch (error) {
-      this.logError('Publish failed', error);
-      throw new Error(`LinkedIn publish failed: ${error.response?.data?.message || error.message}`);
+      this.logError("Publish failed", error);
+      throw new Error(
+        `LinkedIn publish failed: ${
+          error.response?.data?.message || error.message
+        }`
+      );
     }
   }
 
-  // ✅ UPDATED: Update post with correct API version
+  isVideoSource(mediaSource) {
+    if (typeof mediaSource === "string") {
+      return /\.(mp4|mov|avi|wmv)$/i.test(mediaSource);
+    }
+    return false;
+  }
+
   async updatePost(platformPostId, newContent) {
     try {
       const accessToken = this.getAccessToken();
@@ -310,28 +457,31 @@ class LinkedInProvider extends BaseProvider {
         payload,
         {
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-            'LinkedIn-Version': config.apiVersion, // ✅ Use config version
-            'X-Restli-Protocol-Version': '2.0.0',
-            'X-RestLi-Method': 'PARTIAL_UPDATE',
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+            "LinkedIn-Version": config.apiVersion,
+            "X-Restli-Protocol-Version": "2.0.0",
+            "X-RestLi-Method": "PARTIAL_UPDATE",
           },
         }
       );
 
-      this.log('Post updated', { platformPostId });
+      this.log("Post updated", { platformPostId });
 
       return {
         success: true,
         platformPostId,
       };
     } catch (error) {
-      this.logError('Update failed', error);
-      throw new Error(`LinkedIn update failed: ${error.response?.data?.message || error.message}`);
+      this.logError("Update failed", error);
+      throw new Error(
+        `LinkedIn update failed: ${
+          error.response?.data?.message || error.message
+        }`
+      );
     }
   }
 
-  // ✅ UPDATED: Delete post with correct API version
   async deletePost(platformPostId) {
     try {
       const accessToken = this.getAccessToken();
@@ -341,27 +491,170 @@ class LinkedInProvider extends BaseProvider {
         `${config.apiUrl}/posts/${encodeURIComponent(platformPostId)}`,
         {
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'LinkedIn-Version': config.apiVersion, // ✅ Use config version
-            'X-Restli-Protocol-Version': '2.0.0',
+            Authorization: `Bearer ${accessToken}`,
+            "LinkedIn-Version": config.apiVersion,
+            "X-Restli-Protocol-Version": "2.0.0",
           },
         }
       );
 
-      this.log('Post deleted', { platformPostId });
+      this.log("Post deleted", { platformPostId });
 
       return {
         success: true,
       };
     } catch (error) {
-      this.logError('Delete failed', error);
-      throw new Error(`LinkedIn delete failed: ${error.response?.data?.message || error.message}`);
+      this.logError("Delete failed", error);
+      throw new Error(
+        `LinkedIn delete failed: ${
+          error.response?.data?.message || error.message
+        }`
+      );
     }
   }
 
-  async getPostAnalytics(platformPostId) {
-    this.log('getPostAnalytics', 'LinkedIn analytics require Organization access (not available for personal profiles)');
-    return null;
+  async getPosts(options = {}) {
+    try {
+      const accessToken = this.getAccessToken();
+      const config = this.getConfig();
+
+      // Build query parameters in the correct order (q must be first!)
+      const queryParams = new URLSearchParams();
+      queryParams.append("q", "author");
+      queryParams.append(
+        "author",
+        `urn:li:person:${this.channel.platformUserId}`
+      );
+
+      // Add count if specified
+      if (options.count) {
+        queryParams.append("count", Math.min(options.count, 100).toString());
+      }
+
+      // Only add start if it's explicitly provided and greater than 0
+      if (options.start && options.start > 0) {
+        queryParams.append("start", options.start.toString());
+      }
+
+      this.log("Fetching posts with params", Object.fromEntries(queryParams));
+
+      const response = await axios.get(
+        `${config.apiUrl}/posts?${queryParams.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "LinkedIn-Version": config.apiVersion,
+            "X-Restli-Protocol-Version": "2.0.0",
+          },
+          timeout: 30000,
+        }
+      );
+
+      if (!response.data) {
+        this.log("Empty response from LinkedIn API");
+        return [];
+      }
+
+      const posts = response.data.elements || [];
+      const paging = response.data.paging || {};
+
+      this.log("Posts retrieved successfully", {
+        count: posts.length,
+        total: paging.total || "unknown",
+      });
+
+      // Format posts
+      return posts.map((post) => {
+        const id = post.id || "unknown";
+        const commentary = post.commentary || "";
+
+        // Extract media info
+        let mediaInfo = null;
+        if (post.content) {
+          if (post.content.media) {
+            mediaInfo = {
+              type: "single",
+              title: post.content.media.title,
+              id: post.content.media.id,
+            };
+          } else if (post.content.multiImage) {
+            mediaInfo = {
+              type: "multiImage",
+              count: post.content.multiImage.images?.length || 0,
+              images: post.content.multiImage.images || [],
+            };
+          } else if (post.content.article) {
+            mediaInfo = {
+              type: "article",
+              title: post.content.article.title,
+              source: post.content.article.source,
+            };
+          }
+        }
+
+        return {
+          id,
+          urn: `urn:li:share:${id}`,
+          content: commentary,
+          visibility: post.visibility || "UNKNOWN",
+          lifecycleState: post.lifecycleState || "UNKNOWN",
+          createdAt: post.createdAt
+            ? new Date(post.createdAt).toISOString()
+            : null,
+          lastModifiedAt: post.lastModifiedAt
+            ? new Date(post.lastModifiedAt).toISOString()
+            : null,
+          author: post.author || null,
+          distribution: post.distribution || null,
+          media: mediaInfo,
+          shareUrl: post.shareUrl || null,
+        };
+      });
+    } catch (error) {
+      this.logError("Get posts failed", error);
+
+      if (error.response) {
+        this.logError("LinkedIn API Error Details", {
+          status: error.response.status,
+          data: error.response.data,
+          url: error.config?.url,
+          params: error.config?.params,
+        });
+      }
+
+      // Specific error handling
+      if (error.code === "ECONNABORTED") {
+        throw new Error("LinkedIn API request timeout - please try again");
+      }
+
+      if (error.response?.status === 401) {
+        throw new Error(
+          "LinkedIn authentication expired - please reconnect your account"
+        );
+      }
+
+      if (error.response?.status === 403) {
+        throw new Error("LinkedIn access forbidden - check your permissions");
+      }
+
+      if (error.response?.status === 429) {
+        throw new Error(
+          "LinkedIn rate limit exceeded - please wait and try again"
+        );
+      }
+
+      if (error.response?.status === 400) {
+        const errorMsg =
+          error.response?.data?.message || "Invalid request parameters";
+        throw new Error(`LinkedIn API error: ${errorMsg}`);
+      }
+
+      throw new Error(
+        `LinkedIn get posts failed: ${
+          error.response?.data?.message || error.message
+        }`
+      );
+    }
   }
 }
 

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const channelController = require('../controllers/channelController');
 const { requireAuth } = require('../middlewares/auth');
+const { uploadMedia } = require('../middlewares/upload');
 
 // OAuth Flow (requires authentication)
 router.get(
@@ -24,9 +25,10 @@ router.get('/:id/test', channelController.testConnection);
 router.delete('/:id', channelController.disconnectChannel);
 router.post('/:id/refresh', channelController.refreshToken);
 
-// TEMPORARY TEST ENDPOINTS (for testing LinkedIn publishing)
-router.post('/:id/test-publish', channelController.testPublish);
+// Upload middleware BEFORE testPublish
+router.post('/:id/test-publish', uploadMedia, channelController.testPublish);
 router.patch('/:id/test-update', channelController.testUpdate);
 router.delete('/:id/test-delete', channelController.testDelete);
+router.get('/:id/posts', channelController.getPosts);
 
 module.exports = router;
