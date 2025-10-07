@@ -184,6 +184,10 @@ class LinkedInProvider extends BaseProvider {
       });
 
       this.log("Image uploaded", { imageUrn, size: buffer.length });
+
+      // Wait for LinkedIn to process the image (2-5 seconds)
+      await this.waitForMediaProcessing(imageUrn, 'image');
+
       return imageUrn;
     } catch (error) {
       this.logError("Image upload failed", error);
@@ -195,7 +199,6 @@ class LinkedInProvider extends BaseProvider {
     }
   }
 
-  // Video Upload Implementation
   async uploadVideo(mediaSource) {
     try {
       const accessToken = this.getAccessToken();
@@ -292,7 +295,7 @@ class LinkedInProvider extends BaseProvider {
           finalizeUploadRequest: {
             video: videoUrn,
             uploadToken: uploadToken,
-            uploadedPartIds: uploadedPartIds, // using ETags
+            uploadedPartIds: uploadedPartIds,
           },
         },
         {
@@ -309,6 +312,9 @@ class LinkedInProvider extends BaseProvider {
         videoUrn,
         response: finalizeResponse.data,
       });
+
+      // Wait for LinkedIn to process the video (5-15 seconds)
+      await this.waitForMediaProcessing(videoUrn, 'video');
 
       return videoUrn;
     } catch (error) {
@@ -332,104 +338,98 @@ class LinkedInProvider extends BaseProvider {
     }
   }
 
+  // Wait for LinkedIn to process media
+  async waitForMediaProcessing(mediaUrn, mediaType = 'image') {
+    const waitTime = mediaType === 'video' ? 10000 : 3000; // 10s for video, 3s for image
+    
+    this.log(`Waiting ${waitTime}ms for LinkedIn to process ${mediaType}...`, { mediaUrn });
+    
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+    
+    this.log(`${mediaType} processing wait completed`, { mediaUrn });
+  }
+
   async publish(post) {
-    try {
-      const accessToken = this.getAccessToken();
-      const config = this.getConfig();
+  try {
+    const accessToken = this.getAccessToken();
+    const config = this.getConfig();
 
-      const payload = {
-        author: `urn:li:person:${this.channel.platformUserId}`,
-        commentary: post.content,
-        visibility: "PUBLIC",
-        distribution: {
-          feedDistribution: "MAIN_FEED",
-          targetEntities: [],
-          thirdPartyDistributionChannels: [],
-        },
-        lifecycleState: "PUBLISHED",
-        isReshareDisabledByAuthor: false,
-      };
+    const payload = {
+      author: `urn:li:person:${this.channel.platformUserId}`,
+      commentary: post.content,
+      visibility: "PUBLIC",
+      distribution: {
+        feedDistribution: "MAIN_FEED",
+        targetEntities: [],
+        thirdPartyDistributionChannels: [],
+      },
+      lifecycleState: "PUBLISHED",
+      isReshareDisabledByAuthor: false,
+    };
 
-      if (post.mediaUrls && post.mediaUrls.length > 0) {
-        const imageUrls = [];
-        const videoUrls = [];
-
-        for (const mediaSource of post.mediaUrls) {
-          const isVideo = this.isVideoSource(mediaSource);
-          if (isVideo) {
-            videoUrls.push(mediaSource);
-          } else {
-            imageUrls.push(mediaSource);
-          }
-        }
-
-        if (imageUrls.length > 1 && videoUrls.length === 0) {
-          const imageUrns = [];
-          for (const imageUrl of imageUrls.slice(0, 20)) {
-            const imageUrn = await this.uploadImage(imageUrl);
-            imageUrns.push(imageUrn);
-          }
-
-          payload.content = {
-            multiImage: {
-              images: imageUrns.map((urn) => ({ id: urn })),
-            },
-          };
-
-          this.log("Multiple images attached", { count: imageUrns.length });
-        } else if (imageUrls.length === 1 && videoUrls.length === 0) {
-          const imageUrn = await this.uploadImage(imageUrls[0]);
-
-          payload.content = {
-            media: {
-              title: post.title || "Image Post",
-              id: imageUrn,
-            },
-          };
-
-          this.log("Single image attached");
-        } else if (videoUrls.length > 0) {
-          this.log("Starting video upload process...");
-          const videoUrn = await this.uploadVideo(videoUrls[0]);
-
-          payload.content = {
-            media: {
-              title: post.title || "Video Post",
-              id: videoUrn,
-            },
-          };
-
-          this.log("Video attached to post");
-        }
-      }
-
-      const response = await axios.post(`${config.apiUrl}/posts`, payload, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          "LinkedIn-Version": config.apiVersion,
-          "X-Restli-Protocol-Version": "2.0.0",
-        },
-      });
-
-      const postId = response.headers["x-restli-id"];
-      const postUrn = `urn:li:share:${postId}`;
-
-      this.log("Post published", { postUrn });
-
-      return {
-        success: true,
-        platformPostId: postUrn,
-        platformUrl: null,
-      };
-    } catch (error) {
-      this.logError("Publish failed", error);
-      throw new Error(
-        `LinkedIn publish failed: ${
-          error.response?.data?.message || error.message
-        }`
-      );
+    if (post.mediaUrls && post.mediaUrls.length > 0) {
+      // ... media upload logic ...
     }
+
+    // Log payload before publishing
+    this.log("Publishing post with payload", {
+      hasContent: !!payload.content,
+      mediaType: payload.content?.media ? 'single' : payload.content?.multiImage ? 'multi' : 'none',
+      contentKeys: payload.content ? Object.keys(payload.content) : []
+    });
+
+    const response = await axios.post(`${config.apiUrl}/posts`, payload, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        "LinkedIn-Version": config.apiVersion,
+        "X-Restli-Protocol-Version": "2.0.0",
+      },
+    });
+
+    // Get post ID without adding duplicate prefix
+    const postId = response.headers["x-restli-id"];
+    
+    // CRITICAL FIX: LinkedIn already returns the full URN or just the ID
+    // Check if response already has the prefix
+    const platformPostId = postId.startsWith('urn:li:share:') 
+      ? postId 
+      : `urn:li:share:${postId}`;
+
+    this.log("Post published", { platformPostId, rawPostId: postId });
+
+    // RETURN DATA FOR DATABASE STORAGE
+    return {
+      success: true,
+      platformPostId: platformPostId, // Use cleaned platformPostId
+      platformUrl: null,
+      provider: "linkedin",
+      content: post.content,
+      mediaUrls: post.mediaUrls || [],
+      mediaType: this.determineMediaType(post),
+    };
+  } catch (error) {
+    this.logError("Publish failed", error);
+    throw new Error(
+      `LinkedIn publish failed: ${
+        error.response?.data?.message || error.message
+      }`
+    );
+  }
+}
+
+  // Helper method to determine media type
+  determineMediaType(post) {
+    if (!post.mediaUrls || post.mediaUrls.length === 0) {
+      return "none";
+    }
+
+    const hasVideo = post.mediaUrls.some((url) => this.isVideoSource(url));
+    if (hasVideo) return "video";
+
+    if (post.mediaUrls.length > 1) return "multiImage";
+
+    return "image";
   }
 
   isVideoSource(mediaSource) {

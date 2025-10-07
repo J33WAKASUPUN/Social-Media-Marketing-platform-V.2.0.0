@@ -6,6 +6,7 @@ const compression = require("compression");
 const mongoSanitize = require("express-mongo-sanitize");
 const path = require("path");
 const logger = require("./utils/logger");
+const { apiLimiter } = require("./middlewares/rateLimiter");
 
 /**
  * Initialize Express Application
@@ -52,32 +53,53 @@ function createApp() {
   // ============================================
   // SERVE STATIC FILES
   // ============================================
-  app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+  app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
   // ============================================
   // HEALTH CHECK ENDPOINT
   // ============================================
-  app.get("/health", (req, res) => {
-    res.status(200).json({
-      status: "ok",
+  app.get("/health", async (req, res) => {
+    const mongoStatus = database.isConnected() ? "connected" : "disconnected";
+    const redisStatus = (await redisClient.healthCheck())
+      ? "connected"
+      : "disconnected";
+
+    const health = {
+      status:
+        mongoStatus === "connected" && redisStatus === "connected"
+          ? "ok"
+          : "degraded",
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       environment: process.env.NODE_ENV,
-    });
+      services: {
+        mongodb: mongoStatus,
+        redis: redisStatus,
+      },
+      memory: {
+        used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+        unit: "MB",
+      },
+    };
+
+    const statusCode = health.status === "ok" ? 200 : 503;
+    res.status(statusCode).json(health);
   });
 
   // ============================================
   // API ROUTES
   // ============================================
-  const authRoutes = require('./routes/auth');
-  const organizationRoutes = require('./routes/organizations');
-  const brandRoutes = require('./routes/brands');
-  const channelRoutes = require('./routes/channels');
+  const authRoutes = require("./routes/auth");
+  const organizationRoutes = require("./routes/organizations");
+  const brandRoutes = require("./routes/brands");
+  const channelRoutes = require("./routes/channels");
 
-  app.use('/api/v1/auth', authRoutes);
-  app.use('/api/v1/organizations', organizationRoutes);
-  app.use('/api/v1/brands', brandRoutes);
-  app.use('/api/v1/channels', channelRoutes);
+  app.use("/api/v1/auth", authRoutes);
+  app.use("/api/v1/organizations", organizationRoutes);
+  app.use("/api/v1/brands", brandRoutes);
+  app.use("/api/v1/channels", channelRoutes);
+  app.use("/api", apiLimiter);
 
   // API Info Endpoint
   app.get("/api/v1", (req, res) => {

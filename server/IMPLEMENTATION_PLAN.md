@@ -1378,4 +1378,6 @@ docker exec smp-redis redis-cli ping
 
 ---
 
- # Since i dind't have Post Management yet, let's add temporary test endpoints to test LinkedIn publishing, added temporary route as well
+ # Since i dind't have Post Management yet, let's add temporary test endpoints to test LinkedIn publishing, added temporary route as well, 
+ 
+ # can't get Linkedin posts throgh API, because of API limitation

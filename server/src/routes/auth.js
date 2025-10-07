@@ -4,6 +4,7 @@ const authController = require('../controllers/authController');
 const { requireAuth } = require('../middlewares/auth');
 const { uploadAvatar } = require('../middlewares/upload');
 const passport = require('../config/googleOauth');
+const { authLimiter } = require('../middlewares/rateLimiter');
 
 // JWT Authentication
 router.post('/register', authController.register);
@@ -24,6 +25,9 @@ router.get('/me', requireAuth, authController.getMe);
 router.patch('/profile', requireAuth, authController.updateProfile);
 router.post('/upload-avatar', requireAuth, uploadAvatar, authController.uploadAvatar);
 
+router.post('/login', authLimiter, authController.login);
+router.post('/register', authLimiter, authController.register);
+
 // Google OAuth
 router.get('/google', 
   passport.authenticate('google', { 
@@ -32,7 +36,7 @@ router.get('/google',
   })
 );
 
-// ✅ PRODUCTION CALLBACK (for frontend)
+//  PRODUCTION CALLBACK (for frontend)
 router.get('/google/callback',
   passport.authenticate('google', { session: false }),
   (req, res) => {
@@ -46,7 +50,7 @@ router.get('/google/callback',
   }
 );
 
-// ✅ TEST CALLBACK (for backend testing - JSON response)
+// TEST CALLBACK (for backend testing - JSON response)
 router.get('/google/callback/test',
   passport.authenticate('google', { session: false }),
   (req, res) => {
