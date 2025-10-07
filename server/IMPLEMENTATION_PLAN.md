@@ -1361,3 +1361,17 @@ This implementation plan migrates your project from Laravel to Express.js, addre
 ---
 
 **Ready to start Day 1? Let's build authentication! 🚀**
+
+---
+
+# Start Redis container
+docker-compose up -d redis
+
+# Verify it's running with keep-alive
+docker exec smp-redis redis-cli CONFIG GET tcp-keepalive
+
+# Check container logs
+docker logs smp-redis -f
+
+# Test connection
+docker exec smp-redis redis-cli ping

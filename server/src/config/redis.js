@@ -17,23 +17,23 @@ class RedisClient {
    */
   createClient(db, name) {
     const client = redis.createClient({
-      host: process.env.REDIS_HOST || '127.0.0.1',
-      port: process.env.REDIS_PORT || 6379,
-      password: process.env.REDIS_PASSWORD || undefined,
-      db,
-      retry_strategy: (options) => {
-        if (options.error && options.error.code === 'ECONNREFUSED') {
-          logger.error(`Redis ${name} connection refused`);
-          return new Error('Redis server refused connection');
-        }
-        if (options.total_retry_time > 1000 * 60 * 60) {
-          return new Error('Redis retry time exhausted');
-        }
-        if (options.attempt > 10) {
-          return undefined;
-        }
-        return Math.min(options.attempt * 100, 3000);
+      socket: {
+        host: process.env.REDIS_HOST || '127.0.0.1',
+        port: process.env.REDIS_PORT || 6379,
+        reconnectStrategy: (retries) => {
+          if (retries > 10) {
+            logger.error(`Redis ${name} max retries reached`);
+            return new Error('Max retries reached');
+          }
+          const delay = Math.min(retries * 100, 3000);
+          logger.warn(`Redis ${name} reconnecting... attempt ${retries}, delay: ${delay}ms`);
+          return delay;
+        },
+        connectTimeout: 10000,
+        keepAlive: 30000,
       },
+      password: process.env.REDIS_PASSWORD || undefined,
+      database: db,
     });
 
     client.on('connect', () => {
@@ -46,6 +46,14 @@ class RedisClient {
 
     client.on('ready', () => {
       logger.info(`🚀 Redis ${name} ready`);
+    });
+
+    client.on('reconnecting', () => {
+      logger.info(`🔄 Redis ${name} reconnecting...`);
+    });
+
+    client.on('end', () => {
+      logger.warn(`⚠️ Redis ${name} connection closed`);
     });
 
     return client;
@@ -85,6 +93,12 @@ class RedisClient {
       // Graceful shutdown
       process.on('SIGINT', async () => {
         await this.disconnect();
+        process.exit(0);
+      });
+
+      process.on('SIGTERM', async () => {
+        await this.disconnect();
+        process.exit(0);
       });
 
       return true;
@@ -101,13 +115,13 @@ class RedisClient {
     try {
       const promises = [];
 
-      if (this.cacheClient) {
+      if (this.cacheClient?.isOpen) {
         promises.push(this.cacheClient.quit());
       }
-      if (this.sessionClient) {
+      if (this.sessionClient?.isOpen) {
         promises.push(this.sessionClient.quit());
       }
-      if (this.queueClient) {
+      if (this.queueClient?.isOpen) {
         promises.push(this.queueClient.quit());
       }
 
@@ -137,6 +151,23 @@ class RedisClient {
    */
   getQueue() {
     return this.queueClient;
+  }
+
+  /**
+   * Health check for all Redis clients
+   */
+  async healthCheck() {
+    try {
+      const results = await Promise.all([
+        this.cacheClient?.ping(),
+        this.sessionClient?.ping(),
+        this.queueClient?.ping(),
+      ]);
+      return results.every(result => result === 'PONG');
+    } catch (error) {
+      logger.error('Redis health check failed:', error.message);
+      return false;
+    }
   }
 }
 
