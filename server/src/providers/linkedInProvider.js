@@ -1,4 +1,5 @@
 const axios = require('axios');
+const FormData = require('form-data');
 const BaseProvider = require('../providers/baseProvider');
 
 class LinkedInProvider extends BaseProvider {
@@ -9,8 +10,8 @@ class LinkedInProvider extends BaseProvider {
       callbackUrl: process.env.LINKEDIN_CALLBACK_URL,
       authUrl: 'https://www.linkedin.com/oauth/v2/authorization',
       tokenUrl: 'https://www.linkedin.com/oauth/v2/accessToken',
-      apiUrl: 'https://api.linkedin.com/v2',
-      // Use OAuth 2.0 scopes
+      apiUrl: 'https://api.linkedin.com/rest',
+      // Use w_member_social for full access
       scopes: ['openid', 'profile', 'email', 'w_member_social'],
     };
   }
@@ -22,7 +23,7 @@ class LinkedInProvider extends BaseProvider {
       client_id: config.clientId,
       redirect_uri: config.callbackUrl,
       state: state,
-      scope: config.scopes.join(' '), // Space-separated, not comma
+      scope: config.scopes.join(' '),
     });
 
     return `${config.authUrl}?${params.toString()}`;
@@ -51,7 +52,7 @@ class LinkedInProvider extends BaseProvider {
 
       const { access_token, expires_in } = tokenResponse.data;
 
-      // Use OpenID Connect userinfo endpoint
+      // Get user profile
       const profileResponse = await axios.get('https://api.linkedin.com/v2/userinfo', {
         headers: {
           'Authorization': `Bearer ${access_token}`,
@@ -62,7 +63,7 @@ class LinkedInProvider extends BaseProvider {
 
       return {
         accessToken: access_token,
-        refreshToken: null, // LinkedIn doesn't provide refresh tokens
+        refreshToken: null,
         expiresIn: expires_in,
         platformUserId: profile.sub,
         displayName: profile.name,
@@ -76,7 +77,6 @@ class LinkedInProvider extends BaseProvider {
   }
 
   async refreshAccessToken() {
-    // LinkedIn doesn't support refresh tokens
     throw new Error('LinkedIn does not support token refresh. Please reconnect your account.');
   }
 
@@ -97,56 +97,190 @@ class LinkedInProvider extends BaseProvider {
     }
   }
 
-  async publish(post) {
+  // Upload image to LinkedIn
+  async uploadImage(imageUrl) {
     try {
       const accessToken = this.getAccessToken();
       const config = this.getConfig();
 
-      // ⚠️ LinkedIn API Limitations:
-      // - Only supports text posts and image posts
-      // - No video support
-      // - Cannot update or delete posts
-      // - Limited analytics
-
-      const payload = {
-        author: `urn:li:person:${this.channel.platformUserId}`,
-        lifecycleState: 'PUBLISHED',
-        specificContent: {
-          'com.linkedin.ugc.ShareContent': {
-            shareCommentary: {
-              text: post.content,
-            },
-            shareMediaCategory: post.mediaUrls && post.mediaUrls.length > 0 ? 'IMAGE' : 'NONE',
+      // Step 1: Initialize image upload
+      const initResponse = await axios.post(
+        `${config.apiUrl}/images?action=initializeUpload`,
+        {
+          initializeUploadRequest: {
+            owner: `urn:li:person:${this.channel.platformUserId}`,
           },
         },
-        visibility: {
-          'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC',
-        },
-      };
-
-      // Add images if present (LinkedIn supports multiple images)
-      if (post.mediaUrls && post.mediaUrls.length > 0) {
-        // Note: This requires uploading images first to LinkedIn
-        // For now, we'll skip actual image upload
-        this.log('publish', 'LinkedIn image upload not implemented yet');
-      }
-
-      const response = await axios.post(
-        `${config.apiUrl}/ugcPosts`,
-        payload,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
+            'LinkedIn-Version': '202405',
             'X-Restli-Protocol-Version': '2.0.0',
           },
         }
       );
 
+      const uploadUrl = initResponse.data.value.uploadUrl;
+      const imageUrn = initResponse.data.value.image;
+
+      // Step 2: Download image from URL
+      const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+      const imageBuffer = Buffer.from(imageResponse.data);
+
+      // Step 3: Upload image to LinkedIn's CDN
+      await axios.put(uploadUrl, imageBuffer, {
+        headers: {
+          'Content-Type': imageResponse.headers['content-type'],
+        },
+      });
+
+      this.log('Image uploaded', { imageUrn });
+      return imageUrn;
+    } catch (error) {
+      this.logError('Image upload failed', error);
+      throw new Error(`LinkedIn image upload failed: ${error.response?.data?.message || error.message}`);
+    }
+  }
+
+  // Upload video to LinkedIn
+  async uploadVideo(videoUrl) {
+    try {
+      const accessToken = this.getAccessToken();
+      const config = this.getConfig();
+
+      // Step 1: Initialize video upload
+      const initResponse = await axios.post(
+        `${config.apiUrl}/videos?action=initializeUpload`,
+        {
+          initializeUploadRequest: {
+            owner: `urn:li:person:${this.channel.platformUserId}`,
+            fileSizeBytes: 0, // Will be set during upload
+            uploadCaptions: false,
+            uploadThumbnail: false,
+          },
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'LinkedIn-Version': '202405',
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+        }
+      );
+
+      const uploadUrl = initResponse.data.value.uploadUrl;
+      const videoUrn = initResponse.data.value.video;
+
+      // Step 2: Download video from URL
+      const videoResponse = await axios.get(videoUrl, { responseType: 'arraybuffer' });
+      const videoBuffer = Buffer.from(videoResponse.data);
+
+      // Step 3: Upload video to LinkedIn's CDN
+      await axios.put(uploadUrl, videoBuffer, {
+        headers: {
+          'Content-Type': videoResponse.headers['content-type'],
+        },
+      });
+
+      // Step 4: Finalize upload
+      await axios.post(
+        `${config.apiUrl}/videos?action=finalizeUpload`,
+        {
+          finalizeUploadRequest: {
+            video: videoUrn,
+            uploadToken: initResponse.data.value.uploadToken,
+            uploadedPartIds: [initResponse.data.value.uploadInstructions[0].uploadPartId],
+          },
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'LinkedIn-Version': '202405',
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+        }
+      );
+
+      this.log('Video uploaded', { videoUrn });
+      return videoUrn;
+    } catch (error) {
+      this.logError('Video upload failed', error);
+      throw new Error(`LinkedIn video upload failed: ${error.response?.data?.message || error.message}`);
+    }
+  }
+
+  // Publish post with text, images, and videos
+  async publish(post) {
+    try {
+      const accessToken = this.getAccessToken();
+      const config = this.getConfig();
+
+      // Build post payload
+      const payload = {
+        author: `urn:li:person:${this.channel.platformUserId}`,
+        commentary: post.content,
+        visibility: 'PUBLIC',
+        distribution: {
+          feedDistribution: 'MAIN_FEED',
+          targetEntities: [],
+          thirdPartyDistributionChannels: [],
+        },
+        lifecycleState: 'PUBLISHED',
+        isReshareDisabledByAuthor: false,
+      };
+
+      // Upload and attach media if present
+      if (post.mediaUrls && post.mediaUrls.length > 0) {
+        const mediaUrns = [];
+
+        for (const mediaUrl of post.mediaUrls) {
+          // Detect if image or video based on extension
+          const isVideo = /\.(mp4|mov|avi|wmv)$/i.test(mediaUrl);
+
+          if (isVideo) {
+            const videoUrn = await this.uploadVideo(mediaUrl);
+            mediaUrns.push({ media: videoUrn });
+          } else {
+            const imageUrn = await this.uploadImage(mediaUrl);
+            mediaUrns.push({ media: imageUrn });
+          }
+        }
+
+        // Add media to post
+        payload.content = {
+          media: {
+            title: post.title || 'Social Media Post',
+            id: mediaUrns[0].media, // Primary media
+          },
+        };
+      }
+
+      // Create post
+      const response = await axios.post(
+        `${config.apiUrl}/posts`,
+        payload,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'LinkedIn-Version': '202405',
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+        }
+      );
+
+      const postId = response.headers['x-restli-id'];
+      const postUrn = `urn:li:share:${postId}`;
+
+      this.log('Post published', { postUrn });
+
       return {
         success: true,
-        platformPostId: response.data.id,
-        platformUrl: null, // LinkedIn doesn't return direct post URL
+        platformPostId: postUrn,
+        platformUrl: null, // LinkedIn doesn't return direct URL
       };
     } catch (error) {
       this.logError('Publish failed', error);
@@ -154,11 +288,77 @@ class LinkedInProvider extends BaseProvider {
     }
   }
 
+  // Update existing post
+  async updatePost(platformPostId, newContent) {
+    try {
+      const accessToken = this.getAccessToken();
+      const config = this.getConfig();
+
+      const payload = {
+        patch: {
+          $set: {
+            commentary: newContent,
+          },
+        },
+      };
+
+      await axios.post(
+        `${config.apiUrl}/posts/${encodeURIComponent(platformPostId)}`,
+        payload,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+            'LinkedIn-Version': '202405',
+            'X-Restli-Protocol-Version': '2.0.0',
+            'X-RestLi-Method': 'PARTIAL_UPDATE',
+          },
+        }
+      );
+
+      this.log('Post updated', { platformPostId });
+
+      return {
+        success: true,
+        platformPostId,
+      };
+    } catch (error) {
+      this.logError('Update failed', error);
+      throw new Error(`LinkedIn update failed: ${error.response?.data?.message || error.message}`);
+    }
+  }
+
+  // Delete post
+  async deletePost(platformPostId) {
+    try {
+      const accessToken = this.getAccessToken();
+      const config = this.getConfig();
+
+      await axios.delete(
+        `${config.apiUrl}/posts/${encodeURIComponent(platformPostId)}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'LinkedIn-Version': '202405',
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+        }
+      );
+
+      this.log('Post deleted', { platformPostId });
+
+      return {
+        success: true,
+      };
+    } catch (error) {
+      this.logError('Delete failed', error);
+      throw new Error(`LinkedIn delete failed: ${error.response?.data?.message || error.message}`);
+    }
+  }
+
+  // ⚠️ Analytics still limited - LinkedIn doesn't provide public analytics API
   async getPostAnalytics(platformPostId) {
-    // ⚠️ LinkedIn API Limitation:
-    // Analytics API requires additional permissions and is complex
-    // For MVP, we'll return null
-    this.log('getPostAnalytics', 'LinkedIn analytics not supported in MVP');
+    this.log('getPostAnalytics', 'LinkedIn analytics require Organization access (not available for personal profiles)');
     return null;
   }
 }
