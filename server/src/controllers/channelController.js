@@ -159,17 +159,35 @@ class ChannelController {
 
       let mediaUrls = [];
 
-      if (req.body.mediaUrls) {
+      // Priority 1: Handle uploaded files from multipart/form-data
+      if (req.files && req.files.length > 0) {
+        console.log("📁 Uploaded files detected:", req.files.length);
+
+        // Get absolute paths to uploaded files
+        mediaUrls = req.files.map((file) => {
+          const absolutePath = path.resolve(file.path);
+          console.log("   - File:", file.originalname, "→", absolutePath);
+          return absolutePath;
+        });
+      }
+      // Priority 2: Handle URLs from request body
+      else if (req.body.mediaUrls) {
+        console.log("🔗 Media URLs from body");
+
         if (Array.isArray(req.body.mediaUrls)) {
           mediaUrls = req.body.mediaUrls;
         } else if (typeof req.body.mediaUrls === "string") {
           mediaUrls = req.body.mediaUrls.split(",").map((url) => url.trim());
         }
+
+        console.log("   - URLs:", mediaUrls);
       }
 
-      if (req.files && req.files.length > 0) {
-        mediaUrls = req.files.map((file) => file.path);
-      }
+      console.log("🚀 Publishing with:", {
+        content: content.substring(0, 50) + "...",
+        mediaCount: mediaUrls.length,
+        mediaType: mediaUrls.length > 0 ? "with media" : "text only",
+      });
 
       // Publish to platform
       const result = await provider.publish({
