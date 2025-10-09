@@ -1,5 +1,6 @@
 const LinkedInProvider = require('../providers/linkedInProvider');
 const FacebookProvider = require('../providers/facebookProvider');
+const TwitterProvider = require('../providers/twitterProvider');
 
 class ProviderFactory {
   static getProvider(providerName, channel = null) {
@@ -8,11 +9,10 @@ class ProviderFactory {
         return new LinkedInProvider(channel);
       case 'facebook':
         return new FacebookProvider(channel);
-      // Future providers:
       // case 'instagram':
       //   return new InstagramProvider(channel);
-      // case 'twitter':
-      //   return new TwitterProvider(channel);
+      case 'twitter':
+        return new TwitterProvider(channel);
       // case 'youtube':
       //   return new YouTubeProvider(channel);
       default:
@@ -21,7 +21,7 @@ class ProviderFactory {
   }
 
   static getSupportedProviders() {
-    return ['linkedin', 'facebook'];
+    return ['linkedin', 'facebook', 'twitter'];
   }
 
   static isProviderSupported(providerName) {
