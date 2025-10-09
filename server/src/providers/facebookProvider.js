@@ -430,7 +430,7 @@ class FacebookProvider extends BaseProvider {
   }
 
   /**
-   * ✅ FIXED: Update post with fallback logic for videos
+   * Update post with fallback logic for videos
    */
   async updatePost(platformPostId, newContent) {
     try {

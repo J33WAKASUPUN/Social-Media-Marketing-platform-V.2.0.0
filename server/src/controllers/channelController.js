@@ -381,12 +381,12 @@ class ChannelController {
       const query = {};
 
       if (brandId) {
-        // ✅ FIX: Use 'new' with ObjectId
+        
         query.brand = new mongoose.Types.ObjectId(brandId);
       }
 
       if (channelId) {
-        // ✅ FIX: Use 'new' with ObjectId
+        
         query.channel = new mongoose.Types.ObjectId(channelId);
       }
 
