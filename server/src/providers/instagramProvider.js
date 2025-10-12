@@ -31,6 +31,8 @@ class InstagramProvider extends BaseProvider {
     return `${config.authUrl}?${params.toString()}`;
   }
 
+  // Add this method to your InstagramProvider class
+
   async handleCallback(code) {
     const config = this.getConfig();
 
@@ -47,6 +49,10 @@ class InstagramProvider extends BaseProvider {
 
       const { access_token } = tokenResponse.data;
 
+      this.log("Short-lived token received", {
+        tokenPreview: access_token.substring(0, 20) + "...",
+      });
+
       // Step 2: Exchange for long-lived token (60 days)
       const longLivedTokenResponse = await axios.get(
         `${config.apiUrl}/oauth/access_token`,
@@ -62,61 +68,153 @@ class InstagramProvider extends BaseProvider {
 
       const longLivedToken = longLivedTokenResponse.data.access_token;
 
-      // Step 3: Get user's Facebook Pages
-      const pagesResponse = await axios.get(`${config.apiUrl}/me/accounts`, {
-        params: {
-          access_token: longLivedToken,
-          fields: "id,name,access_token,instagram_business_account",
-        },
+      this.log("Long-lived token received", {
+        tokenPreview: longLivedToken.substring(0, 20) + "...",
       });
 
-      const pages = pagesResponse.data.data;
+      // ✅ NEW: Check token permissions first
+      try {
+        const permissionsResponse = await axios.get(
+          `${config.apiUrl}/me/permissions`,
+          {
+            params: { access_token: longLivedToken },
+          }
+        );
 
-      // ✅ IMPROVED ERROR HANDLING
-      if (!pages || pages.length === 0) {
-        this.logError("No Facebook Pages found", {
-          message:
-            "User has no Facebook Pages or Pages are not accessible to this app",
-          appId: config.appId,
-          hint: "Make sure the Facebook account has at least one Business Page and the app has access to it",
+        this.log("Token permissions", {
+          granted: permissionsResponse.data.data
+            ?.filter((p) => p.status === "granted")
+            .map((p) => p.permission),
         });
+      } catch (permError) {
+        this.logError("Failed to check permissions", permError);
+      }
 
+      // ✅ IMPROVED: Try multiple methods to get pages
+      let pages = [];
+
+      // Method 1: Standard /me/accounts (works in Production mode)
+      try {
+        const pagesResponse = await axios.get(`${config.apiUrl}/me/accounts`, {
+          params: {
+            access_token: longLivedToken,
+            fields:
+              "id,name,access_token,instagram_business_account,category,tasks",
+          },
+        });
+        pages = pagesResponse.data.data || [];
+
+        this.log("Pages from /me/accounts", { count: pages.length });
+      } catch (pagesError) {
+        this.logError("/me/accounts failed", {
+          status: pagesError.response?.status,
+          error: pagesError.response?.data,
+        });
+      }
+
+      // ✅ Method 2: If no pages found, try getting user's administered pages
+      if (pages.length === 0) {
+        try {
+          this.log("Trying alternative method: /me?fields=accounts...");
+
+          const altResponse = await axios.get(`${config.apiUrl}/me`, {
+            params: {
+              access_token: longLivedToken,
+              fields:
+                "accounts{id,name,access_token,instagram_business_account,category,tasks}",
+            },
+          });
+
+          pages = altResponse.data.accounts?.data || [];
+          this.log("Pages from alternative method", { count: pages.length });
+        } catch (altError) {
+          this.logError("Alternative method failed", altError);
+        }
+      }
+
+      // ✅ Method 3: If still no pages, check if user info is accessible
+      if (pages.length === 0) {
+        try {
+          const userResponse = await axios.get(`${config.apiUrl}/me`, {
+            params: {
+              access_token: longLivedToken,
+              fields: "id,name,email",
+            },
+          });
+
+          this.log("User info accessible", userResponse.data);
+        } catch (userError) {
+          this.logError("User info check failed", userError);
+        }
+
+        // Provide detailed error with troubleshooting steps
         throw new Error(
-          "No Facebook Pages found. Please ensure:\n" +
-            "1. You have created a Facebook Business Page\n" +
-            "2. The page is linked to your Facebook account\n" +
-            "3. The Instagram App has access to the page\n" +
-            "4. You've granted 'pages_show_list' permission"
+          "❌ No Facebook Pages accessible via Instagram API\n\n" +
+            "🔍 TROUBLESHOOTING CHECKLIST:\n\n" +
+            "1. APP SETUP (Meta App Dashboard):\n" +
+            "   → App Mode: Development ✓\n" +
+            "   → Your role: Administrator ✓\n" +
+            "   ⚠️ ACTION NEEDED:\n" +
+            "   • Go to App roles → Test users\n" +
+            "   • Add yourself as a Test User\n" +
+            "   • OR complete Business Verification\n\n" +
+            "2. INSTAGRAM PRODUCT:\n" +
+            "   → Go to Products → Instagram\n" +
+            "   → Add Test Instagram Account: @jeewaksupun7893\n" +
+            "   → Link it to your Facebook Page\n\n" +
+            "3. FACEBOOK PAGE SETUP:\n" +
+            "   → Page name: 'Instagram Test' ✓\n" +
+            "   → Your role: Admin ✓\n" +
+            "   → Instagram connected: Yes ✓\n" +
+            "   ⚠️ CHECK:\n" +
+            "   • Page Settings → Apps → Ensure your app is added\n" +
+            "   • If Page is in Business Manager, grant app access there\n\n" +
+            "4. PERMISSIONS DURING LOGIN:\n" +
+            "   → When logging in via OAuth, did you:\n" +
+            "   • Select 'Allow access to all pages'?\n" +
+            "   • Grant all requested permissions?\n\n" +
+            "5. TOKEN ISSUES:\n" +
+            "   → Try logging out of Facebook completely\n" +
+            "   → Clear browser cookies\n" +
+            "   → Start OAuth flow fresh\n\n" +
+            "📚 Meta's official guide:\n" +
+            "https://developers.facebook.com/docs/instagram-basic-display-api/getting-started\n\n" +
+            "💡 Quick test: Try generating a token from Graph API Explorer\n" +
+            "and test the query: /me/accounts?fields=id,name,instagram_business_account"
         );
       }
 
+      // Validate we have pages with Instagram
       this.log("Facebook Pages found", {
         count: pages.length,
         pages: pages.map((p) => ({
           id: p.id,
           name: p.name,
           hasInstagram: !!p.instagram_business_account,
+          category: p.category,
         })),
       });
 
-      // Step 4: Find page with Instagram Business Account
+      // Find page with Instagram Business Account
       const pageWithInstagram = pages.find(
         (page) => page.instagram_business_account
       );
 
       if (!pageWithInstagram) {
-        this.logError("No Instagram Business Account linked", {
-          message:
-            "Facebook Pages found, but none have Instagram Business Account linked",
-          pages: pages.map((p) => ({ id: p.id, name: p.name })),
-          hint: "Link an Instagram Business Account to one of your Facebook Pages",
-        });
-
         throw new Error(
-          `Found ${pages.length} Facebook Page(s), but none have an Instagram Business Account linked.\n\n` +
+          `❌ Found ${pages.length} Facebook Page(s), but none have Instagram Business Account linked.\n\n` +
             `Your Pages:\n` +
-            pages.map((p) => `- ${p.name} (ID: ${p.id})`).join("\n") +
-            `\n\nPlease link an Instagram Business Account to one of these Pages in your Facebook Page settings.`
+            pages.map((p) => `• ${p.name} (ID: ${p.id})`).join("\n") +
+            `\n\n📱 TO FIX:\n` +
+            `1. Open Facebook Page "Instagram Test"\n` +
+            `2. Go to Settings → Instagram\n` +
+            `3. Click "Connect Account"\n` +
+            `4. Login to Instagram @jeewaksupun7893\n` +
+            `5. Retry the OAuth flow\n\n` +
+            `OR\n\n` +
+            `1. Open Instagram app\n` +
+            `2. Settings → Account → Switch to Professional Account\n` +
+            `3. Link to Facebook Page: "Instagram Test"`
         );
       }
 
@@ -138,7 +236,7 @@ class InstagramProvider extends BaseProvider {
 
       const instagram = instagramResponse.data;
 
-      this.log("Instagram account connected", {
+      this.log("✅ Instagram account connected successfully", {
         username: instagram.username,
         followers: instagram.followers_count,
         linkedPage: pageWithInstagram.name,
@@ -161,7 +259,26 @@ class InstagramProvider extends BaseProvider {
         },
       };
     } catch (error) {
-      this.logError("OAuth callback", error);
+      this.logError("OAuth callback failed", error);
+
+      // Enhanced error logging
+      if (error.response) {
+        this.logError("Facebook API Error Details", {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          error: error.response.data?.error,
+          url: error.config?.url,
+        });
+      }
+
+      // If it's our custom error message, throw it as-is
+      if (
+        error.message.includes("TROUBLESHOOTING") ||
+        error.message.includes("TO FIX")
+      ) {
+        throw error;
+      }
+
       throw new Error(
         `Instagram OAuth failed: ${
           error.response?.data?.error?.message || error.message
