@@ -55,6 +55,28 @@ function createApp() {
   // ============================================
   app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
+  app.use("/uploads/media", (req, res, next) => {
+  const filePath = path.join(__dirname, "../uploads/media", req.path);
+  const ext = path.extname(req.path).toLowerCase();
+  
+  // Set proper MIME type for videos
+  const mimeTypes = {
+    '.mp4': 'video/mp4',
+    '.mov': 'video/quicktime',
+    '.avi': 'video/x-msvideo',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+  };
+  
+  if (mimeTypes[ext]) {
+    res.type(mimeTypes[ext]);
+  }
+  
+  next();
+}, express.static(path.join(__dirname, "../uploads/media")));
+
   // ============================================
   // HEALTH CHECK ENDPOINT
   // ============================================

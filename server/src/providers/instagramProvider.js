@@ -440,103 +440,405 @@ class InstagramProvider extends BaseProvider {
   }
 
   /**
-   * Publish single video
+   * Validate video URL before uploading (OPTIONAL - NON-BLOCKING)
    */
-  /**
-   * Publish single video
-   */
-  async publishVideo(caption, videoUrl, accessToken, config) {
+  async validateVideoUrl(videoUrl) {
     try {
-      this.log("Publishing video", { videoUrl });
-
-      // Support for local video files
-      let videoSource = videoUrl;
-
-      // If it's a local file path, convert to absolute URL
-      if (!videoUrl.startsWith("http") && !videoUrl.startsWith("/")) {
-        const path = require("path");
-        const absolutePath = path.resolve(videoUrl);
-
-        // For Instagram, we need a publicly accessible URL
-        // Option 1: Upload to your server and serve via Express
-        // Option 2: Use the absolute file path if testing locally
-        videoSource = `${process.env.APP_URL}/uploads/media/${path.basename(
-          videoUrl
-        )}`;
-
-        this.log("Converted local video path to URL", {
-          original: videoUrl,
-          converted: videoSource,
-        });
+      // Check if URL is HTTPS
+      if (!videoUrl.startsWith("https://")) {
+        this.log(
+          "⚠️ Warning: Video URL is not HTTPS, Instagram may reject it",
+          { videoUrl }
+        );
+        // Don't throw error, just warn
+        return false;
       }
 
-      // Step 1: Create video container
-      const containerResponse = await axios.post(
-        `${config.apiUrl}/${this.channel.platformUserId}/media`,
-        null,
-        {
-          params: {
-            media_type: "VIDEO",
-            video_url: videoSource,
-            caption: caption,
-            access_token: accessToken,
-          },
-        }
-      );
+      // Quick check (3 second timeout)
+      const response = await axios.head(videoUrl, {
+        timeout: 3000, // ✅ Reduced from 10s to 3s
+        validateStatus: (status) => status < 500, // Accept any status < 500
+      });
 
-      const containerId = containerResponse.data.id;
-      this.log("Video container created", { containerId });
+      if (response.status !== 200) {
+        this.log("⚠️ Warning: Video URL returned non-200 status", {
+          status: response.status,
+          url: videoUrl,
+        });
+        return false;
+      }
 
-      // Step 2: Wait for video processing (can take 1-2 minutes)
-      await this.waitForMediaProcessing(
-        containerId,
-        accessToken,
-        config,
-        120000 // 2 minutes for video
-      );
+      this.log("✅ Video URL validation passed", {
+        url: videoUrl,
+        contentType: response.headers["content-type"],
+        size: response.headers["content-length"]
+          ? `${(
+              parseInt(response.headers["content-length"]) /
+              1024 /
+              1024
+            ).toFixed(2)}MB`
+          : "unknown",
+      });
 
-      // Step 3: Publish container
-      const publishResponse = await axios.post(
-        `${config.apiUrl}/${this.channel.platformUserId}/media_publish`,
-        null,
-        {
-          params: {
-            creation_id: containerId,
-            access_token: accessToken,
-          },
-        }
-      );
-
-      const mediaId = publishResponse.data.id;
-      this.log("Video published", { mediaId });
-
-      return {
-        success: true,
-        platformPostId: mediaId,
-        platformUrl: `https://www.instagram.com/p/${mediaId}/`,
-        provider: "instagram",
-        content: caption,
-        mediaUrls: [videoUrl],
-        mediaType: "video",
-      };
+      return true;
     } catch (error) {
-      this.logError("Video publish failed", error);
+      // ✅ DON'T THROW ERROR - Just log warning and continue
+      this.log("⚠️ Video URL validation failed (non-blocking)", {
+        url: videoUrl,
+        error: error.message,
+      });
+      return false;
+    }
+  }
 
-      // Better error messages for video issues
-      if (error.response?.data?.error?.message?.includes("Invalid video")) {
+  /**
+ * Enhanced video validation with duration check
+ */
+async validateVideoUrl(videoUrl) {
+  try {
+    if (!videoUrl.startsWith("https://")) {
+      this.log("⚠️ Warning: Video URL is not HTTPS", { videoUrl });
+      return false;
+    }
+
+    // Check video headers
+    const response = await axios.head(videoUrl, {
+      timeout: 5000,
+      validateStatus: (status) => status < 500,
+      maxRedirects: 0, // ✅ Reject redirects
+    });
+
+    if (response.status !== 200) {
+      this.log("⚠️ Warning: Video URL returned non-200 status", {
+        status: response.status,
+        url: videoUrl,
+      });
+      return false;
+    }
+
+    // Check content type
+    const contentType = response.headers["content-type"];
+    if (!contentType || !contentType.includes("video")) {
+      this.log("⚠️ Warning: URL does not return video content", {
+        contentType,
+        url: videoUrl,
+      });
+      return false;
+    }
+
+    // Check file size (max 100MB)
+    const contentLength = parseInt(response.headers["content-length"] || "0");
+    const fileSizeMB = contentLength / 1024 / 1024;
+
+    if (fileSizeMB > 100) {
+      throw new Error(
+        `❌ Video file is too large: ${fileSizeMB.toFixed(2)}MB (max 100MB)`
+      );
+    }
+
+    this.log("✅ Video URL validation passed", {
+      url: videoUrl,
+      contentType,
+      size: `${fileSizeMB.toFixed(2)}MB`,
+    });
+
+    return true;
+  } catch (error) {
+    if (error.message.includes("too large")) {
+      throw error; // Re-throw size errors
+    }
+
+    this.log("⚠️ Video URL validation failed (non-blocking)", {
+      url: videoUrl,
+      error: error.message,
+    });
+    return false;
+  }
+}
+
+/**
+ * Publish single video or reel
+ * Automatically detects if video should be published as REELS or VIDEO
+ */
+async publishVideo(caption, videoUrl, accessToken, config) {
+  try {
+    this.log("Publishing video", { videoUrl });
+
+    // VALIDATE VIDEO URL FIRST
+    await this.validateVideoUrl(videoUrl);
+
+    // Detect video orientation from URL
+    const isVertical = this.isVerticalVideo(videoUrl);
+    const mediaType = isVertical ? "REELS" : "VIDEO";
+
+    this.log("Detected video type", {
+      mediaType,
+      isVertical,
+      videoUrl,
+    });
+
+    // Support for local video files
+    let videoSource = videoUrl;
+
+    if (!videoUrl.startsWith("http") && !videoUrl.startsWith("/")) {
+      const path = require("path");
+      const absolutePath = path.resolve(videoUrl);
+      videoSource = `${process.env.APP_URL}/uploads/media/${path.basename(
+        videoUrl
+      )}`;
+
+      this.log("Converted local video path to URL", {
+        original: videoUrl,
+        converted: videoSource,
+      });
+
+      await this.validateVideoUrl(videoSource);
+    }
+
+    // Log the exact request to Instagram
+    this.log("📤 Sending video container request to Instagram", {
+      endpoint: `${config.apiUrl}/${this.channel.platformUserId}/media`,
+      mediaType,
+      videoUrl: videoSource,
+      captionLength: caption.length,
+    });
+
+    // Step 1: Create video/reel container
+    const containerParams = {
+      media_type: mediaType,
+      video_url: videoSource,
+      caption: caption,
+      access_token: accessToken,
+    };
+
+    // Add REELS-specific parameters
+    if (mediaType === "REELS") {
+      containerParams.share_to_feed = true;
+    }
+
+    const containerResponse = await axios.post(
+      `${config.apiUrl}/${this.channel.platformUserId}/media`,
+      null,
+      {
+        params: containerParams,
+        timeout: 30000,
+      }
+    );
+
+    const containerId = containerResponse.data.id;
+    this.log(`✅ ${mediaType} container created`, { containerId });
+
+    // Step 2: Wait for video processing (can take 1-2 minutes)
+    this.log("⏳ Waiting for Instagram to process video...");
+    
+    await this.waitForMediaProcessing(
+      containerId,
+      accessToken,
+      config,
+      mediaType === "REELS" ? 180000 : 120000 // 3 min for reels, 2 min for video
+    );
+
+    this.log("✅ Video processing completed");
+
+    // Step 3: Publish container
+    this.log("📤 Publishing to Instagram feed...");
+    
+    const publishResponse = await axios.post(
+      `${config.apiUrl}/${this.channel.platformUserId}/media_publish`,
+      null,
+      {
+        params: {
+          creation_id: containerId,
+          access_token: accessToken,
+        },
+      }
+    );
+
+    const mediaId = publishResponse.data.id;
+    this.log(`🎉 ${mediaType} published successfully`, { mediaId });
+
+    return {
+      success: true,
+      platformPostId: mediaId,
+      platformUrl: `https://www.instagram.com/p/${mediaId}/`,
+      provider: "instagram",
+      content: caption,
+      mediaUrls: [videoUrl],
+      mediaType: mediaType.toLowerCase(),
+    };
+  } catch (error) {
+    this.logError("❌ Video publish failed", error);
+
+    // Better error messages
+    if (error.response?.data?.error) {
+      const fbError = error.response.data.error;
+
+      this.logError("Instagram API Error Details", {
+        message: fbError.message,
+        type: fbError.type,
+        code: fbError.code,
+        error_subcode: fbError.error_subcode,
+        fbtrace_id: fbError.fbtrace_id,
+      });
+
+      // Error code 100: Invalid parameter
+      if (fbError.code === 100 || fbError.message?.includes("Invalid parameter")) {
         throw new Error(
-          "Instagram video requirements:\n" +
-            "- Format: MP4 or MOV\n" +
-            "- Size: Max 100MB\n" +
-            "- Duration: 3-60 seconds\n" +
-            "- Aspect ratio: 0.8:1 to 1.91:1\n" +
-            "- Must be hosted at a publicly accessible URL"
+          "❌ Instagram Video Upload Failed: Invalid Parameter\n\n" +
+          "🔍 COMMON CAUSES:\n" +
+          "1. Video duration is NOT 3-60 seconds (for feed) or 3-90 seconds (for reels)\n" +
+          "2. Video URL redirects (Instagram requires direct URLs)\n" +
+          "3. Video codec is not H.264 or audio is not AAC\n" +
+          "4. Video bitrate is too high (>5000 kbps)\n" +
+          "5. Video has variable frame rate (must be constant)\n\n" +
+          "📋 Instagram Requirements:\n" +
+          "FEED VIDEOS:\n" +
+          "• Duration: EXACTLY 3-60 seconds (not 60.1s!)\n" +
+          "• Resolution: 600x315px to 1920x1080px\n" +
+          "• Aspect Ratio: 0.8:1 to 1.91:1\n\n" +
+          "REELS:\n" +
+          "• Duration: EXACTLY 3-90 seconds\n" +
+          "• Resolution: 1080x1920px (9:16)\n" +
+          "• Aspect Ratio: More flexible\n\n" +
+          "BOTH:\n" +
+          "• Format: MP4 (H.264 video codec, AAC audio codec)\n" +
+          "• Frame Rate: Constant, max 60 FPS\n" +
+          "• Bitrate: Max 5000 kbps\n" +
+          "• File Size: Max 100MB\n" +
+          "• URL: Direct HTTPS, no redirects\n\n" +
+          `📊 Your Video: ${videoUrl}\n\n` +
+          "✅ TESTED WORKING VIDEOS:\n" +
+          "• https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4\n" +
+          "• Upload to: AWS S3, Cloudinary, or Imgur\n\n" +
+          "🛠️ FIX WITH FFMPEG:\n" +
+          "ffmpeg -i input.mp4 -t 30 -c:v libx264 -preset slow -crf 22 \\\n" +
+          "  -c:a aac -b:a 128k -ar 44100 -r 30 -vf scale=1280:720 output.mp4"
         );
+      }
+
+      // Error code 352/2207026: Invalid video format
+      if (fbError.code === 352 || fbError.error_subcode === 2207026) {
+        throw new Error(
+          "❌ Invalid Video Format\n\n" +
+          "Instagram rejected the video file format.\n\n" +
+          "🛠️ Convert video:\n" +
+          "ffmpeg -i input.mp4 -c:v libx264 -preset slow -crf 22 \\\n" +
+          "  -c:a aac -b:a 128k -profile:v baseline -level 3.0 output.mp4"
+        );
+      }
+    }
+
+    throw error;
+  }
+}
+
+/**
+ * Wait for Instagram to process media with better error handling
+ */
+async waitForMediaProcessing(
+  containerId,
+  accessToken,
+  config,
+  maxWait = 120000
+) {
+  const startTime = Date.now();
+  const pollInterval = 5000;
+  let attemptCount = 0;
+
+  this.log("Polling for media processing status...", { containerId, maxWait });
+
+  while (Date.now() - startTime < maxWait) {
+    attemptCount++;
+
+    try {
+      const statusResponse = await axios.get(
+        `${config.apiUrl}/${containerId}`,
+        {
+          params: {
+            fields: "status_code",
+            access_token: accessToken,
+          },
+        }
+      );
+
+      const statusCode = statusResponse.data.status_code;
+
+      this.log(`Attempt ${attemptCount}: Status = ${statusCode}`, {
+        containerId,
+        elapsed: `${((Date.now() - startTime) / 1000).toFixed(1)}s`,
+      });
+
+      if (statusCode === "FINISHED") {
+        this.log("✅ Media processing completed", { containerId, attemptCount });
+        return true;
+      }
+
+      if (statusCode === "ERROR") {
+        throw new Error(
+          "❌ Instagram media processing failed\n\n" +
+          "Possible reasons:\n" +
+          "1. Video duration is outside 3-60 seconds range\n" +
+          "2. Video codec/format is incompatible\n" +
+          "3. Video URL is not accessible to Instagram servers\n" +
+          "4. Video exceeds 100MB size limit\n\n" +
+          "Try:\n" +
+          "• Upload video to a different CDN (S3, Cloudinary)\n" +
+          "• Re-encode video with ffmpeg (see docs)\n" +
+          "• Use a shorter video (10-30 seconds is safest)"
+        );
+      }
+
+      // Status is IN_PROGRESS, wait and retry
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    } catch (error) {
+      if (error.response?.status === 400) {
+        this.log(`Attempt ${attemptCount}: Container not ready yet`, {
+          containerId,
+        });
+        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+        continue;
+      }
+
+      // Re-throw our custom errors
+      if (error.message.includes("❌")) {
+        throw error;
       }
 
       throw error;
     }
   }
+
+  throw new Error(
+    `❌ Media processing timeout after ${maxWait / 1000}s\n\n` +
+    "Instagram took too long to process the video.\n\n" +
+    "This usually means:\n" +
+    "1. Video is too large (reduce to <50MB)\n" +
+    "2. Video encoding is complex (use simpler encoding)\n" +
+    "3. Instagram servers are slow (try again later)\n\n" +
+    "Try a shorter, simpler video file."
+  );
+}
+
+/**
+ * Helper: Detect if video is vertical (for REELS) or horizontal (for VIDEO)
+ */
+isVerticalVideo(videoUrl) {
+  // Check filename patterns
+  if (videoUrl.match(/1080x1920|1080_1920|portrait|vertical|reel/i)) {
+    return true;
+  }
+
+  if (videoUrl.match(/1920x1080|1920_1080|landscape|horizontal/i)) {
+    return false;
+  }
+
+  if (videoUrl.includes("_9_16") || videoUrl.includes("9-16")) {
+    return true;
+  }
+
+  // Default to false (landscape) for feed videos
+  return false;
+}
 
   /**
    * Publish carousel (2-10 items)

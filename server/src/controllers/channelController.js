@@ -314,6 +314,113 @@ class ChannelController {
     }
   }
 
+  /**
+   * Test publish with LOCAL FILE upload (multipart/form-data)
+   */
+  async testPublishLocal(req, res, next) {
+    try {
+      const content = req.body.content;
+
+      if (!content) {
+        return res.status(400).json({
+          success: false,
+          message: "Content is required",
+        });
+      }
+
+      const channel = await Channel.findById(req.params.id).populate("brand");
+      if (!channel) {
+        return res.status(404).json({
+          success: false,
+          message: "Channel not found",
+        });
+      }
+
+      const provider = ProviderFactory.getProvider(channel.provider, channel);
+
+      let mediaUrls = [];
+
+      // ✅ HANDLE UPLOADED FILES
+      if (req.files && req.files.length > 0) {
+        logger.info("📁 Processing uploaded files", {
+          count: req.files.length,
+          files: req.files.map(f => ({
+            originalName: f.originalname,
+            size: `${(f.size / 1024 / 1024).toFixed(2)}MB`,
+            mimetype: f.mimetype
+          }))
+        });
+
+        // Convert uploaded files to full server URLs
+        mediaUrls = req.files.map((file) => {
+          // Get the full public URL
+          const publicUrl = `${process.env.APP_URL}/uploads/media/${file.filename}`;
+          
+          logger.info("📤 File uploaded", {
+            filename: file.filename,
+            publicUrl: publicUrl,
+            size: file.size
+          });
+
+          return publicUrl;
+        });
+      }
+
+      logger.info("🚀 Publishing with local files", {
+        content: content.substring(0, 50) + "...",
+        mediaCount: mediaUrls.length,
+        mediaUrls: mediaUrls
+      });
+
+      // Publish to platform
+      const result = await provider.publish({
+        content,
+        mediaUrls,
+      });
+
+      logger.info("✅ Post published successfully", {
+        platformPostId: result.platformPostId,
+        provider: channel.provider
+      });
+
+      // Save to database
+      const publishedPost = await PublishedPost.create({
+        brand: channel.brand._id,
+        channel: channel._id,
+        publishedBy: req.user._id,
+        provider: channel.provider,
+        platformPostId: result.platformPostId,
+        platformUrl: result.platformUrl,
+        content: content,
+        mediaUrls: result.mediaUrls || mediaUrls,
+        mediaType: result.mediaType || "none",
+        status: "published",
+        publishedAt: new Date(),
+      });
+
+      res.json({
+        success: true,
+        message: "Post published and saved successfully",
+        data: {
+          platform: result,
+          database: {
+            id: publishedPost._id,
+            platformPostId: publishedPost.platformPostId,
+            status: publishedPost.status,
+            publishedAt: publishedPost.publishedAt,
+          },
+        },
+      });
+    } catch (error) {
+      logger.error("❌ Test publish failed", {
+        error: error.message,
+        stack: error.stack
+      });
+      next(error);
+    }
+  }
+
+
   async testUpdate(req, res, next) {
     try {
       const { platformPostId, content } = req.body;

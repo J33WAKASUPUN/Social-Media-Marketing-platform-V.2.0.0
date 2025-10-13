@@ -41,6 +41,12 @@ router.post('/:id/test-publish', uploadMedia, channelController.testPublish);
 router.patch('/:id/test-update', channelController.testUpdate);
 router.delete('/:id/test-delete', channelController.testDelete);
 
+router.post(
+  '/:id/test-publish-local', 
+  uploadMedia,  // Handles multipart/form-data
+  channelController.testPublishLocal
+);
+
 // DEBUG ROUTE (with improved error handling)
 router.get('/debug/instagram-pages', requireAuth, async (req, res, next) => {
   try {
