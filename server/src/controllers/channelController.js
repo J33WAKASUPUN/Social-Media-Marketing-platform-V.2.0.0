@@ -5,6 +5,7 @@ const PublishedPost = require("../models/PublishedPost");
 const mongoose = require("mongoose");
 const path = require("path");
 const logger = require("../utils/logger");
+const cloudinaryService = require('../services/cloudinaryService');
 
 class ChannelController {
   async getAuthorizationUrl(req, res, next) {
@@ -315,9 +316,9 @@ class ChannelController {
   }
 
   /**
-   * Test publish with LOCAL FILE upload (multipart/form-data)
+   * Test publish with LOCAL FILE upload + Cloudinary
    */
-  async testPublishLocal(req, res, next) {
+   async testPublishLocal(req, res, next) {
     try {
       const content = req.body.content;
 
@@ -340,39 +341,73 @@ class ChannelController {
 
       let mediaUrls = [];
 
-      // ✅ HANDLE UPLOADED FILES
+      // ✅ HANDLE UPLOADED FILES WITH CLOUDINARY
       if (req.files && req.files.length > 0) {
         logger.info("📁 Processing uploaded files", {
           count: req.files.length,
           files: req.files.map(f => ({
             originalName: f.originalname,
             size: `${(f.size / 1024 / 1024).toFixed(2)}MB`,
-            mimetype: f.mimetype
+            mimetype: f.mimetype,
+            path: f.path
           }))
         });
 
-        // Convert uploaded files to full server URLs
-        mediaUrls = req.files.map((file) => {
-          // Get the full public URL
-          const publicUrl = `${process.env.APP_URL}/uploads/media/${file.filename}`;
-          
-          logger.info("📤 File uploaded", {
-            filename: file.filename,
-            publicUrl: publicUrl,
-            size: file.size
-          });
+        // Upload each file to Cloudinary
+        for (const file of req.files) {
+          try {
+            logger.info(`📤 Uploading ${file.originalname} to Cloudinary...`);
 
-          return publicUrl;
-        });
+            let uploadResult;
+
+            // ✅ CHECK IF FILE IS VIDEO OR IMAGE
+            if (file.mimetype.startsWith('video/')) {
+              // Upload video with Instagram-compatible transformations
+              uploadResult = await cloudinaryService.uploadInstagramVideo(file.path, {
+                tags: [channel.provider, channel.brand.name]
+              });
+            } else {
+              // Upload image
+              uploadResult = await cloudinaryService.uploadImage(file.path, {
+                tags: [channel.provider, channel.brand.name]
+              });
+            }
+
+            logger.info("✅ File uploaded to Cloudinary", {
+              filename: file.filename,
+              cloudinaryUrl: uploadResult.url,
+              publicId: uploadResult.publicId,
+              duration: uploadResult.duration,
+              size: `${(uploadResult.size / 1024 / 1024).toFixed(2)}MB`
+            });
+
+            // Use Cloudinary URL for publishing
+            mediaUrls.push(uploadResult.url);
+
+          } catch (uploadError) {
+            logger.error(`❌ Failed to upload ${file.originalname} to Cloudinary`, {
+              error: uploadError.message
+            });
+
+            // If upload fails, still try to delete local file
+            try {
+              await require('fs').promises.unlink(file.path);
+            } catch (unlinkError) {
+              logger.warn(`⚠️ Failed to delete local file ${file.path}`);
+            }
+
+            throw new Error(`Failed to upload ${file.originalname}: ${uploadError.message}`);
+          }
+        }
       }
 
-      logger.info("🚀 Publishing with local files", {
+      logger.info("🚀 Publishing with Cloudinary URLs", {
         content: content.substring(0, 50) + "...",
         mediaCount: mediaUrls.length,
         mediaUrls: mediaUrls
       });
 
-      // Publish to platform
+      // Publish to platform (Instagram will download from Cloudinary)
       const result = await provider.publish({
         content,
         mediaUrls,
@@ -380,7 +415,8 @@ class ChannelController {
 
       logger.info("✅ Post published successfully", {
         platformPostId: result.platformPostId,
-        provider: channel.provider
+        provider: channel.provider,
+        cloudinaryUrls: mediaUrls
       });
 
       // Save to database
@@ -409,6 +445,10 @@ class ChannelController {
             status: publishedPost.status,
             publishedAt: publishedPost.publishedAt,
           },
+          cloudinary: {
+            urls: mediaUrls,
+            message: "Media hosted on Cloudinary CDN"
+          }
         },
       });
     } catch (error) {
@@ -419,6 +459,7 @@ class ChannelController {
       next(error);
     }
   }
+
 
 
   async testUpdate(req, res, next) {

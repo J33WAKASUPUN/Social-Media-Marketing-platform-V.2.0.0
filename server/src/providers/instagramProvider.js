@@ -564,25 +564,11 @@ async publishVideo(caption, videoUrl, accessToken, config) {
   try {
     this.log("Publishing video", { videoUrl });
 
-    // VALIDATE VIDEO URL FIRST
-    await this.validateVideoUrl(videoUrl);
-
-    // Detect video orientation from URL
-    const isVertical = this.isVerticalVideo(videoUrl);
-    const mediaType = isVertical ? "REELS" : "VIDEO";
-
-    this.log("Detected video type", {
-      mediaType,
-      isVertical,
-      videoUrl,
-    });
-
     // Support for local video files
     let videoSource = videoUrl;
 
     if (!videoUrl.startsWith("http") && !videoUrl.startsWith("/")) {
       const path = require("path");
-      const absolutePath = path.resolve(videoUrl);
       videoSource = `${process.env.APP_URL}/uploads/media/${path.basename(
         videoUrl
       )}`;
@@ -591,9 +577,66 @@ async publishVideo(caption, videoUrl, accessToken, config) {
         original: videoUrl,
         converted: videoSource,
       });
-
-      await this.validateVideoUrl(videoSource);
     }
+
+    // ✅ ADD: Extract video metadata from URL if it's a Cloudinary URL
+    let videoDuration = null;
+    if (videoSource.includes('cloudinary.com')) {
+      try {
+        // Extract public_id from Cloudinary URL
+        const urlParts = videoSource.split('/');
+        const publicIdWithExt = urlParts[urlParts.length - 1];
+        const publicId = `${urlParts[urlParts.length - 2]}/${publicIdWithExt.split('.')[0]}`;
+        
+        this.log("Fetching video metadata from Cloudinary", { publicId });
+        
+        const cloudinary = require('../config/cloudinary');
+        const videoInfo = await cloudinary.api.resource(publicId, {
+          resource_type: 'video'
+        });
+        
+        videoDuration = videoInfo.duration;
+        
+        this.log("Video metadata retrieved", {
+          duration: videoDuration,
+          format: videoInfo.format,
+          width: videoInfo.width,
+          height: videoInfo.height,
+          bitRate: videoInfo.bit_rate,
+        });
+        
+        // ✅ VALIDATE DURATION
+        if (videoDuration < 3 || videoDuration > 60) {
+          throw new Error(
+            `❌ Video duration (${videoDuration.toFixed(1)}s) is outside Instagram's 3-60 second range.\n\n` +
+            `Instagram Requirements:\n` +
+            `• FEED Videos: EXACTLY 3-60 seconds\n` +
+            `• REELS: EXACTLY 3-90 seconds\n\n` +
+            `Your video is ${videoDuration.toFixed(1)} seconds.\n\n` +
+            `🛠️ FIX:\n` +
+            `1. Trim video to 3-60 seconds\n` +
+            `2. Use ffmpeg: ffmpeg -i input.mp4 -t 30 output.mp4`
+          );
+        }
+        
+        this.log(`✅ Video duration is valid: ${videoDuration.toFixed(1)}s`);
+        
+      } catch (metadataError) {
+        this.logError("Failed to fetch video metadata", metadataError);
+        // Continue anyway - Instagram will validate
+      }
+    }
+
+    // Detect video orientation
+    const isVertical = this.isVerticalVideo(videoSource);
+    const mediaType = isVertical ? "REELS" : "VIDEO";
+
+    this.log("Detected video type", {
+      mediaType,
+      isVertical,
+      duration: videoDuration ? `${videoDuration.toFixed(1)}s` : 'unknown',
+      videoUrl: videoSource,
+    });
 
     // Log the exact request to Instagram
     this.log("📤 Sending video container request to Instagram", {
@@ -601,7 +644,9 @@ async publishVideo(caption, videoUrl, accessToken, config) {
       mediaType,
       videoUrl: videoSource,
       captionLength: caption.length,
+      videoDuration: videoDuration ? `${videoDuration.toFixed(1)}s` : 'unknown',
     });
+
 
     // Step 1: Create video/reel container
     const containerParams = {

@@ -70,6 +70,12 @@ const envSchema = Joi.object({
   FACEBOOK_APP_ID: Joi.string().optional(),
   FACEBOOK_APP_SECRET: Joi.string().optional(),
   FACEBOOK_CALLBACK_URL: Joi.string().optional(),
+
+  // Cloudinary
+  CLOUDINARY_CLOUD_NAME: Joi.string().required(),
+  CLOUDINARY_API_KEY: Joi.string().required(),
+  CLOUDINARY_API_SECRET: Joi.string().required(),
+  CLOUDINARY_FOLDER: Joi.string().default('social-media-videos'),
 }).unknown(true);
 
 /**
