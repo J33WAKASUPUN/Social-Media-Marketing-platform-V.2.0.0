@@ -24,18 +24,24 @@ router.use(requireAuth);
 // STATIC ROUTES FIRST (before :id routes)
 router.get('/posts', channelController.getPosts); // Get all posts from DB
 
-// DYNAMIC ROUTES AFTER
+// DYNAMIC ROUTES
 router.get('/', channelController.getBrandChannels);
 router.get('/:id/test', channelController.testConnection);
-router.delete('/:id', channelController.disconnectChannel);
+
+// TWO-TIER DELETE ROUTES
+router.delete('/:id', channelController.disconnectChannel);              // Soft delete
+router.delete('/:id/permanent', channelController.permanentlyDeleteChannel); // Permanent delete
+router.get('/:id/delete-impact', channelController.getDeleteImpact);
+
 router.post('/:id/refresh', channelController.refreshToken);
+router.get('/disconnected', channelController.getDisconnectedChannels);
 
 // Publishing endpoints
 router.post('/:id/test-publish', uploadMedia, channelController.testPublish);
 router.patch('/:id/test-update', channelController.testUpdate);
 router.delete('/:id/test-delete', channelController.testDelete);
 
-// ✅ ADD THIS DEBUG ROUTE (with improved error handling)
+// DEBUG ROUTE (with improved error handling)
 router.get('/debug/instagram-pages', requireAuth, async (req, res, next) => {
   try {
     const { accessToken } = req.query;
@@ -48,7 +54,7 @@ router.get('/debug/instagram-pages', requireAuth, async (req, res, next) => {
       });
     }
 
-    // ✅ LOG the access token (first 20 chars only for security)
+    // LOG the access token (first 20 chars only for security)
     console.log('🔑 Testing Access Token:', accessToken.substring(0, 20) + '...');
 
     const axios = require('axios');
@@ -99,7 +105,7 @@ router.get('/debug/instagram-pages', requireAuth, async (req, res, next) => {
         }
       });
     } catch (apiError) {
-      // ✅ DETAILED API ERROR LOGGING
+      // DETAILED API ERROR LOGGING
       console.error('❌ Facebook API Error:', {
         status: apiError.response?.status,
         statusText: apiError.response?.statusText,

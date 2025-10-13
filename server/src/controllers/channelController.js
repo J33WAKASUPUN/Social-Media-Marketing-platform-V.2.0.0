@@ -4,6 +4,7 @@ const Channel = require("../models/Channel");
 const PublishedPost = require("../models/PublishedPost");
 const mongoose = require("mongoose");
 const path = require("path");
+const logger = require("../utils/logger");
 
 class ChannelController {
   async getAuthorizationUrl(req, res, next) {
@@ -39,7 +40,21 @@ class ChannelController {
       const { provider } = req.params;
       const { code, state, error, error_description } = req.query;
 
+      // Enhanced error logging
+      logger.info("OAuth callback received", {
+        provider,
+        hasCode: !!code,
+        hasState: !!state,
+        state: state ? state.substring(0, 16) + "..." : "missing",
+        error: error || null,
+      });
+
       if (error) {
+        logger.error("OAuth provider error", {
+          provider,
+          error,
+          error_description,
+        });
         const frontendUrl = process.env.CLIENT_URL || "http://localhost:5173";
         return res.redirect(
           `${frontendUrl}/channels?error=${encodeURIComponent(
@@ -49,6 +64,10 @@ class ChannelController {
       }
 
       if (!code || !state) {
+        logger.error("Missing code or state in callback", {
+          hasCode: !!code,
+          hasState: !!state,
+        });
         return res.status(400).json({
           success: false,
           message: "Authorization code and state are required",
@@ -57,16 +76,51 @@ class ChannelController {
 
       const result = await channelService.handleCallback(provider, code, state);
 
+      logger.info("OAuth callback successful", {
+        provider,
+        channelId: result.channel._id,
+        isNew: result.isNew,
+      });
+
       const redirectUrl = `${result.returnUrl}/channels?success=true&provider=${provider}&new=${result.isNew}`;
       res.redirect(redirectUrl);
     } catch (error) {
-      next(error);
+      // ✅ IMPROVED ERROR HANDLING
+      logger.error("OAuth callback error:", {
+        message: error.message,
+        stack: error.stack,
+        provider: req.params.provider,
+      });
+
+      const frontendUrl = process.env.CLIENT_URL || "http://localhost:5173";
+
+      // ✅ CHECK IF HEADERS ALREADY SENT
+      if (res.headersSent) {
+        logger.error("Headers already sent, cannot redirect");
+        return next(error);
+      }
+
+      if (error.message.includes("OAuth state")) {
+        // State validation error - redirect to frontend with helpful message
+        return res.redirect(
+          `${frontendUrl}/channels?error=${encodeURIComponent(
+            "Session expired. Please try connecting again."
+          )}`
+        );
+      }
+
+      // ✅ GENERIC ERROR REDIRECT
+      return res.redirect(
+        `${frontendUrl}/channels?error=${encodeURIComponent(
+          "Authentication failed. Please try again."
+        )}`
+      );
     }
   }
 
   async getBrandChannels(req, res, next) {
     try {
-      const { brandId } = req.query;
+      const { brandId, includeDisconnected } = req.query;
 
       if (!brandId) {
         return res.status(400).json({
@@ -77,12 +131,42 @@ class ChannelController {
 
       const channels = await channelService.getBrandChannels(
         brandId,
+        req.user._id,
+        includeDisconnected === "true"
+      );
+
+      res.json({
+        success: true,
+        data: channels,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDisconnectedChannels(req, res, next) {
+    try {
+      const { brandId } = req.query;
+
+      if (!brandId) {
+        return res.status(400).json({
+          success: false,
+          message: "Brand ID is required",
+        });
+      }
+
+      const channels = await channelService.getDisconnectedChannels(
+        brandId,
         req.user._id
       );
 
       res.json({
         success: true,
         data: channels,
+        message:
+          channels.length > 0
+            ? "Reconnect these channels to resume posting"
+            : "No disconnected channels",
       });
     } catch (error) {
       next(error);
@@ -356,6 +440,61 @@ class ChannelController {
     }
   }
 
+  // Permanently delete channel and all associated data
+  async permanentlyDeleteChannel(req, res, next) {
+    try {
+      const result = await channelService.permanentlyDeleteChannel(
+        req.params.id,
+        req.user._id
+      );
+
+      res.json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDeleteImpact(req, res, next) {
+    try {
+      const channel = await Channel.findById(req.params.id);
+
+      if (!channel) {
+        return res.status(404).json({
+          success: false,
+          message: "Channel not found",
+        });
+      }
+
+      const PublishedPost = require("../models/PublishedPost");
+      const postCount = await PublishedPost.countDocuments({
+        channel: req.params.id,
+      });
+
+      res.json({
+        success: true,
+        data: {
+          channel: {
+            provider: channel.provider,
+            displayName: channel.displayName,
+            platformUsername: channel.platformUsername,
+          },
+          impact: {
+            publishedPosts: postCount,
+            canReconnect: false,
+            dataLoss: "permanent",
+          },
+          warning:
+            "This action cannot be undone. All data will be permanently deleted.",
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Get published posts
   async getPosts(req, res, next) {
     try {
@@ -381,12 +520,10 @@ class ChannelController {
       const query = {};
 
       if (brandId) {
-        
         query.brand = new mongoose.Types.ObjectId(brandId);
       }
 
       if (channelId) {
-        
         query.channel = new mongoose.Types.ObjectId(channelId);
       }
 

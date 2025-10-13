@@ -72,7 +72,7 @@ class InstagramProvider extends BaseProvider {
         tokenPreview: longLivedToken.substring(0, 20) + "...",
       });
 
-      // ✅ NEW: Check token permissions first
+      // Check token permissions first
       try {
         const permissionsResponse = await axios.get(
           `${config.apiUrl}/me/permissions`,
@@ -90,7 +90,7 @@ class InstagramProvider extends BaseProvider {
         this.logError("Failed to check permissions", permError);
       }
 
-      // ✅ IMPROVED: Try multiple methods to get pages
+      // Try multiple methods to get pages
       let pages = [];
 
       // Method 1: Standard /me/accounts (works in Production mode)
@@ -112,7 +112,7 @@ class InstagramProvider extends BaseProvider {
         });
       }
 
-      // ✅ Method 2: If no pages found, try getting user's administered pages
+      // If no pages found, try getting user's administered pages
       if (pages.length === 0) {
         try {
           this.log("Trying alternative method: /me?fields=accounts...");
@@ -132,7 +132,7 @@ class InstagramProvider extends BaseProvider {
         }
       }
 
-      // ✅ Method 3: If still no pages, check if user info is accessible
+      // If still no pages, check if user info is accessible
       if (pages.length === 0) {
         try {
           const userResponse = await axios.get(`${config.apiUrl}/me`, {
@@ -442,9 +442,33 @@ class InstagramProvider extends BaseProvider {
   /**
    * Publish single video
    */
+  /**
+   * Publish single video
+   */
   async publishVideo(caption, videoUrl, accessToken, config) {
     try {
       this.log("Publishing video", { videoUrl });
+
+      // Support for local video files
+      let videoSource = videoUrl;
+
+      // If it's a local file path, convert to absolute URL
+      if (!videoUrl.startsWith("http") && !videoUrl.startsWith("/")) {
+        const path = require("path");
+        const absolutePath = path.resolve(videoUrl);
+
+        // For Instagram, we need a publicly accessible URL
+        // Option 1: Upload to your server and serve via Express
+        // Option 2: Use the absolute file path if testing locally
+        videoSource = `${process.env.APP_URL}/uploads/media/${path.basename(
+          videoUrl
+        )}`;
+
+        this.log("Converted local video path to URL", {
+          original: videoUrl,
+          converted: videoSource,
+        });
+      }
 
       // Step 1: Create video container
       const containerResponse = await axios.post(
@@ -453,7 +477,7 @@ class InstagramProvider extends BaseProvider {
         {
           params: {
             media_type: "VIDEO",
-            video_url: videoUrl,
+            video_url: videoSource,
             caption: caption,
             access_token: accessToken,
           },
@@ -468,7 +492,7 @@ class InstagramProvider extends BaseProvider {
         containerId,
         accessToken,
         config,
-        120000
+        120000 // 2 minutes for video
       );
 
       // Step 3: Publish container
@@ -497,6 +521,19 @@ class InstagramProvider extends BaseProvider {
       };
     } catch (error) {
       this.logError("Video publish failed", error);
+
+      // Better error messages for video issues
+      if (error.response?.data?.error?.message?.includes("Invalid video")) {
+        throw new Error(
+          "Instagram video requirements:\n" +
+            "- Format: MP4 or MOV\n" +
+            "- Size: Max 100MB\n" +
+            "- Duration: 3-60 seconds\n" +
+            "- Aspect ratio: 0.8:1 to 1.91:1\n" +
+            "- Must be hosted at a publicly accessible URL"
+        );
+      }
+
       throw error;
     }
   }
@@ -653,7 +690,14 @@ class InstagramProvider extends BaseProvider {
    */
   async updatePost(platformPostId, newContent) {
     throw new Error(
-      "Instagram does not support editing published posts. You must delete and repost."
+      "❌ Instagram does not support editing published posts.\n\n" +
+        "📱 Instagram API Limitation:\n" +
+        "Instagram's official API does not allow editing captions or media after publishing.\n\n" +
+        "✅ Alternatives:\n" +
+        "1. Delete the post and republish with new content\n" +
+        "2. Edit the caption manually in the Instagram app\n" +
+        "3. Post a comment with updated information\n\n" +
+        "This is a limitation of Instagram's platform, not our application."
     );
   }
 
@@ -665,19 +709,72 @@ class InstagramProvider extends BaseProvider {
       const accessToken = this.getAccessToken();
       const config = this.getConfig();
 
+      this.log("Attempting to delete Instagram post", {
+        platformPostId,
+        accountId: this.channel.platformUserId,
+      });
+
       await axios.delete(`${config.apiUrl}/${platformPostId}`, {
         params: {
           access_token: accessToken,
         },
       });
 
-      this.log("Post deleted", { platformPostId });
+      this.log("Post deleted successfully", { platformPostId });
 
       return {
         success: true,
       };
     } catch (error) {
       this.logError("Delete failed", error);
+
+      // error messages for Instagram-specific issues
+      if (error.response?.status === 400) {
+        const errorMessage =
+          error.response.data?.error?.message || "Unknown error";
+        const errorCode = error.response.data?.error?.code;
+
+        // Instagram-specific error handling
+        if (errorCode === 100 || errorMessage.includes("unknown error")) {
+          throw new Error(
+            `Instagram post cannot be deleted. Possible reasons:\n` +
+              `1. This post was not created by your app\n` +
+              `2. The post was created with a different access token\n` +
+              `3. Instagram has rate-limited deletion requests\n` +
+              `4. The post is too old to delete (>24 hours)\n\n` +
+              `Instagram only allows deletion of posts created by your app via API.`
+          );
+        }
+
+        if (errorCode === 190) {
+          throw new Error(
+            "Instagram access token is invalid or expired. Please reconnect your account."
+          );
+        }
+
+        if (errorCode === 803) {
+          throw new Error(
+            "Instagram post has already been deleted or does not exist."
+          );
+        }
+
+        throw new Error(
+          `Instagram API error: ${errorMessage} (Code: ${errorCode})`
+        );
+      }
+
+      if (error.response?.status === 403) {
+        throw new Error(
+          "Instagram deletion forbidden. This post was likely not created by your app."
+        );
+      }
+
+      if (error.response?.status === 404) {
+        throw new Error(
+          "Instagram post not found. It may have already been deleted."
+        );
+      }
+
       throw new Error(
         `Instagram delete failed: ${
           error.response?.data?.error?.message || error.message

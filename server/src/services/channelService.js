@@ -1,10 +1,10 @@
-const Channel = require('../models/Channel');
-const Brand = require('../models/Brand');
-const Membership = require('../models/Membership');
-const encryptionService = require('./encryptionService');
-const oauthService = require('./oauthService');
-const ProviderFactory = require('../providers/ProviderFactory');
-const logger = require('../utils/logger');
+const Channel = require("../models/Channel");
+const Brand = require("../models/Brand");
+const Membership = require("../models/Membership");
+const encryptionService = require("./encryptionService");
+const oauthService = require("./oauthService");
+const ProviderFactory = require("../providers/ProviderFactory");
+const logger = require("../utils/logger");
 
 class ChannelService {
   /**
@@ -14,7 +14,7 @@ class ChannelService {
     // Check if brand exists and user has access
     const brand = await Brand.findById(brandId);
     if (!brand) {
-      throw new Error('Brand not found');
+      throw new Error("Brand not found");
     }
 
     const membership = await Membership.findOne({
@@ -22,8 +22,8 @@ class ChannelService {
       brand: brandId,
     });
 
-    if (!membership || !membership.hasPermission('connect_channels')) {
-      throw new Error('Permission denied');
+    if (!membership || !membership.hasPermission("connect_channels")) {
+      throw new Error("Permission denied");
     }
 
     // Generate OAuth URL
@@ -41,6 +41,7 @@ class ChannelService {
    * Handle OAuth callback and create channel
    */
   async handleCallback(provider, code, state) {
+  try {
     // Validate OAuth state and exchange code for tokens
     const { accountData, stateData } = await oauthService.handleCallback(
       provider,
@@ -70,12 +71,14 @@ class ChannelService {
       existingChannel.displayName = accountData.displayName;
       existingChannel.avatar = accountData.avatar;
       existingChannel.profileUrl = accountData.profileUrl;
-      existingChannel.connectionStatus = 'active';
+      existingChannel.connectionStatus = "active";
       existingChannel.providerData = accountData.providerData || {};
 
       await existingChannel.save();
 
-      logger.info(`Channel reconnected: ${provider} for brand ${stateData.brandId}`);
+      logger.info(
+        `Channel reconnected: ${provider} for brand ${stateData.brandId}`
+      );
 
       return {
         channel: existingChannel,
@@ -108,12 +111,64 @@ class ChannelService {
       connectedBy: stateData.userId,
     });
 
-    logger.info(`New channel connected: ${provider} for brand ${stateData.brandId}`);
+    logger.info(
+      `New channel connected: ${provider} for brand ${stateData.brandId}`
+    );
 
     return {
       channel,
       isNew: true,
       returnUrl: stateData.returnUrl,
+    };
+  } catch (error) {
+    // ADD DETAILED ERROR LOGGING
+    logger.error('Channel handleCallback error:', {
+      provider,
+      message: error.message,
+      stack: error.stack
+    });
+    throw error; // Re-throw to be caught by controller
+  }
+}
+
+  /**
+   * Permanently delete channel (GDPR compliance)
+   */
+  async permanentlyDeleteChannel(channelId, userId) {
+    const channel = await Channel.findById(channelId).populate("brand");
+
+    if (!channel) {
+      throw new Error("Channel not found");
+    }
+
+    // Check user access
+    const membership = await Membership.findOne({
+      user: userId,
+      brand: channel.brand._id,
+    });
+
+    if (!membership || !membership.hasPermission("connect_channels")) {
+      throw new Error("Permission denied");
+    }
+
+    // PERMANENT DELETE: Remove all associated data
+
+    // 1. Delete all published posts from this channel
+    const PublishedPost = require("../models/PublishedPost");
+    await PublishedPost.deleteMany({ channel: channelId });
+
+    logger.info(`Deleted published posts for channel: ${channelId}`);
+
+    // 2. Delete the channel document
+    await channel.deleteOne();
+
+    logger.info(
+      `Permanently deleted channel: ${channel.provider} (ID: ${channelId})`
+    );
+
+    return {
+      success: true,
+      message: "Channel and all associated data permanently deleted",
     };
   }
 
@@ -128,16 +183,17 @@ class ChannelService {
     });
 
     if (!membership) {
-      throw new Error('Access denied');
+      throw new Error("Access denied");
     }
 
+    // INCLUDE disconnected channels (remove the filter)
     const channels = await Channel.find({
       brand: brandId,
-      connectionStatus: { $ne: 'disconnected' },
+      // Don't filter by connectionStatus - show all channels
     }).sort({ createdAt: -1 });
 
     // Remove encrypted tokens from response
-    return channels.map(channel => ({
+    return channels.map((channel) => ({
       id: channel._id,
       provider: channel.provider,
       platformUserId: channel.platformUserId,
@@ -155,13 +211,45 @@ class ChannelService {
   }
 
   /**
+   * Get disconnected channels for a brand
+   */
+  async getDisconnectedChannels(brandId, userId) {
+    // Check user access
+    const membership = await Membership.findOne({
+      user: userId,
+      brand: brandId,
+    });
+
+    if (!membership) {
+      throw new Error("Access denied");
+    }
+
+    const channels = await Channel.find({
+      brand: brandId,
+      connectionStatus: "disconnected",
+    }).sort({ updatedAt: -1 });
+
+    return channels.map((channel) => ({
+      id: channel._id,
+      provider: channel.provider,
+      platformUserId: channel.platformUserId,
+      platformUsername: channel.platformUsername,
+      displayName: channel.displayName,
+      avatar: channel.avatar,
+      connectionStatus: channel.connectionStatus,
+      disconnectedAt: channel.updatedAt,
+      canReconnect: true, 
+    }));
+  }
+
+  /**
    * Test channel connection
    */
   async testConnection(channelId, userId) {
-    const channel = await Channel.findById(channelId).populate('brand');
+    const channel = await Channel.findById(channelId).populate("brand");
 
     if (!channel) {
-      throw new Error('Channel not found');
+      throw new Error("Channel not found");
     }
 
     // Check user access
@@ -171,7 +259,7 @@ class ChannelService {
     });
 
     if (!membership) {
-      throw new Error('Access denied');
+      throw new Error("Access denied");
     }
 
     // Test connection using provider
@@ -191,10 +279,10 @@ class ChannelService {
    * Disconnect channel
    */
   async disconnectChannel(channelId, userId) {
-    const channel = await Channel.findById(channelId).populate('brand');
+    const channel = await Channel.findById(channelId).populate("brand");
 
     if (!channel) {
-      throw new Error('Channel not found');
+      throw new Error("Channel not found");
     }
 
     // Check user access
@@ -203,11 +291,11 @@ class ChannelService {
       brand: channel.brand._id,
     });
 
-    if (!membership || !membership.hasPermission('connect_channels')) {
-      throw new Error('Permission denied');
+    if (!membership || !membership.hasPermission("connect_channels")) {
+      throw new Error("Permission denied");
     }
 
-    channel.connectionStatus = 'disconnected';
+    channel.connectionStatus = "disconnected";
     await channel.save();
 
     logger.info(`Channel disconnected: ${channel.provider} (ID: ${channelId})`);
@@ -219,10 +307,10 @@ class ChannelService {
    * Refresh channel access token
    */
   async refreshToken(channelId, userId) {
-    const channel = await Channel.findById(channelId).populate('brand');
+    const channel = await Channel.findById(channelId).populate("brand");
 
     if (!channel) {
-      throw new Error('Channel not found');
+      throw new Error("Channel not found");
     }
 
     // Check user access
@@ -232,7 +320,7 @@ class ChannelService {
     });
 
     if (!membership) {
-      throw new Error('Access denied');
+      throw new Error("Access denied");
     }
 
     // Get provider instance
@@ -250,14 +338,18 @@ class ChannelService {
         channel.refreshToken = encryptedTokens.refreshToken;
       }
       if (newTokens.expiresIn) {
-        channel.tokenExpiresAt = new Date(Date.now() + newTokens.expiresIn * 1000);
+        channel.tokenExpiresAt = new Date(
+          Date.now() + newTokens.expiresIn * 1000
+        );
       }
-      channel.connectionStatus = 'active';
+      channel.connectionStatus = "active";
       channel.healthCheckError = null;
 
       await channel.save();
 
-      logger.info(`Token refreshed for channel: ${channel.provider} (ID: ${channelId})`);
+      logger.info(
+        `Token refreshed for channel: ${channel.provider} (ID: ${channelId})`
+      );
 
       return { success: true, expiresAt: channel.tokenExpiresAt };
     } catch (error) {

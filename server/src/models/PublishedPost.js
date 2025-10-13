@@ -49,7 +49,7 @@ const publishedPostSchema = new mongoose.Schema({
   }],
   mediaType: {
     type: String,
-    enum: ['none', 'image', 'video', 'multiImage', 'article'],
+    enum: ['none', 'image', 'video', 'multiImage', 'carousel', 'article'],
     default: 'none',
   },
 
