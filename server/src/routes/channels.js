@@ -5,12 +5,91 @@ const { requireAuth } = require('../middlewares/auth');
 const { uploadMedia } = require('../middlewares/upload');
 const { validateRequest, schemas } = require('../middlewares/validateRequest');
 
-// OAuth Flow (requires authentication)
+/**
+ * @swagger
+ * tags:
+ *   name: Channels
+ *   description: Social media channel management and OAuth
+ */
+
+/**
+ * @swagger
+ * /api/v1/channels/oauth/{provider}:
+ *   get:
+ *     summary: Get OAuth authorization URL
+ *     tags: [Channels]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: provider
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [facebook, linkedin, twitter, instagram, youtube]
+ *       - in: query
+ *         name: brandId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: returnUrl
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: OAuth URL generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     authUrl:
+ *                       type: string
+ *                     state:
+ *                       type: string
+ */
 router.get(
   '/oauth/:provider',
   requireAuth,
   channelController.getAuthorizationUrl
 );
+
+/**
+ * @swagger
+ * /api/v1/channels:
+ *   get:
+ *     summary: Get all brand channels
+ *     tags: [Channels]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: brandId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of channels
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Channel'
+ */
+router.get('/', requireAuth, channelController.getBrandChannels);
 
 // OAuth Callback (public - no auth middleware, state validation in service)
 router.get(

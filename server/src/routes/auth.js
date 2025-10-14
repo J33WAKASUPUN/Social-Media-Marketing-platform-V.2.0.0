@@ -1,34 +1,197 @@
 const express = require('express');
 const router = express.Router();
+const passport = require('passport');
 const authController = require('../controllers/authController');
-const { requireAuth } = require('../middlewares/auth');
-const { uploadAvatar } = require('../middlewares/upload');
-const passport = require('../config/googleOauth');
+const { requireAuth, optionalAuth } = require('../middlewares/auth');
 const { authLimiter } = require('../middlewares/rateLimiter');
 
-// JWT Authentication
-router.post('/register', authController.register);
-router.post('/login', authController.login);
-router.post('/logout', requireAuth, authController.logout);
-router.post('/refresh-token', authController.refreshToken);
+/**
+ * @swagger
+ * tags:
+ *   name: Authentication
+ *   description: User authentication and authorization
+ */
 
-// Email Verification
-router.get('/verify-email', authController.verifyEmail);
-router.post('/resend-verification', authController.resendVerification);
-
-// Password Reset
-router.post('/forgot-password', authController.forgotPassword);
-router.post('/reset-password', authController.resetPassword);
-
-// Profile Management
-router.get('/me', requireAuth, authController.getMe);
-router.patch('/profile', requireAuth, authController.updateProfile);
-router.post('/upload-avatar', requireAuth, uploadAvatar, authController.uploadAvatar);
-
-router.post('/login', authLimiter, authController.login);
+/**
+ * @swagger
+ * /api/v1/auth/register:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *               - name
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: user@example.com
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: SecurePass123!
+ *               name:
+ *                 type: string
+ *                 example: John Doe
+ *     responses:
+ *       201:
+ *         description: User registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Registration successful
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *                     tokens:
+ *                       type: object
+ *                       properties:
+ *                         accessToken:
+ *                           type: string
+ *                         refreshToken:
+ *                           type: string
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.post('/register', authLimiter, authController.register);
 
-// Google OAuth
+/**
+ * @swagger
+ * /api/v1/auth/login:
+ *   post:
+ *     summary: Login user
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: user@example.com
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: SecurePass123!
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *                     tokens:
+ *                       type: object
+ *       401:
+ *         description: Invalid credentials
+ */
+router.post('/login', authLimiter, authController.login);
+
+/**
+ * @swagger
+ * /api/v1/auth/me:
+ *   get:
+ *     summary: Get current user profile
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/me', requireAuth, authController.getMe);
+
+/**
+ * @swagger
+ * /api/v1/auth/logout:
+ *   post:
+ *     summary: Logout user
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Logout successful
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/logout', requireAuth, authController.logout);
+
+/**
+ * @swagger
+ * /api/v1/auth/refresh-token:
+ *   post:
+ *     summary: Refresh access token
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - refreshToken
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Token refreshed
+ *       401:
+ *         description: Invalid refresh token
+ */
+router.post('/refresh-token', authController.refreshToken);
+
+// Google OAuth routes (without Swagger annotations for simplicity)
 router.get('/google', 
   passport.authenticate('google', { 
     scope: ['profile', 'email'],
@@ -36,13 +199,10 @@ router.get('/google',
   })
 );
 
-//  PRODUCTION CALLBACK (for frontend)
 router.get('/google/callback',
   passport.authenticate('google', { session: false }),
   (req, res) => {
     const { user, tokens } = req.user;
-    
-    // Redirect to frontend with tokens
     const frontendUrl = process.env.CLIENT_URL || 'http://localhost:5173';
     res.redirect(
       `${frontendUrl}/auth/callback?token=${tokens.accessToken}&refresh=${tokens.refreshToken}`
@@ -50,30 +210,19 @@ router.get('/google/callback',
   }
 );
 
-// TEST CALLBACK (for backend testing - JSON response)
 router.get('/google/callback/test',
   passport.authenticate('google', { session: false }),
   (req, res) => {
     const { user, tokens } = req.user;
-    
-    // Return JSON for testing
     res.json({
       success: true,
       message: 'Google OAuth successful',
       data: {
         user: {
-          _id: user._id,
+          id: user._id,
           name: user.name,
           email: user.email,
           avatar: user.avatar,
-          googleId: user.googleId,
-          googleEmail: user.googleEmail,
-          googleAvatar: user.googleAvatar,
-          emailVerified: user.emailVerified,
-          status: user.status,
-          timezone: user.timezone,
-          createdAt: user.createdAt,
-          updatedAt: user.updatedAt,
         },
         tokens: {
           accessToken: tokens.accessToken,
@@ -84,7 +233,6 @@ router.get('/google/callback/test',
   }
 );
 
-// Email test (development only)
 if (process.env.NODE_ENV === 'development') {
   router.get('/test-email', authController.testEmail);
 }

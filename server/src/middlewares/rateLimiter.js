@@ -1,4 +1,5 @@
 const rateLimit = require('express-rate-limit');
+const redisClient = require('../config/redis');
 
 // API rate limiter (in-memory)
 const apiLimiter = rateLimit({

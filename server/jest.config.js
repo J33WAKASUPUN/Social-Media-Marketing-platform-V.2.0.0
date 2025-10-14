@@ -1,5 +1,3 @@
-/* eslint-disable linebreak-style */
-/* eslint-disable comma-dangle */
 module.exports = {
   testEnvironment: 'node',
   coverageDirectory: 'coverage',
@@ -7,10 +5,10 @@ module.exports = {
     'src/**/*.js',
     '!src/server.js',
     '!src/config/**',
-    '!src/database/seeders/**'
+    '!src/templates/**',
   ],
   testMatch: [
-    '**/tests/**/*.test.js'
+    '**/src/tests/**/*.test.js'
   ],
   coverageThreshold: {
     global: {
@@ -20,7 +18,7 @@ module.exports = {
       statements: 80
     }
   },
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
+  setupFilesAfterEnv: ['<rootDir>/src/tests/setup.js'],
   testTimeout: 30000,
   verbose: true
 };
