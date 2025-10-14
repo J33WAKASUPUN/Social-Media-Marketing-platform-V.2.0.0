@@ -1,8 +1,8 @@
-const axios = require('axios');
-const fs = require('fs').promises;
-const path = require('path');
-const FormData = require('form-data');
-const BaseProvider = require('./baseProvider');
+const axios = require("axios");
+const fs = require("fs").promises;
+const path = require("path");
+const FormData = require("form-data");
+const BaseProvider = require("./baseProvider");
 
 class YouTubeProvider extends BaseProvider {
   getConfig() {
@@ -11,25 +11,26 @@ class YouTubeProvider extends BaseProvider {
       clientSecret: process.env.YOUTUBE_CLIENT_SECRET,
       callbackUrl: process.env.YOUTUBE_CALLBACK_URL,
       apiKey: process.env.YOUTUBE_API_KEY,
-      
+
       // OAuth URLs
-      authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-      tokenUrl: 'https://oauth2.googleapis.com/token',
-      
+      authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
+      tokenUrl: "https://oauth2.googleapis.com/token",
+
       // YouTube API URLs
-      apiUrl: 'https://www.googleapis.com/youtube/v3',
-      uploadUrl: 'https://www.googleapis.com/upload/youtube/v3/videos',
-      
+      apiUrl: "https://www.googleapis.com/youtube/v3",
+      uploadUrl: "https://www.googleapis.com/upload/youtube/v3/videos",
+
       // Scopes
-      scopes: (process.env.YOUTUBE_SCOPES || 
-        'https://www.googleapis.com/auth/youtube.upload,' +
-        'https://www.googleapis.com/auth/youtube,' +
-        'https://www.googleapis.com/auth/youtube.readonly'
-      ).split(','),
-      
+      scopes: (
+        process.env.YOUTUBE_SCOPES ||
+        "https://www.googleapis.com/auth/youtube.upload," +
+          "https://www.googleapis.com/auth/youtube," +
+          "https://www.googleapis.com/auth/youtube.readonly"
+      ).split(","),
+
       // Settings
       defaultCategory: parseInt(process.env.YOUTUBE_DEFAULT_CATEGORY) || 22,
-      defaultPrivacy: process.env.YOUTUBE_DEFAULT_PRIVACY || 'private',
+      defaultPrivacy: process.env.YOUTUBE_DEFAULT_PRIVACY || "private",
       maxFileSizeMB: parseInt(process.env.YOUTUBE_MAX_FILE_SIZE_MB) || 2048,
     };
   }
@@ -39,11 +40,11 @@ class YouTubeProvider extends BaseProvider {
     const params = new URLSearchParams({
       client_id: config.clientId,
       redirect_uri: config.callbackUrl,
-      response_type: 'code',
-      scope: config.scopes.join(' '),
+      response_type: "code",
+      scope: config.scopes.join(" "),
       state: state,
-      access_type: 'offline', // Get refresh token
-      prompt: 'consent', // Force consent screen to get refresh token
+      access_type: "offline", // Get refresh token
+      prompt: "consent", // Force consent screen to get refresh token
     });
 
     return `${config.authUrl}?${params.toString()}`;
@@ -59,37 +60,34 @@ class YouTubeProvider extends BaseProvider {
         client_id: config.clientId,
         client_secret: config.clientSecret,
         redirect_uri: config.callbackUrl,
-        grant_type: 'authorization_code',
+        grant_type: "authorization_code",
       });
 
       const { access_token, refresh_token, expires_in } = tokenResponse.data;
 
-      this.log('YouTube tokens received', {
+      this.log("YouTube tokens received", {
         hasRefreshToken: !!refresh_token,
         expiresIn: expires_in,
       });
 
       // Get channel info
-      const channelResponse = await axios.get(
-        `${config.apiUrl}/channels`,
-        {
-          params: {
-            part: 'snippet,contentDetails,statistics',
-            mine: true,
-          },
-          headers: {
-            Authorization: `Bearer ${access_token}`,
-          },
-        }
-      );
+      const channelResponse = await axios.get(`${config.apiUrl}/channels`, {
+        params: {
+          part: "snippet,contentDetails,statistics",
+          mine: true,
+        },
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+        },
+      });
 
       const channel = channelResponse.data.items[0];
 
       if (!channel) {
-        throw new Error('No YouTube channel found for this account');
+        throw new Error("No YouTube channel found for this account");
       }
 
-      this.log('YouTube channel connected', {
+      this.log("YouTube channel connected", {
         title: channel.snippet.title,
         subscribers: channel.statistics.subscriberCount,
       });
@@ -111,7 +109,7 @@ class YouTubeProvider extends BaseProvider {
         },
       };
     } catch (error) {
-      this.logError('YouTube OAuth failed', error);
+      this.logError("YouTube OAuth failed", error);
       throw new Error(
         `YouTube OAuth failed: ${
           error.response?.data?.error_description || error.message
@@ -125,7 +123,7 @@ class YouTubeProvider extends BaseProvider {
     const refreshToken = this.getRefreshToken();
 
     if (!refreshToken) {
-      throw new Error('No refresh token available');
+      throw new Error("No refresh token available");
     }
 
     try {
@@ -133,12 +131,12 @@ class YouTubeProvider extends BaseProvider {
         client_id: config.clientId,
         client_secret: config.clientSecret,
         refresh_token: refreshToken,
-        grant_type: 'refresh_token',
+        grant_type: "refresh_token",
       });
 
       const { access_token, expires_in } = response.data;
 
-      this.log('YouTube token refreshed', {
+      this.log("YouTube token refreshed", {
         expiresIn: expires_in,
       });
 
@@ -147,8 +145,8 @@ class YouTubeProvider extends BaseProvider {
         expiresIn: expires_in,
       };
     } catch (error) {
-      this.logError('Token refresh failed', error);
-      throw new Error('Failed to refresh YouTube access token');
+      this.logError("Token refresh failed", error);
+      throw new Error("Failed to refresh YouTube access token");
     }
   }
 
@@ -159,7 +157,7 @@ class YouTubeProvider extends BaseProvider {
 
       const response = await axios.get(`${config.apiUrl}/channels`, {
         params: {
-          part: 'snippet',
+          part: "snippet",
           mine: true,
         },
         headers: {
@@ -169,7 +167,7 @@ class YouTubeProvider extends BaseProvider {
 
       return response.status === 200 && response.data.items?.length > 0;
     } catch (error) {
-      this.logError('Connection test failed', error);
+      this.logError("Connection test failed", error);
       return false;
     }
   }
@@ -179,22 +177,22 @@ class YouTubeProvider extends BaseProvider {
    */
   async getMediaBuffer(mediaSource) {
     // URL
-    if (typeof mediaSource === 'string' && /^https?:\/\//i.test(mediaSource)) {
-      this.log('Downloading video from URL', { url: mediaSource });
+    if (typeof mediaSource === "string" && /^https?:\/\//i.test(mediaSource)) {
+      this.log("Downloading video from URL", { url: mediaSource });
       const response = await axios.get(mediaSource, {
-        responseType: 'arraybuffer',
+        responseType: "arraybuffer",
         timeout: 300000, // 5 minutes for large videos
         maxContentLength: this.getConfig().maxFileSizeMB * 1024 * 1024,
       });
       return {
         buffer: Buffer.from(response.data),
-        contentType: response.headers['content-type'],
+        contentType: response.headers["content-type"],
       };
     }
 
     // Local file
-    if (typeof mediaSource === 'string' && !mediaSource.startsWith('http')) {
-      this.log('Reading local video file', { path: mediaSource });
+    if (typeof mediaSource === "string" && !mediaSource.startsWith("http")) {
+      this.log("Reading local video file", { path: mediaSource });
       const buffer = await fs.readFile(mediaSource);
       const ext = path.extname(mediaSource).toLowerCase();
       const contentType = this.getContentTypeFromExtension(ext);
@@ -205,36 +203,32 @@ class YouTubeProvider extends BaseProvider {
     if (Buffer.isBuffer(mediaSource)) {
       return {
         buffer: mediaSource,
-        contentType: 'video/mp4',
+        contentType: "video/mp4",
       };
     }
 
-    throw new Error('Invalid media source: must be URL, file path, or Buffer');
+    throw new Error("Invalid media source: must be URL, file path, or Buffer");
   }
 
   getContentTypeFromExtension(ext) {
     const mimeTypes = {
-      '.mp4': 'video/mp4',
-      '.mov': 'video/quicktime',
-      '.avi': 'video/x-msvideo',
-      '.wmv': 'video/x-ms-wmv',
-      '.flv': 'video/x-flv',
-      '.webm': 'video/webm',
-      '.mkv': 'video/x-matroska',
+      ".mp4": "video/mp4",
+      ".mov": "video/quicktime",
+      ".avi": "video/x-msvideo",
+      ".wmv": "video/x-ms-wmv",
+      ".flv": "video/x-flv",
+      ".webm": "video/webm",
+      ".mkv": "video/x-matroska",
     };
-    return mimeTypes[ext] || 'video/mp4';
+    return mimeTypes[ext] || "video/mp4";
   }
 
   /**
    * Publish video to YouTube
-   * 
+   *
    * YouTube Video Requirements:
-   * - Format: Almost all video formats supported
-   * - Size: Max 256GB (but realistically 2-10GB)
-   * - Duration: Unlimited (15 min default, requires verification for longer)
-   * - Resolution: Up to 8K (7680×4320)
-   * - Title: Max 100 characters
-   * - Description: Max 5,000 characters
+   * - Regular Videos: Any duration, any aspect ratio
+   * - Shorts: Max 60 seconds, vertical (9:16), must include "#Shorts"
    */
   async publish(post) {
     try {
@@ -243,17 +237,26 @@ class YouTubeProvider extends BaseProvider {
 
       // Validate content
       if (!post.mediaUrls || post.mediaUrls.length === 0) {
-        throw new Error('YouTube requires a video file. Text-only posts are not supported.');
+        throw new Error(
+          "YouTube requires a video file. Text-only posts are not supported."
+        );
       }
 
       const videoUrl = post.mediaUrls[0];
       const title = post.title || post.content.substring(0, 100);
       const description = post.content;
 
-      this.log('Publishing video to YouTube', {
-        title: title.substring(0, 50) + '...',
+      // CHECK IF USER WANTS TO PUBLISH AS SHORT
+      const isShort =
+        post.metadata?.youtube?.publishAsShort === true ||
+        description.includes("#Shorts") ||
+        title.includes("#Shorts");
+
+      this.log("Publishing video to YouTube", {
+        title: title.substring(0, 50) + "...",
         descriptionLength: description.length,
-        videoUrl: videoUrl.substring(0, 50) + '...',
+        videoUrl: videoUrl.substring(0, 50) + "...",
+        publishAsShort: isShort,
       });
 
       // Get video buffer
@@ -263,32 +266,61 @@ class YouTubeProvider extends BaseProvider {
       const fileSizeMB = buffer.length / 1024 / 1024;
       if (fileSizeMB > config.maxFileSizeMB) {
         throw new Error(
-          `Video too large: ${fileSizeMB.toFixed(2)}MB. Max size: ${config.maxFileSizeMB}MB`
+          `Video too large: ${fileSizeMB.toFixed(2)}MB. Max size: ${
+            config.maxFileSizeMB
+          }MB`
         );
       }
 
-      this.log('Video loaded', {
+      this.log("Video loaded", {
         size: `${fileSizeMB.toFixed(2)}MB`,
         contentType,
       });
 
-      // Prepare video metadata
+      // PREPARE METADATA WITH SHORTS SUPPORT
+      let finalTitle = title;
+      let finalDescription = description;
+
+      if (isShort) {
+        // Add #Shorts to title if not present
+        if (
+          !finalTitle.includes("#Shorts") &&
+          !finalTitle.includes("#shorts")
+        ) {
+          finalTitle = `${finalTitle} #Shorts`;
+        }
+
+        // Add #Shorts to description if not present
+        if (
+          !finalDescription.includes("#Shorts") &&
+          !finalDescription.includes("#shorts")
+        ) {
+          finalDescription = `${finalDescription}\n\n#Shorts`;
+        }
+
+        this.log("Video will be published as YouTube Short", {
+          originalTitle: title,
+          modifiedTitle: finalTitle,
+        });
+      }
+
       const metadata = {
         snippet: {
-          title: title,
-          description: description,
+          title: finalTitle,
+          description: finalDescription,
           categoryId: config.defaultCategory.toString(),
-          tags: this.extractTags(description),
+          tags: this.extractTags(finalDescription),
         },
         status: {
-          privacyStatus: config.defaultPrivacy,
+          privacyStatus:
+            post.metadata?.youtube?.privacyStatus || config.defaultPrivacy,
           selfDeclaredMadeForKids: false,
         },
       };
 
       // Upload video to YouTube (resumable upload)
-      this.log('Starting YouTube video upload...');
-      
+      this.log("Starting YouTube video upload...");
+
       const uploadResponse = await this.uploadVideoResumable(
         buffer,
         metadata,
@@ -298,32 +330,34 @@ class YouTubeProvider extends BaseProvider {
 
       const videoId = uploadResponse.id;
 
-      this.log('Video uploaded successfully', {
+      this.log("Video uploaded successfully", {
         videoId,
         title: uploadResponse.snippet.title,
         privacyStatus: uploadResponse.status.privacyStatus,
+        isShort: isShort,
       });
 
       return {
         success: true,
         platformPostId: videoId,
         platformUrl: `https://www.youtube.com/watch?v=${videoId}`,
-        provider: 'youtube',
-        content: description,
-        title: title,
+        provider: "youtube",
+        content: finalDescription,
+        title: finalTitle,
         mediaUrls: [videoUrl],
-        mediaType: 'video',
+        mediaType: isShort ? "short" : "video",
         providerData: {
           privacyStatus: uploadResponse.status.privacyStatus,
           embeddable: uploadResponse.status.embeddable,
+          isShort: isShort,
         },
       };
     } catch (error) {
-      this.logError('YouTube publish failed', error);
+      this.logError("YouTube publish failed", error);
 
       if (error.response?.data?.error) {
         const ytError = error.response.data.error;
-        this.logError('YouTube API Error Details', {
+        this.logError("YouTube API Error Details", {
           code: ytError.code,
           message: ytError.message,
           errors: ytError.errors,
@@ -350,9 +384,9 @@ class YouTubeProvider extends BaseProvider {
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-            'X-Upload-Content-Type': 'video/*',
-            'X-Upload-Content-Length': buffer.length,
+            "Content-Type": "application/json",
+            "X-Upload-Content-Type": "video/*",
+            "X-Upload-Content-Length": buffer.length,
           },
         }
       );
@@ -360,18 +394,18 @@ class YouTubeProvider extends BaseProvider {
       const uploadUrl = initResponse.headers.location;
 
       if (!uploadUrl) {
-        throw new Error('Failed to get resumable upload URL from YouTube');
+        throw new Error("Failed to get resumable upload URL from YouTube");
       }
 
-      this.log('Resumable upload session created', {
-        uploadUrl: uploadUrl.substring(0, 50) + '...',
+      this.log("Resumable upload session created", {
+        uploadUrl: uploadUrl.substring(0, 50) + "...",
       });
 
       // Step 2: Upload video content
       const uploadResponse = await axios.put(uploadUrl, buffer, {
         headers: {
-          'Content-Type': 'video/*',
-          'Content-Length': buffer.length,
+          "Content-Type": "video/*",
+          "Content-Length": buffer.length,
         },
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
@@ -386,7 +420,7 @@ class YouTubeProvider extends BaseProvider {
 
       return uploadResponse.data;
     } catch (error) {
-      this.logError('Resumable upload failed', error);
+      this.logError("Resumable upload failed", error);
       throw error;
     }
   }
@@ -414,9 +448,23 @@ class YouTubeProvider extends BaseProvider {
       const accessToken = this.getAccessToken();
       const config = this.getConfig();
 
-      this.log('Updating YouTube video', {
+      // Handle both string content and object with content property
+      const content =
+        typeof newContent === "string"
+          ? newContent
+          : newContent.content || newContent.description || "";
+
+      const title = newContent.title || content.substring(0, 100);
+
+      // Ensure content exists
+      if (!content) {
+        throw new Error("Content is required for video update");
+      }
+
+      this.log("Updating YouTube video", {
         videoId: platformPostId,
-        contentLength: newContent.content.length,
+        contentLength: content.length,
+        titleLength: title.length,
       });
 
       const updateResponse = await axios.put(
@@ -424,24 +472,24 @@ class YouTubeProvider extends BaseProvider {
         {
           id: platformPostId,
           snippet: {
-            title: newContent.title || newContent.content.substring(0, 100),
-            description: newContent.content,
+            title: title,
+            description: content,
             categoryId: config.defaultCategory.toString(),
-            tags: this.extractTags(newContent.content),
+            tags: this.extractTags(content),
           },
         },
         {
           params: {
-            part: 'snippet',
+            part: "snippet",
           },
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
         }
       );
 
-      this.log('Video updated successfully', {
+      this.log("Video updated successfully", {
         videoId: platformPostId,
       });
 
@@ -451,12 +499,21 @@ class YouTubeProvider extends BaseProvider {
         platformUrl: `https://www.youtube.com/watch?v=${platformPostId}`,
       };
     } catch (error) {
-      this.logError('YouTube update failed', error);
-      throw new Error(
-        `YouTube update failed: ${
-          error.response?.data?.error?.message || error.message
-        }`
-      );
+      this.logError("YouTube update failed", error);
+
+      // Better error messages
+      if (error.response?.data?.error) {
+        const ytError = error.response.data.error;
+        throw new Error(
+          `YouTube update failed: ${ytError.message}\n` +
+            `Details: ${
+              ytError.errors?.map((e) => e.message).join(", ") ||
+              "Unknown error"
+            }`
+        );
+      }
+
+      throw new Error(`YouTube update failed: ${error.message}`);
     }
   }
 
@@ -468,7 +525,7 @@ class YouTubeProvider extends BaseProvider {
       const accessToken = this.getAccessToken();
       const config = this.getConfig();
 
-      this.log('Deleting YouTube video', { videoId: platformPostId });
+      this.log("Deleting YouTube video", { videoId: platformPostId });
 
       await axios.delete(`${config.apiUrl}/videos`, {
         params: {
@@ -479,11 +536,11 @@ class YouTubeProvider extends BaseProvider {
         },
       });
 
-      this.log('Video deleted successfully', { videoId: platformPostId });
+      this.log("Video deleted successfully", { videoId: platformPostId });
 
       return { success: true };
     } catch (error) {
-      this.logError('YouTube delete failed', error);
+      this.logError("YouTube delete failed", error);
       throw new Error(
         `YouTube delete failed: ${
           error.response?.data?.error?.message || error.message
@@ -503,11 +560,11 @@ class YouTubeProvider extends BaseProvider {
 
       const response = await axios.get(`${config.apiUrl}/search`, {
         params: {
-          part: 'snippet',
+          part: "snippet",
           forMine: true,
-          type: 'video',
+          type: "video",
           maxResults: limit,
-          order: 'date',
+          order: "date",
         },
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -523,8 +580,8 @@ class YouTubeProvider extends BaseProvider {
         url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
       }));
     } catch (error) {
-      this.logError('Failed to get videos', error);
-      throw new Error('Failed to retrieve YouTube videos');
+      this.logError("Failed to get videos", error);
+      throw new Error("Failed to retrieve YouTube videos");
     }
   }
 
@@ -538,7 +595,7 @@ class YouTubeProvider extends BaseProvider {
 
       const response = await axios.get(`${config.apiUrl}/videos`, {
         params: {
-          part: 'statistics',
+          part: "statistics",
           id: platformPostId,
         },
         headers: {
@@ -549,7 +606,7 @@ class YouTubeProvider extends BaseProvider {
       const video = response.data.items[0];
 
       if (!video) {
-        throw new Error('Video not found');
+        throw new Error("Video not found");
       }
 
       return {
@@ -561,8 +618,8 @@ class YouTubeProvider extends BaseProvider {
         favorites: parseInt(video.statistics.favoriteCount) || 0,
       };
     } catch (error) {
-      this.logError('Failed to get video analytics', error);
-      throw new Error('Failed to retrieve video analytics');
+      this.logError("Failed to get video analytics", error);
+      throw new Error("Failed to retrieve video analytics");
     }
   }
 }

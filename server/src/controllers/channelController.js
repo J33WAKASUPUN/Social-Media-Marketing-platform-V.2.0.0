@@ -319,149 +319,163 @@ class ChannelController {
    * Test publish with LOCAL FILE upload + Cloudinary
    */
    async testPublishLocal(req, res, next) {
-    try {
-      const content = req.body.content;
-
-      if (!content) {
-        return res.status(400).json({
-          success: false,
-          message: "Content is required",
-        });
+  try {
+    const content = req.body.content;
+    const title = req.body.title || undefined;
+    
+    // PARSE METADATA (for YouTube Shorts, privacy, etc.)
+    let metadata = {};
+    if (req.body.metadata) {
+      try {
+        metadata = typeof req.body.metadata === 'string' 
+          ? JSON.parse(req.body.metadata)
+          : req.body.metadata;
+      } catch (parseError) {
+        logger.warn('Failed to parse metadata', { error: parseError.message });
       }
+    }
 
-      const channel = await Channel.findById(req.params.id).populate("brand");
-      if (!channel) {
-        return res.status(404).json({
-          success: false,
-          message: "Channel not found",
-        });
-      }
+    if (!content) {
+      return res.status(400).json({
+        success: false,
+        message: "Content is required",
+      });
+    }
 
-      const provider = ProviderFactory.getProvider(channel.provider, channel);
+    const channel = await Channel.findById(req.params.id).populate("brand");
+    if (!channel) {
+      return res.status(404).json({
+        success: false,
+        message: "Channel not found",
+      });
+    }
 
-      let mediaUrls = [];
+    const provider = ProviderFactory.getProvider(channel.provider, channel);
 
-      // ✅ HANDLE UPLOADED FILES WITH CLOUDINARY
-      if (req.files && req.files.length > 0) {
-        logger.info("📁 Processing uploaded files", {
-          count: req.files.length,
-          files: req.files.map(f => ({
-            originalName: f.originalname,
-            size: `${(f.size / 1024 / 1024).toFixed(2)}MB`,
-            mimetype: f.mimetype,
-            path: f.path
-          }))
-        });
+    let mediaUrls = [];
 
-        // Upload each file to Cloudinary
-        for (const file of req.files) {
-          try {
-            logger.info(`📤 Uploading ${file.originalname} to Cloudinary...`);
+    // HANDLE UPLOADED FILES WITH CLOUDINARY
+    if (req.files && req.files.length > 0) {
+      logger.info("📁 Processing uploaded files", {
+        count: req.files.length,
+        files: req.files.map(f => ({
+          originalName: f.originalname,
+          size: `${(f.size / 1024 / 1024).toFixed(2)}MB`,
+          mimetype: f.mimetype,
+          path: f.path
+        }))
+      });
 
-            let uploadResult;
+      // Upload each file to Cloudinary
+      for (const file of req.files) {
+        try {
+          logger.info(`📤 Uploading ${file.originalname} to Cloudinary...`);
 
-            // ✅ CHECK IF FILE IS VIDEO OR IMAGE
-            if (file.mimetype.startsWith('video/')) {
-              // Upload video with Instagram-compatible transformations
-              uploadResult = await cloudinaryService.uploadInstagramVideo(file.path, {
-                tags: [channel.provider, channel.brand.name]
-              });
-            } else {
-              // Upload image
-              uploadResult = await cloudinaryService.uploadImage(file.path, {
-                tags: [channel.provider, channel.brand.name]
-              });
-            }
+          let uploadResult;
 
-            logger.info("✅ File uploaded to Cloudinary", {
-              filename: file.filename,
-              cloudinaryUrl: uploadResult.url,
-              publicId: uploadResult.publicId,
-              duration: uploadResult.duration,
-              size: `${(uploadResult.size / 1024 / 1024).toFixed(2)}MB`
+          // CHECK IF FILE IS VIDEO OR IMAGE
+          if (file.mimetype.startsWith('video/')) {
+            // Upload video with Instagram-compatible transformations
+            uploadResult = await cloudinaryService.uploadInstagramVideo(file.path, {
+              tags: [channel.provider, channel.brand.name]
             });
-
-            // Use Cloudinary URL for publishing
-            mediaUrls.push(uploadResult.url);
-
-          } catch (uploadError) {
-            logger.error(`❌ Failed to upload ${file.originalname} to Cloudinary`, {
-              error: uploadError.message
+          } else {
+            // Upload image
+            uploadResult = await cloudinaryService.uploadImage(file.path, {
+              tags: [channel.provider, channel.brand.name]
             });
-
-            // If upload fails, still try to delete local file
-            try {
-              await require('fs').promises.unlink(file.path);
-            } catch (unlinkError) {
-              logger.warn(`⚠️ Failed to delete local file ${file.path}`);
-            }
-
-            throw new Error(`Failed to upload ${file.originalname}: ${uploadError.message}`);
           }
+
+          logger.info("✅ File uploaded to Cloudinary", {
+            filename: file.filename,
+            cloudinaryUrl: uploadResult.url,
+            publicId: uploadResult.publicId,
+            duration: uploadResult.duration,
+            size: `${(uploadResult.size / 1024 / 1024).toFixed(2)}MB`
+          });
+
+          // Use Cloudinary URL for publishing
+          mediaUrls.push(uploadResult.url);
+
+        } catch (uploadError) {
+          logger.error(`❌ Failed to upload ${file.originalname} to Cloudinary`, {
+            error: uploadError.message
+          });
+
+          // If upload fails, still try to delete local file
+          try {
+            await require('fs').promises.unlink(file.path);
+          } catch (unlinkError) {
+            logger.warn(`⚠️ Failed to delete local file ${file.path}`);
+          }
+
+          throw new Error(`Failed to upload ${file.originalname}: ${uploadError.message}`);
         }
       }
-
-      logger.info("🚀 Publishing with Cloudinary URLs", {
-        content: content.substring(0, 50) + "...",
-        mediaCount: mediaUrls.length,
-        mediaUrls: mediaUrls
-      });
-
-      // Publish to platform (Instagram will download from Cloudinary)
-      const result = await provider.publish({
-        content,
-        mediaUrls,
-      });
-
-      logger.info("✅ Post published successfully", {
-        platformPostId: result.platformPostId,
-        provider: channel.provider,
-        cloudinaryUrls: mediaUrls
-      });
-
-      // Save to database
-      const publishedPost = await PublishedPost.create({
-        brand: channel.brand._id,
-        channel: channel._id,
-        publishedBy: req.user._id,
-        provider: channel.provider,
-        platformPostId: result.platformPostId,
-        platformUrl: result.platformUrl,
-        content: content,
-        mediaUrls: result.mediaUrls || mediaUrls,
-        mediaType: result.mediaType || "none",
-        status: "published",
-        publishedAt: new Date(),
-      });
-
-      res.json({
-        success: true,
-        message: "Post published and saved successfully",
-        data: {
-          platform: result,
-          database: {
-            id: publishedPost._id,
-            platformPostId: publishedPost.platformPostId,
-            status: publishedPost.status,
-            publishedAt: publishedPost.publishedAt,
-          },
-          cloudinary: {
-            urls: mediaUrls,
-            message: "Media hosted on Cloudinary CDN"
-          }
-        },
-      });
-    } catch (error) {
-      logger.error("❌ Test publish failed", {
-        error: error.message,
-        stack: error.stack
-      });
-      next(error);
     }
+
+    logger.info("🚀 Publishing with Cloudinary URLs", {
+      content: content.substring(0, 50) + "...",
+      mediaCount: mediaUrls.length,
+      mediaUrls: mediaUrls,
+      metadata: metadata,
+    });
+
+    // Publish to platform (Instagram will download from Cloudinary)
+    const result = await provider.publish({
+      content,
+      title,
+      mediaUrls,
+      metadata, // PASS METADATA TO PROVIDER
+    });
+
+    logger.info("✅ Post published successfully", {
+      platformPostId: result.platformPostId,
+      provider: channel.provider,
+      cloudinaryUrls: mediaUrls
+    });
+
+    // Save to database
+    const publishedPost = await PublishedPost.create({
+      brand: channel.brand._id,
+      channel: channel._id,
+      publishedBy: req.user._id,
+      provider: channel.provider,
+      platformPostId: result.platformPostId,
+      platformUrl: result.platformUrl,
+      title: result.title,
+      content: content,
+      mediaUrls: result.mediaUrls || mediaUrls,
+      mediaType: result.mediaType || "none",
+      status: "published",
+      publishedAt: new Date(),
+    });
+
+    res.json({
+      success: true,
+      message: "Post published and saved successfully",
+      data: {
+        platform: result,
+        database: {
+          id: publishedPost._id,
+          platformPostId: publishedPost.platformPostId,
+          status: publishedPost.status,
+          publishedAt: publishedPost.publishedAt,
+        },
+        cloudinary: {
+          urls: mediaUrls,
+          message: "Media hosted on Cloudinary CDN"
+        }
+      },
+    });
+  } catch (error) {
+    logger.error("❌ Test publish failed", {
+      error: error.message,
+      stack: error.stack
+    });
+    next(error);
   }
-
-
-
+}
   async testUpdate(req, res, next) {
     try {
       const { platformPostId, content } = req.body;
