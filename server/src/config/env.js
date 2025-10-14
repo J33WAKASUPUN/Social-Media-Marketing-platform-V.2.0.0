@@ -76,6 +76,22 @@ const envSchema = Joi.object({
   CLOUDINARY_API_KEY: Joi.string().required(),
   CLOUDINARY_API_SECRET: Joi.string().required(),
   CLOUDINARY_FOLDER: Joi.string().default('social-media-videos'),
+
+  // YouTube OAuth
+  YOUTUBE_CLIENT_ID: Joi.string().optional(),
+  YOUTUBE_CLIENT_SECRET: Joi.string().optional(),
+  YOUTUBE_CALLBACK_URL: Joi.string().optional(),
+  YOUTUBE_API_KEY: Joi.string().optional(),
+  YOUTUBE_SCOPES: Joi.string().default(
+    'https://www.googleapis.com/auth/youtube.upload,' +
+    'https://www.googleapis.com/auth/youtube,' +
+    'https://www.googleapis.com/auth/youtube.readonly'
+  ),
+  
+  // YouTube Settings
+  YOUTUBE_DEFAULT_CATEGORY: Joi.number().default(22),
+  YOUTUBE_DEFAULT_PRIVACY: Joi.string().valid('public', 'unlisted', 'private').default('private'),
+  YOUTUBE_MAX_FILE_SIZE_MB: Joi.number().default(2048),
 }).unknown(true);
 
 /**

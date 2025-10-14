@@ -7,10 +7,10 @@ const channelSchema = new mongoose.Schema({
     required: true,
   },
   provider: {
-    type: String,
-    enum: ['linkedin', 'facebook', 'instagram', 'twitter', 'youtube'],
-    required: true,
-  },
+  type: String,
+  enum: ['linkedin', 'facebook', 'instagram', 'twitter', 'youtube'],
+  required: true,
+},
   
   // Platform Account Info
   platformUserId: {

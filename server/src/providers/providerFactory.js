@@ -2,6 +2,7 @@ const LinkedInProvider = require('../providers/linkedInProvider');
 const TwitterProvider = require('../providers/twitterProvider');
 const FacebookProvider = require('../providers/facebookProvider');
 const InstagramProvider = require('../providers/instagramProvider');
+const YouTubeProvider = require('../providers/youtubeProvider');
 
 class ProviderFactory {
   static getProvider(providerName, channel = null) {
@@ -14,15 +15,15 @@ class ProviderFactory {
         return new InstagramProvider(channel);
       case 'twitter':
         return new TwitterProvider(channel);
-      // case 'youtube':
-      //   return new YouTubeProvider(channel);
+      case 'youtube':
+        return new YouTubeProvider(channel);
       default:
         throw new Error(`Provider '${providerName}' is not supported`);
     }
   }
 
   static getSupportedProviders() {
-    return ['linkedin', 'facebook', 'instagram', 'twitter'];
+    return ['linkedin', 'facebook', 'instagram', 'twitter', 'youtube'];
   }
 
   static isProviderSupported(providerName) {
