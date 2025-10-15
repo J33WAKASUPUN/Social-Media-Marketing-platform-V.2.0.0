@@ -4,28 +4,21 @@ const database = require("./config/database");
 const redisClient = require("./config/redis");
 const createApp = require("./app");
 const logger = require("./utils/logger");
+const workerManager = require('./workers');
 
-/**
- * Start Server
- */
 async function startServer() {
   try {
     logger.info("🚀 Starting Social Media Marketing Platform API...");
     logger.info("================================================");
 
-    // Validate environment variables
     validateEnv();
-
-    // Connect to MongoDB
     await database.connect();
-
-    // Connect to Redis
     await redisClient.connect();
 
-    // Create Express app
-    const app = createApp();
+    // START WORKERS
+    workerManager.start();
 
-    // Start listening
+    const app = createApp();
     const PORT = process.env.APP_PORT || 5000;
     const server = app.listen(PORT, () => {
       logger.info("================================================");
@@ -35,14 +28,13 @@ async function startServer() {
       logger.info("================================================");
     });
 
-    // Graceful shutdown
     const gracefulShutdown = async (signal) => {
       logger.info(`\n${signal} received. Starting graceful shutdown...`);
 
       server.close(async () => {
         logger.info("HTTP server closed");
 
-        // Close database connections
+        await workerManager.stop(); // STOP WORKERS
         await database.disconnect();
         await redisClient.disconnect();
 
@@ -50,18 +42,15 @@ async function startServer() {
         process.exit(0);
       });
 
-      // Force shutdown after 10 seconds
       setTimeout(() => {
         logger.error("❌ Forced shutdown after timeout");
         process.exit(1);
       }, 10000);
     };
 
-    // Handle shutdown signals
     process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
     process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
-    // Handle uncaught exceptions
     process.on("uncaughtException", (error) => {
       logger.error("❌ Uncaught Exception:", {
         message: error.message,
@@ -82,7 +71,6 @@ async function startServer() {
             : reason,
       });
 
-      // DON'T CRASH THE SERVER IMMEDIATELY IN DEVELOPMENT
       if (process.env.NODE_ENV === "development") {
         logger.warn("⚠️ Server continuing in development mode");
       } else {
@@ -95,5 +83,4 @@ async function startServer() {
   }
 }
 
-// Start the server
 startServer();

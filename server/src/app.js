@@ -124,11 +124,13 @@ function createApp() {
   const organizationRoutes = require("./routes/organizations");
   const brandRoutes = require("./routes/brands");
   const channelRoutes = require("./routes/channels");
+  const postRoutes = require("./routes/posts"); // ADD THIS
 
   app.use("/api/v1/auth", authRoutes);
   app.use("/api/v1/organizations", organizationRoutes);
   app.use("/api/v1/brands", brandRoutes);
   app.use("/api/v1/channels", channelRoutes);
+  app.use("/api/v1/posts", postRoutes); // ADD THIS
   app.use("/api", apiLimiter);
 
   // API Info Endpoint
@@ -142,7 +144,8 @@ function createApp() {
         organizations: "/api/v1/organizations",
         brands: "/api/v1/brands",
         channels: "/api/v1/channels",
-        docs: "/api-docs",  // ✅ ADD THIS
+        posts: "/api/v1/posts", // ADD THIS
+        docs: "/api-docs",
       },
     });
   });
