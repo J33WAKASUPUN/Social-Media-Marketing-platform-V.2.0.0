@@ -350,73 +350,133 @@ class LinkedInProvider extends BaseProvider {
   }
 
   async publish(post) {
-  try {
-    const accessToken = this.getAccessToken();
-    const config = this.getConfig();
+    try {
+      const accessToken = this.getAccessToken();
+      const config = this.getConfig();
 
-    const payload = {
-      author: `urn:li:person:${this.channel.platformUserId}`,
-      commentary: post.content,
-      visibility: "PUBLIC",
-      distribution: {
-        feedDistribution: "MAIN_FEED",
-        targetEntities: [],
-        thirdPartyDistributionChannels: [],
-      },
-      lifecycleState: "PUBLISHED",
-      isReshareDisabledByAuthor: false,
-    };
+      // ADD TIMESTAMP TO PREVENT DUPLICATES
+      const timestamp = new Date().toISOString();
+      const uniqueContent = post.content.includes('[Scheduled]') 
+        ? post.content 
+        : `${post.content}\n\n[Scheduled: ${timestamp}]`;
 
-    if (post.mediaUrls && post.mediaUrls.length > 0) {
-      // ... media upload logic ...
+      const payload = {
+        author: `urn:li:person:${this.channel.platformUserId}`,
+        commentary: uniqueContent,
+        visibility: "PUBLIC",
+        distribution: {
+          feedDistribution: "MAIN_FEED",
+          targetEntities: [],
+          thirdPartyDistributionChannels: [],
+        },
+        lifecycleState: "PUBLISHED",
+        isReshareDisabledByAuthor: false,
+      };
+
+      // HANDLE MEDIA UPLOADS
+      if (post.mediaUrls && post.mediaUrls.length > 0) {
+        const hasVideo = post.mediaUrls.some((url) => this.isVideoSource(url));
+
+        if (hasVideo) {
+          // Single video upload
+          const videoUrn = await this.uploadVideo(post.mediaUrls[0]);
+          
+          payload.content = {
+            media: {
+              title: post.title || post.content.substring(0, 100),
+              id: videoUrn,
+            },
+          };
+
+          this.log("Video added to payload", { videoUrn });
+        } else if (post.mediaUrls.length === 1) {
+          // Single image upload
+          const imageUrn = await this.uploadImage(post.mediaUrls[0]);
+          
+          payload.content = {
+            media: {
+              title: post.title || post.content.substring(0, 100),
+              id: imageUrn,
+            },
+          };
+
+          this.log("Single image added to payload", { imageUrn });
+        } else if (post.mediaUrls.length > 1) {
+          // Multiple images upload (carousel)
+          const imageUrns = [];
+          
+          for (const mediaUrl of post.mediaUrls.slice(0, 9)) { // LinkedIn supports max 9 images
+            const imageUrn = await this.uploadImage(mediaUrl);
+            imageUrns.push({
+              id: imageUrn,
+              title: post.title || "Image"
+            });
+            
+            this.log(`Image ${imageUrns.length}/${Math.min(post.mediaUrls.length, 9)} uploaded`, { imageUrn });
+          }
+
+          payload.content = {
+            multiImage: {
+              images: imageUrns,
+            },
+          };
+
+          this.log("Multiple images added to payload", { count: imageUrns.length });
+        }
+      }
+
+      this.log("Publishing post with payload", {
+        hasContent: !!payload.commentary,
+        mediaType: payload.content?.media ? 'single' : payload.content?.multiImage ? 'multi' : 'none',
+        contentLength: payload.commentary.length,
+      });
+
+      const response = await axios.post(`${config.apiUrl}/posts`, payload, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          "LinkedIn-Version": config.apiVersion,
+          "X-Restli-Protocol-Version": "2.0.0",
+        },
+      });
+
+      const postId = response.headers["x-restli-id"];
+      const platformPostId = postId.startsWith('urn:li:share:') 
+        ? postId 
+        : `urn:li:share:${postId}`;
+
+      this.log("Post published", { platformPostId, rawPostId: postId });
+
+      return {
+        success: true,
+        platformPostId: platformPostId,
+        id: platformPostId,
+        url: null,
+        platformUrl: null,
+        provider: "linkedin",
+        content: uniqueContent,
+        mediaUrls: post.mediaUrls || [],
+        mediaType: this.determineMediaType(post),
+      };
+    } catch (error) {
+      this.logError("Publish failed", error);
+      
+      // BETTER ERROR LOGGING
+      if (error.response?.status === 422) {
+        this.logError("LinkedIn 422 Error - Possible duplicate content", {
+          status: error.response.status,
+          data: error.response.data,
+          content: post.content.substring(0, 100),
+        });
+      }
+      
+      throw new Error(
+        `LinkedIn publish failed: ${
+          error.response?.data?.message || error.message
+        }`
+      );
     }
-
-    // Log payload before publishing
-    this.log("Publishing post with payload", {
-      hasContent: !!payload.content,
-      mediaType: payload.content?.media ? 'single' : payload.content?.multiImage ? 'multi' : 'none',
-      contentKeys: payload.content ? Object.keys(payload.content) : []
-    });
-
-    const response = await axios.post(`${config.apiUrl}/posts`, payload, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        "LinkedIn-Version": config.apiVersion,
-        "X-Restli-Protocol-Version": "2.0.0",
-      },
-    });
-
-    // Get post ID without adding duplicate prefix
-    const postId = response.headers["x-restli-id"];
-    
-    // CRITICAL FIX: LinkedIn already returns the full URN or just the ID
-    // Check if response already has the prefix
-    const platformPostId = postId.startsWith('urn:li:share:') 
-      ? postId 
-      : `urn:li:share:${postId}`;
-
-    this.log("Post published", { platformPostId, rawPostId: postId });
-
-    // RETURN DATA FOR DATABASE STORAGE
-    return {
-      success: true,
-      platformPostId: platformPostId, // Use cleaned platformPostId
-      platformUrl: null,
-      provider: "linkedin",
-      content: post.content,
-      mediaUrls: post.mediaUrls || [],
-      mediaType: this.determineMediaType(post),
-    };
-  } catch (error) {
-    this.logError("Publish failed", error);
-    throw new Error(
-      `LinkedIn publish failed: ${
-        error.response?.data?.message || error.message
-      }`
-    );
   }
-}
 
   // Helper method to determine media type
   determineMediaType(post) {
@@ -432,6 +492,7 @@ class LinkedInProvider extends BaseProvider {
     return "image";
   }
 
+  // Helper method to check if source is video
   isVideoSource(mediaSource) {
     if (typeof mediaSource === "string") {
       return /\.(mp4|mov|avi|wmv)$/i.test(mediaSource);
@@ -655,6 +716,13 @@ class LinkedInProvider extends BaseProvider {
         }`
       );
     }
+  }
+
+  async getPostAnalytics(platformPostId) {
+    // LinkedIn analytics require additional API permissions
+    // This is a placeholder for future implementation
+    this.log("Analytics not yet implemented for LinkedIn", { platformPostId });
+    return null;
   }
 }
 

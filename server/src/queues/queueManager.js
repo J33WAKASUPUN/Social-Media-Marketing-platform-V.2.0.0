@@ -50,7 +50,17 @@ class QueueManager {
    */
   async addPublishJob(postId, scheduleId, scheduledFor, priority = 'normal') {
     try {
-      const delay = Math.max(0, new Date(scheduledFor) - Date.now());
+      const now = Date.now();
+      const scheduledTime = new Date(scheduledFor).getTime();
+      const delay = Math.max(0, scheduledTime - now);
+      
+      // VALIDATE DELAY
+      if (delay === 0) {
+        logger.warn('⚠️ Schedule time is in the past or now, publishing immediately', {
+          scheduledFor: new Date(scheduledFor).toISOString(),
+          currentTime: new Date(now).toISOString(),
+        });
+      }
       
       const priorityValue = {
         high: 1,
@@ -78,15 +88,24 @@ class QueueManager {
         }
       );
 
+      // IMPROVED LOGGING
+      const delayMinutes = Math.round(delay / 1000 / 60);
+      const delaySeconds = Math.round(delay / 1000);
+      
       logger.info('📅 Publish job queued', {
         jobId: job.id,
-        postId,
+        postId, 
         scheduleId,
-        delay: `${Math.round(delay / 1000)}s`,
+        scheduledFor: new Date(scheduledFor).toISOString(),
+        currentTime: new Date(now).toISOString(),
+        delay: delayMinutes > 0 
+          ? `${delayMinutes} minutes (${delaySeconds}s)` 
+          : `${delaySeconds} seconds`,
+        willPublishAt: new Date(now + delay).toISOString(),
       });
 
       return job.id;
-    } catch (error) {
+    } catch (error) { 
       logger.error('Failed to queue publish job:', error);
       throw error;
     }

@@ -21,8 +21,67 @@ class PostService {
       throw new Error('Access denied');
     }
 
-    // Validate channels
+    // ✅ ENHANCED SCHEDULE VALIDATION WITH TIMEZONE LOGGING
     if (schedules && schedules.length > 0) {
+      const now = new Date();
+      const nowUTC = new Date(now.toISOString());
+      
+      // Get brand timezone (if set)
+      const Brand = require('../models/Brand');
+      const brand = await Brand.findById(brandId);
+      const brandTimezone = brand?.settings?.timezone || 'UTC';
+      
+      logger.info('🕐 Timezone info', {
+        serverTime: nowUTC.toISOString(),
+        brandTimezone,
+        localServerTime: now.toLocaleString('en-US', { timeZone: brandTimezone }),
+      });
+      
+      for (const schedule of schedules) {
+        const scheduledTime = new Date(schedule.scheduledFor);
+        
+        // Check if scheduled time is in the past (with 1 minute buffer)
+        const oneMinuteAgo = new Date(nowUTC.getTime() - 60000);
+        if (scheduledTime <= oneMinuteAgo) {
+          // ✅ BETTER ERROR MESSAGE WITH TIMEZONE INFO
+          const localNow = now.toLocaleString('en-US', { 
+            timeZone: brandTimezone,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+          });
+          
+          const localScheduled = scheduledTime.toLocaleString('en-US', {
+            timeZone: brandTimezone,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+          });
+          
+          throw new Error(
+            `Invalid schedule time.\n\n` +
+            `📍 Your timezone: ${brandTimezone}\n` +
+            `⏰ Current time: ${localNow}\n` +
+            `📅 Scheduled time: ${localScheduled}\n\n` +
+            `The scheduled time must be in the future.`
+          );
+        }
+        
+        // Optional: Check if scheduled time is too far in the future (e.g., 1 year)
+        const oneYearFromNow = new Date(nowUTC.getTime() + 365 * 24 * 60 * 60 * 1000);
+        if (scheduledTime > oneYearFromNow) {
+          throw new Error('Cannot schedule posts more than 1 year in advance');
+        }
+      }
+
       const channelIds = schedules.map(s => s.channelId);
       const channels = await Channel.find({
         _id: { $in: channelIds },
@@ -73,6 +132,32 @@ class PostService {
         );
 
         schedule.jobId = jobId;
+        
+        // ✅ ENHANCED LOGGING WITH LOCAL TIME
+        const Brand = require('../models/Brand');
+        const brand = await Brand.findById(brandId);
+        const brandTimezone = brand?.settings?.timezone || 'UTC';
+        
+        const localScheduledTime = schedule.scheduledFor.toLocaleString('en-US', {
+          timeZone: brandTimezone,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true
+        });
+        
+        logger.info('📅 Post scheduled', {
+          postId: post._id,
+          scheduleId: schedule._id,
+          scheduledForUTC: schedule.scheduledFor.toISOString(),
+          scheduledForLocal: localScheduledTime,
+          timezone: brandTimezone,
+          provider: schedule.provider,
+          delay: Math.round((new Date(schedule.scheduledFor) - new Date()) / 1000 / 60) + ' minutes',
+        });
       }
 
       await post.save();
@@ -83,6 +168,7 @@ class PostService {
       brandId,
       status,
       schedulesCount: post.schedules.length,
+      createdAtUTC: post.createdAt.toISOString(),
     });
 
     return post;
