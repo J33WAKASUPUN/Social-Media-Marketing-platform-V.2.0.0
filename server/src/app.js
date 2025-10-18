@@ -11,6 +11,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
 const database = require("./config/database");
 const redisClient = require("./config/redis");
+
 /**
  * Initialize Express Application
  */
@@ -34,10 +35,27 @@ function createApp() {
   app.use(cors(corsOptions));
 
   // ============================================
-  // BODY PARSING
+  // BODY PARSING - SKIP FOR FILE UPLOADS
   // ============================================
-  app.use(express.json({ limit: "10mb" }));
-  app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+  // ⚠️ CRITICAL: Only parse JSON/URL-encoded for non-upload routes
+  app.use((req, res, next) => {
+    const contentType = req.headers['content-type'] || '';
+    
+    // Skip body parsing for multipart/form-data (file uploads)
+    if (contentType.includes('multipart/form-data')) {
+      logger.info('⏭️ Skipping body parser for multipart/form-data', {
+        path: req.path,
+        method: req.method,
+      });
+      return next();
+    }
+    
+    // For all other content types, parse JSON and URL-encoded
+    express.json({ limit: "10mb" })(req, res, (err) => {
+      if (err) return next(err);
+      express.urlencoded({ extended: true, limit: "10mb" })(req, res, next);
+    });
+  });
 
   // ============================================
   // COMPRESSION
@@ -146,7 +164,7 @@ function createApp() {
         organizations: "/api/v1/organizations",
         brands: "/api/v1/brands",
         channels: "/api/v1/channels",
-        posts: "/api/v1/posts", // ADD THIS
+        posts: "/api/v1/posts",
         docs: "/api-docs",
       },
     });

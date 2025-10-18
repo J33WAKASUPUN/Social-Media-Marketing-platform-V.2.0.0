@@ -77,6 +77,15 @@ const envSchema = Joi.object({
   CLOUDINARY_API_SECRET: Joi.string().required(),
   CLOUDINARY_FOLDER: Joi.string().default('social-media-videos'),
 
+  // AWS S3 Configuration
+  AWS_ACCESS_KEY_ID: Joi.string().required(),
+  AWS_SECRET_ACCESS_KEY: Joi.string().required(),
+  AWS_REGION: Joi.string().default('us-east-1'),
+  AWS_S3_BUCKET_NAME: Joi.string().required(),
+  AWS_S3_MEDIA_FOLDER: Joi.string().default('media'),
+  AWS_S3_AVATARS_FOLDER: Joi.string().default('avatars'),
+  AWS_S3_THUMBNAILS_FOLDER: Joi.string().default('thumbnails'),
+
   // YouTube OAuth
   YOUTUBE_CLIENT_ID: Joi.string().optional(),
   YOUTUBE_CLIENT_SECRET: Joi.string().optional(),
@@ -104,14 +113,15 @@ function validateEnv() {
   });
 
   if (error) {
-    logger.error('❌ Environment validation failed:');
-    error.details.forEach((detail) => {
-      logger.error(`   - ${detail.message}`);
+    const missingVars = error.details.map(detail => detail.path.join('.'));
+    logger.error('❌ Environment validation failed:', {
+      missingVariables: missingVars,
+      errors: error.details.map(d => d.message),
     });
-    throw new Error('Invalid environment configuration');
+    throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
   }
 
-  logger.info('✅ Environment validation passed');
+  logger.info('✅ Environment variables validated successfully');
   return value;
 }
 

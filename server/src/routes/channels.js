@@ -4,6 +4,7 @@ const channelController = require('../controllers/channelController');
 const { requireAuth } = require('../middlewares/auth');
 const { uploadMedia } = require('../middlewares/upload');
 const { validateRequest, schemas } = require('../middlewares/validateRequest');
+const s3Service = require('../services/s3Service');
 
 /**
  * @swagger
@@ -122,9 +123,40 @@ router.delete('/:id/test-delete', channelController.testDelete);
 
 router.post(
   '/:id/test-publish-local', 
-  uploadMedia,  // Handles multipart/form-data
+  requireAuth, 
+  uploadMedia,
   channelController.testPublishLocal
 );
+
+router.post('/test-upload-debug', uploadMedia, (req, res) => {
+  console.log('📊 DEBUG - Files received:', req.files);
+  console.log('📊 DEBUG - Body:', req.body);
+  
+  res.json({
+    success: true,
+    filesReceived: req.files?.length || 0,
+    files: req.files,
+    body: req.body,
+  });
+});
+
+// ADD TEST ENDPOINT FOR AWS UPLAOD
+router.get('/test-s3', requireAuth, async (req, res, next) => {
+  try {
+    const isConnected = await s3Service.testConnection();
+    
+    res.json({
+      success: isConnected,
+      message: isConnected ? 'S3 connection successful' : 'S3 connection failed',
+      config: {
+        region: process.env.AWS_REGION,
+        bucket: process.env.AWS_S3_BUCKET_NAME,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 // DEBUG ROUTE (with improved error handling)
 router.get('/debug/instagram-pages', requireAuth, async (req, res, next) => {

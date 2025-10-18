@@ -12,7 +12,7 @@ class LinkedInProvider extends BaseProvider {
       authUrl: "https://www.linkedin.com/oauth/v2/authorization",
       tokenUrl: "https://www.linkedin.com/oauth/v2/accessToken",
       apiUrl: "https://api.linkedin.com/rest",
-      apiVersion: "202410",
+      apiVersion: "202510",
       scopes: ["openid", "profile", "email", "w_member_social"],
     };
   }

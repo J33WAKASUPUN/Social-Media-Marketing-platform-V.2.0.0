@@ -2,6 +2,7 @@ const channelService = require("../services/channelService");
 const ProviderFactory = require("../providers/ProviderFactory");
 const Channel = require("../models/Channel");
 const PublishedPost = require("../models/PublishedPost");
+const s3Service = require('../services/s3Service');
 const mongoose = require("mongoose");
 const path = require("path");
 const logger = require("../utils/logger");
@@ -316,14 +317,29 @@ class ChannelController {
   }
 
   /**
-   * Test publish with LOCAL FILE upload + Cloudinary
-   */
-   async testPublishLocal(req, res, next) {
+ * Test publish with LOCAL FILE upload + S3
+ */
+async testPublishLocal(req, res, next) {
   try {
+    // ENHANCED DEBUG LOGGING
+    logger.info('📥 Test Publish Local Request', {
+      hasFiles: !!req.files,
+      filesCount: req.files?.length || 0,
+      files: req.files?.map(f => ({
+        fieldname: f.fieldname,
+        originalname: f.originalname,
+        mimetype: f.mimetype,
+        size: f.size,
+        path: f.path,
+      })),
+      bodyKeys: Object.keys(req.body),
+      contentType: req.headers['content-type'],
+    });
+
     const content = req.body.content;
     const title = req.body.title || undefined;
     
-    // PARSE METADATA (for YouTube Shorts, privacy, etc.)
+    // Parse metadata
     let metadata = {};
     if (req.body.metadata) {
       try {
@@ -354,85 +370,100 @@ class ChannelController {
 
     let mediaUrls = [];
 
-    // HANDLE UPLOADED FILES WITH CLOUDINARY
+    // UPLOAD FILES TO S3
     if (req.files && req.files.length > 0) {
-      logger.info("📁 Processing uploaded files", {
-        count: req.files.length,
-        files: req.files.map(f => ({
-          originalName: f.originalname,
-          size: `${(f.size / 1024 / 1024).toFixed(2)}MB`,
-          mimetype: f.mimetype,
-          path: f.path
-        }))
-      });
+      logger.info("📁 Processing uploaded files", { count: req.files.length });
 
-      // Upload each file to Cloudinary
       for (const file of req.files) {
         try {
-          logger.info(`📤 Uploading ${file.originalname} to Cloudinary...`);
-
           let uploadResult;
 
-          // CHECK IF FILE IS VIDEO OR IMAGE
+          // Upload to S3 based on file type
           if (file.mimetype.startsWith('video/')) {
-            // Upload video with Instagram-compatible transformations
-            uploadResult = await cloudinaryService.uploadInstagramVideo(file.path, {
-              tags: [channel.provider, channel.brand.name]
+            logger.info('📹 Uploading video to S3', {
+              filename: file.originalname,
+              size: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
+            });
+            
+            uploadResult = await s3Service.uploadVideo(file.path, {
+              provider: channel.provider,
+              brandName: channel.brand.name,
+            });
+          } else if (file.mimetype.startsWith('image/')) {
+            logger.info('🖼️ Uploading image to S3', {
+              filename: file.originalname,
+              size: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
+            });
+            
+            uploadResult = await s3Service.uploadImage(file.path, {
+              provider: channel.provider,
+              brandName: channel.brand.name,
             });
           } else {
-            // Upload image
-            uploadResult = await cloudinaryService.uploadImage(file.path, {
-              tags: [channel.provider, channel.brand.name]
+            logger.warn('⚠️ Unknown file type, skipping', {
+              filename: file.originalname,
+              mimetype: file.mimetype,
             });
+            continue;
           }
 
-          logger.info("✅ File uploaded to Cloudinary", {
-            filename: file.filename,
-            cloudinaryUrl: uploadResult.url,
-            publicId: uploadResult.publicId,
-            duration: uploadResult.duration,
-            size: `${(uploadResult.size / 1024 / 1024).toFixed(2)}MB`
+          logger.info("✅ File uploaded to S3", {
+            originalName: file.originalname,
+            s3Url: uploadResult.url,
+            key: uploadResult.key,
           });
 
-          // Use Cloudinary URL for publishing
+          // Add S3 URL to mediaUrls array
           mediaUrls.push(uploadResult.url);
 
         } catch (uploadError) {
-          logger.error(`❌ Failed to upload ${file.originalname} to Cloudinary`, {
-            error: uploadError.message
+          logger.error(`❌ Failed to upload ${file.originalname} to S3`, {
+            error: uploadError.message,
+            stack: uploadError.stack,
           });
 
-          // If upload fails, still try to delete local file
+          // Clean up local file if it still exists
           try {
-            await require('fs').promises.unlink(file.path);
+            const fs = require('fs').promises;
+            await fs.unlink(file.path);
           } catch (unlinkError) {
             logger.warn(`⚠️ Failed to delete local file ${file.path}`);
           }
 
-          throw new Error(`Failed to upload ${file.originalname}: ${uploadError.message}`);
+          return res.status(500).json({
+            success: false,
+            message: `Failed to upload ${file.originalname}: ${uploadError.message}`,
+          });
         }
       }
+    } else {
+      logger.warn('⚠️ No files received in request');
+      logger.info('Request details:', {
+        contentType: req.headers['content-type'],
+        bodyKeys: Object.keys(req.body),
+        hasFiles: !!req.files,
+      });
     }
 
-    logger.info("🚀 Publishing with Cloudinary URLs", {
+    logger.info("🚀 Publishing with S3 URLs", {
       content: content.substring(0, 50) + "...",
       mediaCount: mediaUrls.length,
       mediaUrls: mediaUrls,
       metadata: metadata,
     });
 
-    // Publish to platform (Instagram will download from Cloudinary)
+    // Publish to platform (social media will download from S3)
     const result = await provider.publish({
       content,
       title,
-      mediaUrls,
-      metadata, // PASS METADATA TO PROVIDER
+      mediaUrls, // Pass S3 URLs here
+      metadata,
     });
 
     logger.info("✅ Post published successfully", {
       platformPostId: result.platformPostId,
       provider: channel.provider,
-      cloudinaryUrls: mediaUrls
+      s3Urls: mediaUrls,
     });
 
     // Save to database
@@ -445,8 +476,8 @@ class ChannelController {
       platformUrl: result.platformUrl,
       title: result.title,
       content: content,
-      mediaUrls: result.mediaUrls || mediaUrls,
-      mediaType: result.mediaType || "none",
+      mediaUrls: result.mediaUrls || mediaUrls, // Use result mediaUrls if available, else S3 URLs
+      mediaType: result.mediaType || (mediaUrls.length > 0 ? "image" : "none"),
       status: "published",
       publishedAt: new Date(),
     });
@@ -462,20 +493,25 @@ class ChannelController {
           status: publishedPost.status,
           publishedAt: publishedPost.publishedAt,
         },
-        cloudinary: {
+        s3: {
           urls: mediaUrls,
-          message: "Media hosted on Cloudinary CDN"
-        }
+          bucket: process.env.AWS_S3_BUCKET_NAME,
+          message: mediaUrls.length > 0 
+            ? "Media hosted on AWS S3" 
+            : "No media uploaded",
+        },
       },
     });
   } catch (error) {
     logger.error("❌ Test publish failed", {
       error: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
     next(error);
   }
 }
+
+
   async testUpdate(req, res, next) {
     try {
       const { platformPostId, content } = req.body;
