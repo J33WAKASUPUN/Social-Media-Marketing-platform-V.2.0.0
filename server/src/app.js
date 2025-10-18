@@ -124,14 +124,16 @@ function createApp() {
   const organizationRoutes = require("./routes/organizations");
   const brandRoutes = require("./routes/brands");
   const channelRoutes = require("./routes/channels");
-  const postRoutes = require("./routes/posts"); // ADD THIS
+  const postRoutes = require("./routes/posts"); 
+  const analyticsRoutes = require('./routes/analytics');
 
   app.use("/api/v1/auth", authRoutes);
   app.use("/api/v1/organizations", organizationRoutes);
   app.use("/api/v1/brands", brandRoutes);
   app.use("/api/v1/channels", channelRoutes);
-  app.use("/api/v1/posts", postRoutes); // ADD THIS
+  app.use("/api/v1/posts", postRoutes);
   app.use("/api", apiLimiter);
+  app.use('/api/v1/analytics', analyticsRoutes);
 
   // API Info Endpoint
   app.get("/api/v1", (req, res) => {
