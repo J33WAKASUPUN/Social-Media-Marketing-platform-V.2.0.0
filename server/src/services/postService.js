@@ -1,6 +1,7 @@
 const Post = require('../models/Post');
 const Channel = require('../models/Channel');
 const Membership = require('../models/Membership');
+const Media = require('../models/Media');
 const queueManager = require('../queues/queueManager');
 const logger = require('../utils/logger');
 
@@ -9,7 +10,7 @@ class PostService {
    * Create new post
    */
   async createPost(userId, data) {
-    const { brandId, title, content, mediaUrls, schedules, settings } = data;
+    const { brandId, title, content, mediaUrls, mediaLibraryIds, schedules, settings } = data;
 
     // Check user access
     const membership = await Membership.findOne({
@@ -21,7 +22,37 @@ class PostService {
       throw new Error('Access denied');
     }
 
-    // ✅ ENHANCED SCHEDULE VALIDATION WITH TIMEZONE LOGGING
+    // HANDLE MEDIA FROM LIBRARY
+    let finalMediaUrls = mediaUrls || [];
+    
+    if (mediaLibraryIds && mediaLibraryIds.length > 0) {
+      logger.info('📚 Using media from library', {
+        count: mediaLibraryIds.length,
+        mediaIds: mediaLibraryIds,
+      });
+
+      // Fetch media from library
+      const mediaItems = await Media.find({
+        _id: { $in: mediaLibraryIds },
+        brand: brandId,
+        status: 'active',
+      });
+
+      if (mediaItems.length !== mediaLibraryIds.length) {
+        throw new Error('Some media items not found or inactive');
+      }
+
+      // Extract S3 URLs
+      const libraryUrls = mediaItems.map(m => m.s3Url);
+      finalMediaUrls = [...finalMediaUrls, ...libraryUrls];
+
+      logger.info('✅ Media from library loaded', {
+        libraryUrls: libraryUrls.length,
+        totalUrls: finalMediaUrls.length,
+      });
+    }
+
+    // ENHANCED SCHEDULE VALIDATION WITH TIMEZONE LOGGING
     if (schedules && schedules.length > 0) {
       const now = new Date();
       const nowUTC = new Date(now.toISOString());
@@ -34,49 +65,22 @@ class PostService {
       logger.info('🕐 Timezone info', {
         serverTime: nowUTC.toISOString(),
         brandTimezone,
-        localServerTime: now.toLocaleString('en-US', { timeZone: brandTimezone }),
       });
-      
+
       for (const schedule of schedules) {
         const scheduledTime = new Date(schedule.scheduledFor);
         
-        // Check if scheduled time is in the past (with 1 minute buffer)
-        const oneMinuteAgo = new Date(nowUTC.getTime() - 60000);
-        if (scheduledTime <= oneMinuteAgo) {
-          // ✅ BETTER ERROR MESSAGE WITH TIMEZONE INFO
-          const localNow = now.toLocaleString('en-US', { 
-            timeZone: brandTimezone,
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true
-          });
-          
-          const localScheduled = scheduledTime.toLocaleString('en-US', {
-            timeZone: brandTimezone,
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            hour12: true
-          });
-          
-          throw new Error(
-            `Invalid schedule time.\n\n` +
-            `📍 Your timezone: ${brandTimezone}\n` +
-            `⏰ Current time: ${localNow}\n` +
-            `📅 Scheduled time: ${localScheduled}\n\n` +
-            `The scheduled time must be in the future.`
-          );
+        if (isNaN(scheduledTime.getTime())) {
+          throw new Error(`Invalid scheduledFor date: ${schedule.scheduledFor}`);
         }
+
+        if (scheduledTime <= nowUTC) {
+          throw new Error(`scheduledFor must be in the future (got: ${scheduledTime.toISOString()})`);
+        }
+
+        const oneYearFromNow = new Date(nowUTC);
+        oneYearFromNow.setFullYear(nowUTC.getFullYear() + 1);
         
-        // Optional: Check if scheduled time is too far in the future (e.g., 1 year)
-        const oneYearFromNow = new Date(nowUTC.getTime() + 365 * 24 * 60 * 60 * 1000);
         if (scheduledTime > oneYearFromNow) {
           throw new Error('Cannot schedule posts more than 1 year in advance');
         }
@@ -115,12 +119,29 @@ class PostService {
       createdBy: userId,
       title,
       content,
-      mediaUrls: mediaUrls || [],
-      mediaType: this.detectMediaType(mediaUrls),
+      mediaUrls: finalMediaUrls, // USE COMBINED URLS
+      mediaType: this.detectMediaType(finalMediaUrls),
       schedules: data.schedules || [],
       status,
       settings: settings || {},
     });
+
+    // MARK LIBRARY MEDIA AS USED
+    if (mediaLibraryIds && mediaLibraryIds.length > 0) {
+      await Promise.all(
+        mediaLibraryIds.map(async (mediaId) => {
+          const media = await Media.findById(mediaId);
+          if (media) {
+            await media.markAsUsed(post._id);
+            logger.info('📊 Media usage tracked', {
+              mediaId,
+              postId: post._id,
+              usageCount: media.usageCount + 1,
+            });
+          }
+        })
+      );
+    }
 
     // Queue scheduled posts
     if (post.schedules && post.schedules.length > 0) {
@@ -169,10 +190,13 @@ class PostService {
       status,
       schedulesCount: post.schedules.length,
       createdAtUTC: post.createdAt.toISOString(),
+      mediaFromLibrary: mediaLibraryIds?.length || 0,
+      totalMediaUrls: finalMediaUrls.length,
     });
 
     return post;
   }
+
 
   /**
    * Get brand posts
@@ -347,8 +371,8 @@ class PostService {
   detectMediaType(mediaUrls) {
     if (!mediaUrls || mediaUrls.length === 0) return 'none';
 
-    const hasVideo = mediaUrls.some(url => 
-      /\.(mp4|mov|avi|wmv|flv|webm|mkv)$/i.test(url)
+    const hasVideo = mediaUrls.some(url =>
+      /\.(mp4|mov|avi|wmv|webm)$/i.test(url)
     );
 
     if (hasVideo) return 'video';

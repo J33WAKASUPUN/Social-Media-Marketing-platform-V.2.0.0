@@ -2,6 +2,7 @@ const channelService = require("../services/channelService");
 const ProviderFactory = require("../providers/ProviderFactory");
 const Channel = require("../models/Channel");
 const PublishedPost = require("../models/PublishedPost");
+const Media = require('../models/Media');
 const s3Service = require('../services/s3Service');
 const mongoose = require("mongoose");
 const path = require("path");
@@ -317,199 +318,181 @@ class ChannelController {
   }
 
   /**
- * Test publish with LOCAL FILE upload + S3
- */
+   * Test publish with LOCAL FILE upload + S3 + MEDIA LIBRARY
+   */
 async testPublishLocal(req, res, next) {
-  try {
-    // ENHANCED DEBUG LOGGING
-    logger.info('📥 Test Publish Local Request', {
-      hasFiles: !!req.files,
-      filesCount: req.files?.length || 0,
-      files: req.files?.map(f => ({
-        fieldname: f.fieldname,
-        originalname: f.originalname,
-        mimetype: f.mimetype,
-        size: f.size,
-        path: f.path,
-      })),
-      bodyKeys: Object.keys(req.body),
-      contentType: req.headers['content-type'],
-    });
-
-    const content = req.body.content;
-    const title = req.body.title || undefined;
-    
-    // Parse metadata
-    let metadata = {};
-    if (req.body.metadata) {
-      try {
-        metadata = typeof req.body.metadata === 'string' 
-          ? JSON.parse(req.body.metadata)
-          : req.body.metadata;
-      } catch (parseError) {
-        logger.warn('Failed to parse metadata', { error: parseError.message });
-      }
-    }
-
-    if (!content) {
-      return res.status(400).json({
-        success: false,
-        message: "Content is required",
-      });
-    }
-
-    const channel = await Channel.findById(req.params.id).populate("brand");
-    if (!channel) {
-      return res.status(404).json({
-        success: false,
-        message: "Channel not found",
-      });
-    }
-
-    const provider = ProviderFactory.getProvider(channel.provider, channel);
-
-    let mediaUrls = [];
-
-    // UPLOAD FILES TO S3
-    if (req.files && req.files.length > 0) {
-      logger.info("📁 Processing uploaded files", { count: req.files.length });
-
-      for (const file of req.files) {
+    try {
+      const content = req.body.content;
+      const title = req.body.title || undefined;
+      
+      // Parse metadata
+      let metadata = {};
+      if (req.body.metadata) {
         try {
-          let uploadResult;
-
-          // Upload to S3 based on file type
-          if (file.mimetype.startsWith('video/')) {
-            logger.info('📹 Uploading video to S3', {
-              filename: file.originalname,
-              size: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
-            });
-            
-            uploadResult = await s3Service.uploadVideo(file.path, {
-              provider: channel.provider,
-              brandName: channel.brand.name,
-            });
-          } else if (file.mimetype.startsWith('image/')) {
-            logger.info('🖼️ Uploading image to S3', {
-              filename: file.originalname,
-              size: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
-            });
-            
-            uploadResult = await s3Service.uploadImage(file.path, {
-              provider: channel.provider,
-              brandName: channel.brand.name,
-            });
-          } else {
-            logger.warn('⚠️ Unknown file type, skipping', {
-              filename: file.originalname,
-              mimetype: file.mimetype,
-            });
-            continue;
-          }
-
-          logger.info("✅ File uploaded to S3", {
-            originalName: file.originalname,
-            s3Url: uploadResult.url,
-            key: uploadResult.key,
-          });
-
-          // Add S3 URL to mediaUrls array
-          mediaUrls.push(uploadResult.url);
-
-        } catch (uploadError) {
-          logger.error(`❌ Failed to upload ${file.originalname} to S3`, {
-            error: uploadError.message,
-            stack: uploadError.stack,
-          });
-
-          // Clean up local file if it still exists
-          try {
-            const fs = require('fs').promises;
-            await fs.unlink(file.path);
-          } catch (unlinkError) {
-            logger.warn(`⚠️ Failed to delete local file ${file.path}`);
-          }
-
-          return res.status(500).json({
-            success: false,
-            message: `Failed to upload ${file.originalname}: ${uploadError.message}`,
-          });
+          metadata = typeof req.body.metadata === 'string' 
+            ? JSON.parse(req.body.metadata)
+            : req.body.metadata;
+        } catch (parseError) {
+          logger.warn('Failed to parse metadata', { error: parseError.message });
         }
       }
-    } else {
-      logger.warn('⚠️ No files received in request');
-      logger.info('Request details:', {
-        contentType: req.headers['content-type'],
-        bodyKeys: Object.keys(req.body),
-        hasFiles: !!req.files,
+
+      if (!content) {
+        return res.status(400).json({
+          success: false,
+          message: "Content is required",
+        });
+      }
+
+      const channel = await Channel.findById(req.params.id).populate("brand");
+      if (!channel) {
+        return res.status(404).json({
+          success: false,
+          message: "Channel not found",
+        });
+      }
+
+      const provider = ProviderFactory.getProvider(channel.provider, channel);
+
+      let mediaUrls = [];
+      const savedMediaItems = []; // TRACK SAVED MEDIA
+
+      // CHECK IF FILES EXIST
+      if (!req.files || req.files.length === 0) {
+        logger.warn('⚠️ No files received in request');
+        logger.info('Request details:', {
+          contentType: req.headers['content-type'],
+          bodyKeys: Object.keys(req.body),
+          hasFiles: !!req.files,
+        });
+      } else {
+        logger.info("📁 Uploading files to S3 and saving to Media Library", { count: req.files.length });
+
+        for (const file of req.files) {
+          try {
+            // SAVE TO MEDIA LIBRARY
+            const savedMedia = await mediaService.uploadMedia(
+              file,
+              req.user._id,
+              channel.brand._id,
+              {
+                folder: 'test-uploads',
+                tags: ['test', channel.provider],
+                altText: `Test upload for ${channel.provider}`,
+                caption: content.substring(0, 100),
+              }
+            );
+
+            logger.info("✅ File uploaded to S3 and saved to Media Library", {
+              originalName: file.originalname,
+              s3Url: savedMedia.s3Url,
+              mediaId: savedMedia._id,
+              size: `${(savedMedia.size / 1024 / 1024).toFixed(2)}MB`,
+            });
+
+            mediaUrls.push(savedMedia.s3Url);
+            savedMediaItems.push(savedMedia); // TRACK FOR RESPONSE
+
+          } catch (uploadError) {
+            logger.error(`❌ Failed to upload ${file.originalname}`, {
+              error: uploadError.message,
+              stack: uploadError.stack,
+            });
+
+            // Delete local file if it still exists
+            try {
+              const fs = require('fs').promises;
+              await fs.unlink(file.path);
+            } catch (unlinkError) {
+              logger.warn(`⚠️ Failed to delete local file ${file.path}`);
+            }
+
+            return res.status(500).json({
+              success: false,
+              message: `Failed to upload ${file.originalname}: ${uploadError.message}`,
+            });
+          }
+        }
+      }
+
+      logger.info("🚀 Publishing with S3 URLs", {
+        content: content.substring(0, 50) + "...",
+        mediaCount: mediaUrls.length,
+        mediaUrls: mediaUrls,
+        metadata: metadata,
       });
+
+      // Publish to platform (social media will download from S3)
+      const result = await provider.publish({
+        content,
+        title,
+        mediaUrls, // Pass S3 URLs here
+        metadata,
+      });
+
+      logger.info("✅ Post published successfully", {
+        platformPostId: result.platformPostId,
+        provider: channel.provider,
+        s3Urls: mediaUrls,
+      });
+
+      // Save to database
+      const publishedPost = await PublishedPost.create({
+        brand: channel.brand._id,
+        channel: channel._id,
+        publishedBy: req.user._id,
+        provider: channel.provider,
+        platformPostId: result.platformPostId,
+        platformUrl: result.platformUrl,
+        title: result.title,
+        content: content,
+        mediaUrls: result.mediaUrls || mediaUrls, // Use result mediaUrls if available, else S3 URLs
+        mediaType: result.mediaType || (mediaUrls.length > 0 ? "image" : "none"),
+        status: "published",
+        publishedAt: new Date(),
+      });
+
+      // MARK MEDIA AS USED
+      if (savedMediaItems.length > 0) {
+        await Promise.all(
+          savedMediaItems.map(media => media.markAsUsed(publishedPost._id))
+        );
+      }
+
+      res.json({
+        success: true,
+        message: "Post published and saved successfully",
+        data: {
+          platform: result,
+          database: {
+            id: publishedPost._id,
+            platformPostId: publishedPost.platformPostId,
+            status: publishedPost.status,
+            publishedAt: publishedPost.publishedAt,
+          },
+          s3: {
+            urls: mediaUrls,
+            bucket: process.env.AWS_S3_BUCKET_NAME,
+            message: mediaUrls.length > 0 
+              ? "Media hosted on AWS S3 and saved to Media Library" 
+              : "No media uploaded",
+          },
+          mediaLibrary: savedMediaItems.map(m => ({
+            id: m._id,
+            filename: m.filename,
+            s3Url: m.s3Url,
+            usageCount: m.usageCount,
+          })),
+        },
+      });
+    } catch (error) {
+      logger.error("❌ Test publish failed", {
+        error: error.message,
+        stack: error.stack,
+      });
+      next(error);
     }
-
-    logger.info("🚀 Publishing with S3 URLs", {
-      content: content.substring(0, 50) + "...",
-      mediaCount: mediaUrls.length,
-      mediaUrls: mediaUrls,
-      metadata: metadata,
-    });
-
-    // Publish to platform (social media will download from S3)
-    const result = await provider.publish({
-      content,
-      title,
-      mediaUrls, // Pass S3 URLs here
-      metadata,
-    });
-
-    logger.info("✅ Post published successfully", {
-      platformPostId: result.platformPostId,
-      provider: channel.provider,
-      s3Urls: mediaUrls,
-    });
-
-    // Save to database
-    const publishedPost = await PublishedPost.create({
-      brand: channel.brand._id,
-      channel: channel._id,
-      publishedBy: req.user._id,
-      provider: channel.provider,
-      platformPostId: result.platformPostId,
-      platformUrl: result.platformUrl,
-      title: result.title,
-      content: content,
-      mediaUrls: result.mediaUrls || mediaUrls, // Use result mediaUrls if available, else S3 URLs
-      mediaType: result.mediaType || (mediaUrls.length > 0 ? "image" : "none"),
-      status: "published",
-      publishedAt: new Date(),
-    });
-
-    res.json({
-      success: true,
-      message: "Post published and saved successfully",
-      data: {
-        platform: result,
-        database: {
-          id: publishedPost._id,
-          platformPostId: publishedPost.platformPostId,
-          status: publishedPost.status,
-          publishedAt: publishedPost.publishedAt,
-        },
-        s3: {
-          urls: mediaUrls,
-          bucket: process.env.AWS_S3_BUCKET_NAME,
-          message: mediaUrls.length > 0 
-            ? "Media hosted on AWS S3" 
-            : "No media uploaded",
-        },
-      },
-    });
-  } catch (error) {
-    logger.error("❌ Test publish failed", {
-      error: error.message,
-      stack: error.stack,
-    });
-    next(error);
   }
-}
 
 
   async testUpdate(req, res, next) {

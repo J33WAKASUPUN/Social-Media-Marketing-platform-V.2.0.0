@@ -289,6 +289,69 @@ class MediaController {
       next(error);
     }
   }
+
+  /**
+   * GET /api/v1/media/for-post
+   * Get media formatted for post composer
+   */
+  async getMediaForPostComposer(req, res, next) {
+    try {
+      const { brandId, type } = req.query;
+      
+      if (!brandId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Brand ID is required',
+        });
+      }
+
+      const filters = {
+        type, // 'image', 'video', or undefined for all
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+        limit: 50,
+        status: 'active',
+      };
+      
+      const result = await mediaService.getMediaLibrary(brandId, filters);
+      
+      // Format for post composer
+      const formattedMedia = result.media.map(m => ({
+        id: m._id,
+        url: m.s3Url,
+        type: m.type,
+        thumbnail: m.metadata?.thumbnailUrl || m.s3Url,
+        name: m.originalName,
+        size: m.size,
+        sizeFormatted: this.formatBytes(m.size),
+        usageCount: m.usageCount,
+        folder: m.folder,
+        tags: m.tags,
+        altText: m.altText,
+        caption: m.caption,
+        createdAt: m.createdAt,
+      }));
+      
+      res.json({
+        success: true,
+        data: formattedMedia,
+        pagination: result.pagination,
+      });
+    } catch (error) {
+      logger.error('❌ Get media for post composer failed', { error: error.message });
+      next(error);
+    }
+  }
+
+  /**
+   * Helper: Format bytes to human-readable
+   */
+  formatBytes(bytes) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+    return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
+  }
 }
 
 module.exports = new MediaController();

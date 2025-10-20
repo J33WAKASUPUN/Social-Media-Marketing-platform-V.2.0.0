@@ -6,6 +6,13 @@ class PostController {
    */
   async createPost(req, res, next) {
     try {
+      // LOG INCOMING REQUEST
+      console.log('📥 Create post request', {
+        body: req.body,
+        hasMediaUrls: !!req.body.mediaUrls,
+        hasMediaLibraryIds: !!req.body.mediaLibraryIds,
+      });
+
       const post = await postService.createPost(req.user._id, req.body);
 
       res.status(201).json({

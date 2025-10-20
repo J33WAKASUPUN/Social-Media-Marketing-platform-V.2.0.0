@@ -22,6 +22,13 @@ router.post('/upload', uploadMedia, mediaController.uploadMedia);
 router.get('/', mediaController.getMediaLibrary);
 
 /**
+ * @route   GET /api/v1/media/for-post
+ * @desc    Get media formatted for post composer
+ * @access  Private
+ */
+router.get('/for-post', mediaController.getMediaForPostComposer);
+
+/**
  * @route   GET /api/v1/media/folders
  * @desc    Get all folders for a brand
  * @access  Private

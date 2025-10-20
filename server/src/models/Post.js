@@ -32,6 +32,10 @@ const postSchema = new mongoose.Schema({
     enum: ['none', 'image', 'video', 'carousel', 'multiImage'],
     default: 'none',
   },
+  mediaLibraryItems: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Media',
+  }],
 
   // Scheduling per channel
   schedules: [{
