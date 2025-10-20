@@ -145,6 +145,7 @@ function createApp() {
   const postRoutes = require("./routes/posts"); 
   const analyticsRoutes = require('./routes/analytics');
   const mediaRoutes = require('./routes/media');
+  const notificationRoutes = require('./routes/notifications'); 
 
   app.use("/api/v1/auth", authRoutes);
   app.use("/api/v1/organizations", organizationRoutes);
@@ -154,6 +155,7 @@ function createApp() {
   app.use("/api", apiLimiter);
   app.use('/api/v1/analytics', analyticsRoutes);
   app.use('/api/v1/media', mediaRoutes);
+  app.use('/api/v1/notifications', notificationRoutes);
 
   // API Info Endpoint
   app.get("/api/v1", (req, res) => {
