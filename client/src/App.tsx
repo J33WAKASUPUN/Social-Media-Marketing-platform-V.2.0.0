@@ -3,100 +3,58 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import LoginPage from "@/components/auth/LoginPage";
-import RegisterPage from "@/components/auth/RegisterPage";
-import DashboardLayout from "@/components/layout/DashboardLayout";
-import DashboardOverview from "@/pages/dashboard/DashboardOverview";
-import PostComposer from "@/components/posts/PostComposer";
-import AnalyticsDashboard from "@/pages/dashboard/AnalyticsDashboard";
-import ContentLibrary from "@/pages/dashboard/ContentLibrary";
-import SocialAccounts from "@/pages/dashboard/SocialAccounts";
-import CalendarView from "@/pages/dashboard/CalendarView";
-import TeamManagement from "@/pages/dashboard/TeamManagement";
-import NotificationsPage from "@/pages/dashboard/NotificationsPage";
-import SettingsPage from "@/pages/dashboard/SettingsPage";
-import ProfilePage from "@/pages/dashboard/ProfilePage";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/AppSidebar";
+import { AppHeader } from "@/components/AppHeader";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import Posts from "./pages/Posts";
+import PostComposer from "./pages/PostComposer";
+import Calendar from "./pages/Calendar";
+import Media from "./pages/Media";
+import Analytics from "./pages/Analytics";
+import Channels from "./pages/Channels";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
+const MainLayout = ({ children }: { children: React.ReactNode }) => (
+  <SidebarProvider>
+    <div className="flex min-h-screen w-full">
+      <AppSidebar />
+      <div className="flex-1">
+        <AppHeader />
+        <main className="animate-fade-in">{children}</main>
       </div>
-    );
-  }
-  
-  return user ? <>{children}</> : <Navigate to="/login" replace />;
-};
-
-const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-  
-  return user ? <Navigate to="/dashboard" replace /> : <>{children}</>;
-};
+    </div>
+  </SidebarProvider>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <AuthProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            
-            <Route path="/login" element={
-              <PublicRoute>
-                <LoginPage />
-              </PublicRoute>
-            } />
-            <Route path="/register" element={
-              <PublicRoute>
-                <RegisterPage />
-              </PublicRoute>
-            } />
-            
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <DashboardLayout />
-              </ProtectedRoute>
-            }>
-              <Route index element={<DashboardOverview />} />
-              <Route path="compose" element={<PostComposer />} />
-              <Route path="analytics" element={<AnalyticsDashboard />} />
-              <Route path="content" element={<ContentLibrary />} />
-              <Route path="accounts" element={<SocialAccounts />} />
-              <Route path="calendar" element={<CalendarView />} />
-              <Route path="team" element={<TeamManagement />} />
-              <Route path="notifications" element={<NotificationsPage />} />
-              <Route path="settings" element={<SettingsPage />} />
-              <Route path="profile" element={<ProfilePage />} />
-            </Route>
-            
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          
+          <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
+          <Route path="/posts" element={<MainLayout><Posts /></MainLayout>} />
+          <Route path="/posts/new" element={<MainLayout><PostComposer /></MainLayout>} />
+          <Route path="/calendar" element={<MainLayout><Calendar /></MainLayout>} />
+          <Route path="/media" element={<MainLayout><Media /></MainLayout>} />
+          <Route path="/analytics" element={<MainLayout><Analytics /></MainLayout>} />
+          <Route path="/channels" element={<MainLayout><Channels /></MainLayout>} />
+          <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
+          
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );
