@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function GoogleCallback() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { setUser } = useAuth();
 
   useEffect(() => {
     const token = searchParams.get('token');
@@ -18,11 +20,11 @@ export default function GoogleCallback() {
     }
 
     if (token && refresh) {
-      // Store tokens
+      // Store tokens FIRST
       localStorage.setItem('accessToken', token);
       localStorage.setItem('refreshToken', refresh);
 
-      // Fetch user data
+      // Then fetch user data
       fetchUserData(token);
     } else {
       toast.error('Invalid authentication response');
@@ -43,10 +45,21 @@ export default function GoogleCallback() {
       }
 
       const data = await response.json();
-      localStorage.setItem('user', JSON.stringify(data.data.user));
+      const userData = data.data.user;
 
-      toast.success(`Welcome, ${data.data.user.name}!`);
-      navigate('/dashboard');
+      // Set user in BOTH localStorage AND AuthContext
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      // Call setUser from AuthContext (need to update AuthContext first)
+      // For now, just refresh the page to trigger AuthContext useEffect
+      
+      toast.success(`Welcome, ${userData.name}!`);
+      
+      // USE REPLACE INSTEAD OF NAVIGATE TO AVOID BACK BUTTON ISSUES
+      navigate('/dashboard', { replace: true });
+      
+      // FORCE PAGE RELOAD TO TRIGGER AUTHCONTEXT REFRESH
+      window.location.reload();
     } catch (error) {
       console.error('Error fetching user data:', error);
       toast.error('Failed to complete authentication');

@@ -14,6 +14,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>; // ✅ ADD THIS
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -32,8 +33,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const accessToken = localStorage.getItem('accessToken');
 
     if (storedUser && accessToken) {
-      setUser(JSON.parse(storedUser));
-      fetchCurrentUser(); // Verify token is still valid
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        // ✅ VERIFY TOKEN IS STILL VALID IN BACKGROUND
+        fetchCurrentUser().catch(() => {
+          // If verification fails, logout silently
+          console.warn('Token verification failed, logging out...');
+        });
+      } catch (error) {
+        console.error('Failed to parse stored user:', error);
+        localStorage.removeItem('user');
+      }
     }
 
     setLoading(false);
@@ -42,12 +53,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchCurrentUser = async () => {
     try {
       const { data } = await api.get('/auth/me');
-      // Backend returns { success, data: { user } }
-      setUser(data.data.user);
-      localStorage.setItem('user', JSON.stringify(data.data.user));
+      const userData = data.data.user;
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
     } catch (error) {
       console.error('Failed to fetch current user:', error);
-      logout();
+      // ✅ DON'T LOGOUT IMMEDIATELY - Token might just be expired
+      // Let the API interceptor handle token refresh
+      throw error;
     }
   };
 
@@ -55,7 +68,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data } = await api.post('/auth/login', { email, password });
 
-      // Correct destructuring to match backend response
       const { user, tokens } = data.data;
 
       localStorage.setItem('accessToken', tokens.accessToken);
@@ -75,7 +87,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data } = await api.post('/auth/register', { name, email, password });
 
-      // Correct destructuring to match backend response
       const { user, tokens } = data.data;
 
       localStorage.setItem('accessToken', tokens.accessToken);
@@ -121,7 +132,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, loading, setUser, login, register, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );
