@@ -204,34 +204,36 @@ router.get('/google/callback',
   (req, res) => {
     const { user, tokens } = req.user;
     const frontendUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    
+    // REDIRECT TO FRONTEND CALLBACK
     res.redirect(
       `${frontendUrl}/auth/callback?token=${tokens.accessToken}&refresh=${tokens.refreshToken}`
     );
   }
 );
 
-router.get('/google/callback/test',
-  passport.authenticate('google', { session: false }),
-  (req, res) => {
-    const { user, tokens } = req.user;
-    res.json({
-      success: true,
-      message: 'Google OAuth successful',
-      data: {
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          avatar: user.avatar,
-        },
-        tokens: {
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
-        },
-      },
-    });
-  }
-);
+// router.get('/google/callback/test',
+//   passport.authenticate('google', { session: false }),
+//   (req, res) => {
+//     const { user, tokens } = req.user;
+//     res.json({
+//       success: true,
+//       message: 'Google OAuth successful',
+//       data: {
+//         user: {
+//           id: user._id,
+//           name: user.name,
+//           email: user.email,
+//           avatar: user.avatar,
+//         },
+//         tokens: {
+//           accessToken: tokens.accessToken,
+//           refreshToken: tokens.refreshToken,
+//         },
+//       },
+//     });
+//   }
+// );
 
 if (process.env.NODE_ENV === 'development') {
   router.get('/test-email', authController.testEmail);

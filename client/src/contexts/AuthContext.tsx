@@ -42,8 +42,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchCurrentUser = async () => {
     try {
       const { data } = await api.get('/auth/me');
-      setUser(data.data);
-      localStorage.setItem('user', JSON.stringify(data.data));
+      // Backend returns { success, data: { user } }
+      setUser(data.data.user);
+      localStorage.setItem('user', JSON.stringify(data.data.user));
     } catch (error) {
       console.error('Failed to fetch current user:', error);
       logout();
@@ -54,10 +55,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data } = await api.post('/auth/login', { email, password });
 
-      const { user, accessToken, refreshToken } = data.data;
+      // Correct destructuring to match backend response
+      const { user, tokens } = data.data;
 
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
+      localStorage.setItem('accessToken', tokens.accessToken);
+      localStorage.setItem('refreshToken', tokens.refreshToken);
       localStorage.setItem('user', JSON.stringify(user));
 
       setUser(user);
@@ -73,10 +75,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data } = await api.post('/auth/register', { name, email, password });
 
-      const { user, accessToken, refreshToken } = data.data;
+      // Correct destructuring to match backend response
+      const { user, tokens } = data.data;
 
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
+      localStorage.setItem('accessToken', tokens.accessToken);
+      localStorage.setItem('refreshToken', tokens.refreshToken);
       localStorage.setItem('user', JSON.stringify(user));
 
       setUser(user);
@@ -105,7 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProfile = async (data: Partial<User>) => {
     try {
       const response = await api.patch('/auth/profile', data);
-      const updatedUser = response.data.data;
+      const updatedUser = response.data.data.user;
 
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));

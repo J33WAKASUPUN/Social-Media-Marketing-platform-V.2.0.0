@@ -1,6 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import { toast } from 'sonner';
 
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 export const api = axios.create({
@@ -8,7 +9,7 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: false,
+  withCredentials: true, // ✅ IMPORTANT: Enable credentials
 });
 
 // Request interceptor - Add auth token
@@ -40,8 +41,8 @@ api.interceptors.response.use(
             refreshToken,
           });
 
-          localStorage.setItem('accessToken', data.data.accessToken);
-          api.defaults.headers.common['Authorization'] = `Bearer ${data.data.accessToken}`;
+          localStorage.setItem('accessToken', data.data.tokens.accessToken);
+          api.defaults.headers.common['Authorization'] = `Bearer ${data.data.tokens.accessToken}`;
 
           return api(originalRequest);
         }
