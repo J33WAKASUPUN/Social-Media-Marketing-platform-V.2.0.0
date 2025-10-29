@@ -1,8 +1,9 @@
-import { Bell, Search } from "lucide-react";
+import { Bell, Search, LogOut, Settings as SettingsIcon, User } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,10 +18,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { mockUser, mockNotifications } from "@/lib/mockData";
+import { mockNotifications } from "@/lib/mockData";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { CheckCircle2, XCircle, Info } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const notificationIcons = {
   success: CheckCircle2,
@@ -29,7 +31,22 @@ const notificationIcons = {
 };
 
 export const AppHeader = () => {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const unreadCount = mockNotifications.filter((n) => !n.read).length;
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
+
+  const handleNavigateSettings = () => {
+    navigate("/settings");
+  };
+
+  const handleNavigateProfile = () => {
+    navigate("/settings");
+  };
 
   return (
     <header className="sticky top-0 z-50 flex h-16 items-center gap-4 border-b bg-background px-6">
@@ -111,8 +128,9 @@ export const AppHeader = () => {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar>
+                  <AvatarImage src={user?.avatarUrl} alt={user?.name} />
                   <AvatarFallback className="bg-gradient-primary text-white">
-                    {mockUser.initials}
+                    {user?.name?.charAt(0).toUpperCase() || 'U'}
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -120,15 +138,32 @@ export const AppHeader = () => {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
                 <div>
-                  <p className="font-medium">{mockUser.name}</p>
-                  <p className="text-xs text-muted-foreground">{mockUser.email}</p>
+                  <p className="font-medium">{user?.name || 'User'}</p>
+                  <p className="text-xs text-muted-foreground">{user?.email || 'user@example.com'}</p>
+                  {!user?.emailVerified && (
+                    <Badge variant="outline" className="mt-1 text-xs">
+                      Email not verified
+                    </Badge>
+                  )}
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Profile</DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleNavigateProfile}>
+                <User className="mr-2 h-4 w-4" />
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleNavigateSettings}>
+                <SettingsIcon className="mr-2 h-4 w-4" />
+                Settings
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">Sign out</DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={handleLogout}
+                className="text-destructive focus:text-destructive"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Sign out
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

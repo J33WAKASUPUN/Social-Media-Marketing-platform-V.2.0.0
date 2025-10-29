@@ -6,8 +6,11 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import GoogleCallback from "./pages/GoogleCallback";
 import Dashboard from "./pages/Dashboard";
 import Posts from "./pages/Posts";
 import PostComposer from "./pages/PostComposer";
@@ -34,28 +37,65 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => (
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          
-          <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
-          <Route path="/posts" element={<MainLayout><Posts /></MainLayout>} />
-          <Route path="/posts/new" element={<MainLayout><PostComposer /></MainLayout>} />
-          <Route path="/calendar" element={<MainLayout><Calendar /></MainLayout>} />
-          <Route path="/media" element={<MainLayout><Media /></MainLayout>} />
-          <Route path="/analytics" element={<MainLayout><Analytics /></MainLayout>} />
-          <Route path="/channels" element={<MainLayout><Channels /></MainLayout>} />
-          <Route path="/settings" element={<MainLayout><Settings /></MainLayout>} />
-          
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/auth/callback" element={<GoogleCallback />} />
+            
+            {/* Protected Routes */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <MainLayout><Dashboard /></MainLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/posts" element={
+              <ProtectedRoute>
+                <MainLayout><Posts /></MainLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/posts/new" element={
+              <ProtectedRoute>
+                <MainLayout><PostComposer /></MainLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/calendar" element={
+              <ProtectedRoute>
+                <MainLayout><Calendar /></MainLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/media" element={
+              <ProtectedRoute>
+                <MainLayout><Media /></MainLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/analytics" element={
+              <ProtectedRoute>
+                <MainLayout><Analytics /></MainLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/channels" element={
+              <ProtectedRoute>
+                <MainLayout><Channels /></MainLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <MainLayout><Settings /></MainLayout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

@@ -1,5 +1,5 @@
 const authService = require("../services/authService");
-const emailService = require("../services/emailService"); // ✅ ADD THIS LINE
+const emailService = require("../services/emailService");
 const {
   verifyToken,
   blacklistToken,
