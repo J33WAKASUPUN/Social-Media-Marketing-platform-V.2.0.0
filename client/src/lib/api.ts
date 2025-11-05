@@ -1,67 +1,93 @@
-import axios, { AxiosError } from 'axios';
-import { toast } from 'sonner';
+import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { ApiError, ApiResponse } from '@/types';
 
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // ✅ IMPORTANT: Enable credentials
+  withCredentials: true,
 });
 
 // Request interceptor - Add auth token
 api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
+  (config: InternalAxiosRequestConfig) => {
+    const token = localStorage.getItem('token');
+    if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    return Promise.reject(error);
+  }
 );
 
-// Response interceptor - Handle errors
+// Response interceptor - Handle errors globally
 api.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError<{ message: string; success: boolean }>) => {
-    const originalRequest = error.config as any;
+  (response) => {
+    return response;
+  },
+  (error: AxiosError<ApiError>) => {
+    // Handle specific error cases
+    if (error.response) {
+      const { status, data } = error.response;
 
-    // Handle 401 Unauthorized
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (refreshToken) {
-          const { data } = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
-            refreshToken,
-          });
-
-          localStorage.setItem('accessToken', data.data.tokens.accessToken);
-          api.defaults.headers.common['Authorization'] = `Bearer ${data.data.tokens.accessToken}`;
-
-          return api(originalRequest);
-        }
-      } catch (refreshError) {
-        // Refresh failed - logout user
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
+      switch (status) {
+        case 401:
+          // Unauthorized - clear token and redirect to login
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
+          break;
+        case 403:
+          // Forbidden
+          console.error('Access forbidden:', data.message);
+          break;
+        case 404:
+          // Not found
+          console.error('Resource not found:', data.message);
+          break;
+        case 422:
+          // Validation error
+          console.error('Validation error:', data.errors);
+          break;
+        case 429:
+          // Too many requests
+          console.error('Rate limit exceeded');
+          break;
+        case 500:
+          // Server error
+          console.error('Server error:', data.message);
+          break;
+        default:
+          console.error('API Error:', data.message);
       }
+    } else if (error.request) {
+      // Network error
+      console.error('Network error - please check your connection');
     }
-
-    // Show error toast
-    const errorMessage = error.response?.data?.message || 'An error occurred';
-    toast.error(errorMessage);
 
     return Promise.reject(error);
   }
 );
+
+// Helper function to handle API errors
+export const handleApiError = (error: unknown): string => {
+  if (axios.isAxiosError(error)) {
+    const apiError = error.response?.data as ApiError;
+    if (apiError?.message) {
+      return apiError.message;
+    }
+    if (apiError?.errors && apiError.errors.length > 0) {
+      return apiError.errors.map(e => e.message).join(', ');
+    }
+  }
+  return 'An unexpected error occurred';
+};
 
 export default api;

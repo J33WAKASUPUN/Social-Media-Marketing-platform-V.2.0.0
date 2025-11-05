@@ -7,6 +7,9 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { OrganizationProvider } from "@/contexts/OrganizationContext";
+import { BrandProvider } from "@/contexts/BrandContext";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -35,66 +38,73 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => (
   </SidebarProvider>
 );
 
+// 🔧 WRAP WITH NEW PROVIDERS
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/auth/callback" element={<GoogleCallback />} />
-            
-            {/* Protected Routes */}
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <MainLayout><Dashboard /></MainLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/posts" element={
-              <ProtectedRoute>
-                <MainLayout><Posts /></MainLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/posts/new" element={
-              <ProtectedRoute>
-                <MainLayout><PostComposer /></MainLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/calendar" element={
-              <ProtectedRoute>
-                <MainLayout><Calendar /></MainLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/media" element={
-              <ProtectedRoute>
-                <MainLayout><Media /></MainLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/analytics" element={
-              <ProtectedRoute>
-                <MainLayout><Analytics /></MainLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/channels" element={
-              <ProtectedRoute>
-                <MainLayout><Channels /></MainLayout>
-              </ProtectedRoute>
-            } />
-            <Route path="/settings" element={
-              <ProtectedRoute>
-                <MainLayout><Settings /></MainLayout>
-              </ProtectedRoute>
-            } />
-            
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <OrganizationProvider>
+        <BrandProvider>
+          <NotificationProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
+                  {/* Public Routes */}
+                  <Route path="/" element={<Navigate to="/login" replace />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route path="/auth/callback" element={<GoogleCallback />} />
+                  
+                  {/* Protected Routes */}
+                  <Route path="/dashboard" element={
+                    <ProtectedRoute>
+                      <MainLayout><Dashboard /></MainLayout>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/posts" element={
+                    <ProtectedRoute>
+                      <MainLayout><Posts /></MainLayout>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/posts/new" element={
+                    <ProtectedRoute>
+                      <MainLayout><PostComposer /></MainLayout>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/calendar" element={
+                    <ProtectedRoute>
+                      <MainLayout><Calendar /></MainLayout>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/media" element={
+                    <ProtectedRoute>
+                      <MainLayout><Media /></MainLayout>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/analytics" element={
+                    <ProtectedRoute>
+                      <MainLayout><Analytics /></MainLayout>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/channels" element={
+                    <ProtectedRoute>
+                      <MainLayout><Channels /></MainLayout>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/settings" element={
+                    <ProtectedRoute>
+                      <MainLayout><Settings /></MainLayout>
+                    </ProtectedRoute>
+                  } />
+                  
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </TooltipProvider>
+          </NotificationProvider>
+        </BrandProvider>
+      </OrganizationProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
