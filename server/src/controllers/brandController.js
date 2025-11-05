@@ -1,19 +1,76 @@
 const brandService = require('../services/brandService');
+const Brand = require('../models/Brand');
 const User = require('../models/User');
 const Membership = require('../models/Membership');
 
 class BrandController {
   /**
+   * GET /api/v1/organizations/:id/brands
+   * Get all brands for an organization
+   */
+  async getOrganizationBrands(req, res, next) {
+    try {
+      const brands = await Brand.find({
+        organization: req.params.id,
+        status: 'active',
+      })
+        .populate('organization', 'name slug')
+        .sort({ createdAt: -1 });
+
+      res.json({
+        success: true,
+        data: brands,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/v1/organizations/:id/brands
+   * Create brand under organization
+   */
+  async createBrandUnderOrganization(req, res, next) {
+    try {
+      const { name, description, logo, website } = req.body;
+      const organizationId = req.params.id;
+
+      if (!name) {
+        return res.status(400).json({
+          success: false,
+          message: 'Brand name is required',
+        });
+      }
+
+      const brand = await brandService.createBrand(req.user._id, {
+        name,
+        organizationId,
+        description,
+        logo,
+        website,
+      });
+
+      res.status(201).json({
+        success: true,
+        message: 'Brand created successfully',
+        data: brand,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * POST /api/v1/brands
    */
   async createBrand(req, res, next) {
     try {
-      const { name, organizationId, description, settings } = req.body;
+      const { name, organizationId, description, settings, logo, website } = req.body;
 
       if (!name || !organizationId) {
         return res.status(400).json({
           success: false,
-          message: 'Name and organization ID are required',
+          message: 'Brand name and organization ID are required',
         });
       }
 
@@ -22,6 +79,8 @@ class BrandController {
         organizationId,
         description,
         settings,
+        logo,
+        website,
       });
 
       res.status(201).json({
@@ -261,16 +320,9 @@ class BrandController {
   async acceptInvitation(req, res, next) {
     try {
       const { token } = req.params;
-      const { name, password } = req.body;
+      const { password, name } = req.body;
 
-      if (!name || !password) {
-        return res.status(400).json({
-          success: false,
-          message: 'Name and password are required',
-        });
-      }
-
-      if (password.length < 8) {
+      if (!password || password.length < 8) {
         return res.status(400).json({
           success: false,
           message: 'Password must be at least 8 characters',
@@ -289,11 +341,10 @@ class BrandController {
         });
       }
 
-      // Update user
-      user.name = name;
+      // Set password and activate account
       user.password = password;
+      if (name) user.name = name;
       user.status = 'active';
-      user.emailVerified = true; // Auto-verify email from invitation
       user.invitationToken = undefined;
       user.invitationTokenExpires = undefined;
       await user.save();
@@ -311,10 +362,7 @@ class BrandController {
       res.json({
         success: true,
         message: 'Invitation accepted successfully',
-        data: {
-          user,
-          tokens,
-        },
+        data: { user, tokens },
       });
     } catch (error) {
       next(error);

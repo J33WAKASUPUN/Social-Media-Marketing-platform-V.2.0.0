@@ -7,7 +7,7 @@ class OrganizationService {
    * Create new organization
    */
   async createOrganization(userId, data) {
-    const { name, settings } = data;
+    const { name, description, settings } = data;
 
     // Check if organization name already exists
     const existing = await Organization.findOne({ name });
@@ -18,14 +18,17 @@ class OrganizationService {
     // Create organization
     const organization = await Organization.create({
       name,
+      description,
       owner: userId,
       settings: settings || {},
     });
 
-    // Create default brand for organization
+    // Create default brand with description
     const defaultBrand = await Brand.create({
       name: `${name} - Main`,
       organization: organization._id,
+      description: description || `Main brand for ${name}`,
+      website: '',
     });
 
     // Add owner as member with owner role
@@ -86,7 +89,7 @@ class OrganizationService {
       throw new Error('Only organization owner can update settings');
     }
 
-    const allowedUpdates = ['name', 'settings'];
+    const allowedUpdates = ['name', 'description', 'settings']; // ✅ ADD description
     Object.keys(data).forEach(key => {
       if (allowedUpdates.includes(key)) {
         organization[key] = data[key];

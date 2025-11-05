@@ -12,6 +12,11 @@ const organizationSchema = new mongoose.Schema({
     unique: true,
     lowercase: true,
   },
+  description: {
+    type: String,
+    maxlength: 500,
+    trim: true,
+  },
   owner: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

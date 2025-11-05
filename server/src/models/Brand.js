@@ -18,6 +18,11 @@ const brandSchema = new mongoose.Schema({
   logo: {
     type: String, // URL or filename
   },
+  // ADD WEBSITE FIELD
+  website: {
+    type: String,
+    trim: true,
+  },
   settings: {
     timezone: {
       type: String,
@@ -49,10 +54,38 @@ const brandSchema = new mongoose.Schema({
   deletedAt: Date,
 }, {
   timestamps: true,
+  toJSON: { virtuals: true }, // ENABLE VIRTUALS
+  toObject: { virtuals: true },
 });
 
 // Compound index for organization + name uniqueness
 brandSchema.index({ organization: 1, name: 1 }, { unique: true });
+
+// VIRTUAL FIELD: Get connected channels
+brandSchema.virtual('connectedChannels', {
+  ref: 'Channel',
+  localField: '_id',
+  foreignField: 'brand',
+  match: { connectionStatus: 'active' }, // Only active channels
+});
+
+// VIRTUAL FIELD: Get all channels (including disconnected)
+brandSchema.virtual('allChannels', {
+  ref: 'Channel',
+  localField: '_id',
+  foreignField: 'brand',
+});
+
+// Get connected platforms dynamically
+brandSchema.methods.getConnectedPlatforms = async function() {
+  const Channel = mongoose.model('Channel');
+  const channels = await Channel.find({
+    brand: this._id,
+    connectionStatus: 'active',
+  }).select('provider');
+
+  return [...new Set(channels.map(ch => ch.provider))]; // Unique platforms
+};
 
 // Soft delete
 brandSchema.methods.softDelete = function() {

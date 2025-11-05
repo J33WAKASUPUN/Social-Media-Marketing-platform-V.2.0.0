@@ -6,10 +6,11 @@ const membershipSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
+  // Make brand optional for organization-level memberships
   brand: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Brand',
-    required: true,
+    required: false,
   },
   organization: {
     type: mongoose.Schema.Types.ObjectId,
@@ -52,8 +53,9 @@ const membershipSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-// Compound index for user + brand uniqueness
-membershipSchema.index({ user: 1, brand: 1 }, { unique: true });
+// Compound index to allow organization-only memberships
+membershipSchema.index({ user: 1, organization: 1 }, { unique: true, sparse: true });
+membershipSchema.index({ user: 1, brand: 1 }, { unique: true, sparse: true });
 
 // Set default permissions based on role
 membershipSchema.pre('save', function(next) {

@@ -18,15 +18,14 @@ import { CreateBrandDialog } from "@/components/CreateBrandDialog";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { currentOrganization, organizations, loading: orgLoading } = useOrganization();
-  const { currentBrand, brands, loading: brandLoading } = useBrand();
-  
-  const [recentPosts, setRecentPosts] = useState<Post[]>([]);
+  const { currentOrganization } = useOrganization();
+  const { currentBrand } = useBrand();
+  const [posts, setPosts] = useState<Post[]>([]);
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchData = async () => {
       if (!currentBrand) {
         setLoading(false);
         return;
@@ -34,19 +33,13 @@ const Dashboard = () => {
 
       try {
         setLoading(true);
-        
-        // Fetch recent posts
-        const postsResponse = await postApi.getAll({
-          brandId: currentBrand._id,
-          limit: 5,
-        });
-        setRecentPosts(postsResponse.data);
+        const [postsRes, analyticsRes] = await Promise.all([
+          postApi.getAll(currentBrand._id, { status: 'scheduled', limit: 5 }),
+          analyticsApi.getOverview(currentBrand._id),
+        ]);
 
-        // Fetch analytics
-        const analyticsResponse = await analyticsApi.get({
-          brandId: currentBrand._id,
-        });
-        setAnalytics(analyticsResponse.data);
+        setPosts(postsRes.data);
+        setAnalytics(analyticsRes.data);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {
@@ -54,70 +47,52 @@ const Dashboard = () => {
       }
     };
 
-    fetchDashboardData();
+    fetchData();
   }, [currentBrand]);
 
-  // Show loading state while organizations are loading
-  if (orgLoading) {
+  // Show setup prompt if no organization or brand
+  if (!currentOrganization) {
     return (
-      <div className="container mx-auto p-6 space-y-6">
-        <Skeleton className="h-12 w-64" />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-32" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // Show message if no organizations
-  if (organizations.length === 0) {
-    return (
-      <div className="container mx-auto p-6">
-        <Alert>
+      <div className="flex min-h-[80vh] items-center justify-center p-6">
+        <Alert className="max-w-md">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>No Organizations Found</AlertTitle>
-          <AlertDescription className="mt-2">
-            You need to create an organization first to get started.
-          </AlertDescription>
-          <div className="mt-4">
+          <AlertTitle>Get Started</AlertTitle>
+          <AlertDescription className="mt-2 space-y-4">
+            <p>Create your first organization to start managing your social media.</p>
             <CreateOrganizationDialog />
-          </div>
+          </AlertDescription>
         </Alert>
       </div>
     );
   }
 
-  // Show message if no brands
-  if (brands.length === 0) {
+  if (!currentBrand) {
     return (
-      <div className="container mx-auto p-6">
-        <Alert>
+      <div className="flex min-h-[80vh] items-center justify-center p-6">
+        <Alert className="max-w-md">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>No Brands Found</AlertTitle>
-          <AlertDescription className="mt-2">
-            Create your first brand to start managing social media posts.
-          </AlertDescription>
-          <div className="mt-4">
+          <AlertTitle>Create a Brand</AlertTitle>
+          <AlertDescription className="mt-2 space-y-4">
+            <p>Create your first brand under {currentOrganization.name} to get started.</p>
             <CreateBrandDialog />
-          </div>
+          </AlertDescription>
         </Alert>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="space-y-6 p-6">
       <PageHeader
         title="Dashboard"
-        description={`Welcome back! Here's what's happening with ${currentBrand?.name || 'your brand'}.`}
-      >
-        <Button onClick={() => navigate("/posts/new")}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Post
-        </Button>
-      </PageHeader>
+        description={`Welcome back! Here's what's happening with ${currentBrand.name}`}
+        actions={
+          <Button onClick={() => navigate('/posts/new')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Post
+          </Button>
+        }
+      />
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -129,40 +104,39 @@ const Dashboard = () => {
           </>
         ) : (
           <>
+            {/* ✅ FIXED: Pass icon component, not JSX element */}
             <StatCard
               title="Total Posts"
               value={analytics?.totalPosts || 0}
-              description="All time"
-              icon={<Calendar className="h-4 w-4" />}
+              subtitle="All time"
+              icon={Calendar}
             />
             <StatCard
               title="Scheduled"
               value={analytics?.scheduledPosts || 0}
-              description="Waiting to publish"
-              icon={<Calendar className="h-4 w-4" />}
-              trend={{ value: 0, isPositive: true }}
+              subtitle="Waiting to publish"
+              icon={Calendar}
             />
             <StatCard
               title="Published"
               value={analytics?.publishedPosts || 0}
-              description="Successfully posted"
-              icon={<TrendingUp className="h-4 w-4" />}
+              subtitle="Successfully posted"
+              icon={TrendingUp}
             />
             <StatCard
-              title="Total Engagement"
-              value={analytics?.totalEngagement || 0}
-              description="Likes, comments, shares"
-              icon={<Users className="h-4 w-4" />}
-              trend={{ value: 0, isPositive: true }}
+              title="Failed"
+              value={analytics?.failedPosts || 0}
+              subtitle="Needs attention"
+              icon={AlertCircle}
             />
           </>
         )}
       </div>
 
-      {/* Recent Posts */}
+      {/* Upcoming Posts */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Posts</CardTitle>
+          <CardTitle>Upcoming Posts</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -171,18 +145,27 @@ const Dashboard = () => {
                 <Skeleton key={i} className="h-24" />
               ))}
             </div>
-          ) : recentPosts.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground mb-4">No posts yet</p>
-              <Button onClick={() => navigate("/posts/new")}>
+          ) : posts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Calendar className="mb-4 h-12 w-12 text-muted-foreground" />
+              <h3 className="mb-2 text-lg font-semibold">No scheduled posts</h3>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Create your first post to get started
+              </p>
+              <Button onClick={() => navigate('/posts/new')}>
                 <Plus className="mr-2 h-4 w-4" />
-                Create Your First Post
+                Create Post
               </Button>
             </div>
           ) : (
-            <div className="space-y-4">
-              {recentPosts.map((post) => (
-                <PostCard key={post._id} post={post} />
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {posts.map((post) => (
+                <PostCard
+                  key={post._id}
+                  post={post}
+                  onEdit={(id) => navigate(`/posts/edit/${id}`)}
+                  onDelete={(id) => console.log('Delete', id)}
+                />
               ))}
             </div>
           )}

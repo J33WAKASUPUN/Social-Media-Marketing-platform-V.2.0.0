@@ -14,15 +14,15 @@ export const brandApi = {
     return response.data;
   },
 
-  // Create brand
+  // Create brand (use organization route)
   create: async (organizationId: string, data: { name: string; description?: string; logo?: string; website?: string }) => {
     const response = await api.post<ApiResponse<Brand>>(`/organizations/${organizationId}/brands`, data);
     return response.data;
   },
 
-  // Update brand
+  // Update brand (use PATCH)
   update: async (brandId: string, data: Partial<Brand>) => {
-    const response = await api.put<ApiResponse<Brand>>(`/brands/${brandId}`, data);
+    const response = await api.patch<ApiResponse<Brand>>(`/brands/${brandId}`, data);
     return response.data;
   },
 

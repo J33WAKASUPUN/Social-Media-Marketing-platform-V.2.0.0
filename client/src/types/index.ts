@@ -17,6 +17,20 @@ export interface Organization {
   description?: string;
   logo?: string;
   owner: string | User;
+  settings?: {
+    timezone?: string;
+    features?: {
+      analytics?: boolean;
+      scheduling?: boolean;
+      teamCollaboration?: boolean;
+    };
+  };
+  subscription?: {
+    tier?: 'free' | 'pro' | 'enterprise';
+    status?: 'active' | 'suspended' | 'cancelled';
+    validUntil?: string;
+  };
+  status?: 'active' | 'suspended' | 'deleted';
   createdAt: string;
   updatedAt: string;
 }
@@ -28,6 +42,25 @@ export interface Brand {
   logo?: string;
   website?: string;
   organization: string | Organization;
+  connectedPlatforms?: string[];
+  channelCount?: number;
+  settings?: {
+    timezone?: string;
+    defaultPostingTime?: {
+      hour: number;
+      minute: number;
+    };
+    requireApproval?: boolean;
+    allowedPlatforms?: string[];
+  };
+  branding?: {
+    primaryColor?: string;
+    secondaryColor?: string;
+    accentColor?: string;
+  };
+  status?: 'active' | 'archived' | 'deleted';
+  role?: string;
+  permissions?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -130,14 +163,19 @@ export interface Media {
   updatedAt: string;
 }
 
-export type MemberRole = 'owner' | 'admin' | 'member';
+export type MemberRole = 'owner' | 'manager' | 'editor' | 'viewer';
 
 export interface Membership {
   _id: string;
   organization: string | Organization;
+  brand?: string | Brand;
   user: string | User;
   role: MemberRole;
+  permissions?: string[];
   invitedBy?: string | User;
+  invitedAt?: string;
+  acceptedAt?: string;
+  status?: 'pending' | 'active' | 'suspended';
   joinedAt: string;
   createdAt: string;
   updatedAt: string;

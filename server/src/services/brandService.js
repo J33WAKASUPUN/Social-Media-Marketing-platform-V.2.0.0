@@ -1,5 +1,6 @@
 const Brand = require('../models/Brand');
 const Membership = require('../models/Membership');
+const Channel = require('../models/Channel');
 const emailService = require('./emailService');
 const crypto = require('crypto');
 
@@ -8,7 +9,7 @@ class BrandService {
    * Create new brand
    */
   async createBrand(userId, data) {
-    const { name, organizationId, description, settings } = data;
+    const { name, organizationId, description, settings, logo, website } = data;
 
     // Check if brand name exists in organization
     const existing = await Brand.findOne({
@@ -25,6 +26,8 @@ class BrandService {
       name,
       organization: organizationId,
       description,
+      logo,
+      website,
       settings: settings || {},
     });
 
@@ -47,14 +50,31 @@ class BrandService {
       .populate('brand')
       .populate('organization', 'name slug');
 
-    return memberships
-      .filter(m => m.brand && m.brand.status === 'active')
-      .map(m => ({
-        ...m.brand.toObject(),
-        role: m.role,
-        permissions: m.permissions,
-        organization: m.organization,
-      }));
+    // Add connected platforms to each brand
+    const brandsWithPlatforms = await Promise.all(
+      memberships
+        .filter(m => m.brand && m.brand.status === 'active')
+        .map(async (m) => {
+          // Get connected channels for this brand
+          const channels = await Channel.find({
+            brand: m.brand._id,
+            connectionStatus: 'active',
+          }).select('provider');
+
+          const connectedPlatforms = [...new Set(channels.map(ch => ch.provider))];
+
+          return {
+            ...m.brand.toObject(),
+            role: m.role,
+            permissions: m.permissions,
+            organization: m.organization,
+            connectedPlatforms,
+            channelCount: channels.length,
+          };
+        })
+    );
+
+    return brandsWithPlatforms;
   }
 
   /**
@@ -77,10 +97,20 @@ class BrandService {
       throw new Error('Access denied');
     }
 
+    // GET CONNECTED CHANNELS
+    const channels = await Channel.find({
+      brand: brandId,
+      connectionStatus: 'active',
+    }).select('provider');
+
+    const connectedPlatforms = [...new Set(channels.map(ch => ch.provider))];
+
     return {
       ...brand.toObject(),
       role: membership.role,
       permissions: membership.permissions,
+      connectedPlatforms,
+      channelCount: channels.length,
     };
   }
 
@@ -104,7 +134,7 @@ class BrandService {
       throw new Error('Permission denied');
     }
 
-    const allowedUpdates = ['name', 'description', 'logo', 'settings', 'branding'];
+    const allowedUpdates = ['name', 'description', 'logo', 'website', 'settings', 'branding'];
     Object.keys(data).forEach(key => {
       if (allowedUpdates.includes(key)) {
         brand[key] = data[key];
@@ -202,7 +232,7 @@ class BrandService {
       // Create pending user
       user = await User.create({
         email: email.toLowerCase(),
-        name: email.split('@')[0], // Temporary name from email
+        name: email.split('@')[0],
         status: 'pending',
         invitationToken: inviteToken,
         invitationTokenExpires: inviteTokenExpires,
@@ -247,7 +277,6 @@ class BrandService {
     return membership;
   }
 
-
   /**
    * Update member role
    */
@@ -277,7 +306,7 @@ class BrandService {
     }
 
     membership.role = newRole;
-    membership.permissions = []; // Will be auto-set by pre-save hook
+    membership.permissions = [];
     await membership.save();
 
     return membership;

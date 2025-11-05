@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const organizationController = require('../controllers/organizationController');
+const brandController = require('../controllers/brandController');
 const { requireAuth } = require('../middlewares/auth');
 
 router.use(requireAuth);
@@ -12,49 +13,36 @@ router.use(requireAuth);
  *   description: Organization management
  */
 
-/**
- * @swagger
- * /api/v1/organizations:
- *   post:
- *     summary: Create a new organization
- *     tags: [Organizations]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - name
- *             properties:
- *               name:
- *                 type: string
- *                 example: My Organization
- *     responses:
- *       201:
- *         description: Organization created
- *       401:
- *         description: Unauthorized
- */
+// CREATE ORGANIZATION
 router.post('/', organizationController.createOrganization);
 
-/**
- * @swagger
- * /api/v1/organizations:
- *   get:
- *     summary: Get all user organizations
- *     tags: [Organizations]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of organizations
- */
+// GET ALL USER ORGANIZATIONS
 router.get('/', organizationController.getUserOrganizations);
 
+// UPDATE ORGANIZATION
 router.patch('/:id', organizationController.updateOrganization);
+
+// DELETE ORGANIZATION
 router.delete('/:id', organizationController.deleteOrganization);
+
+// ========== BRANDS UNDER ORGANIZATION ==========
+// GET BRANDS FOR AN ORGANIZATION
+router.get('/:id/brands', brandController.getOrganizationBrands);
+
+// CREATE BRAND UNDER ORGANIZATION
+router.post('/:id/brands', brandController.createBrandUnderOrganization);
+
+// ========== MEMBERS MANAGEMENT ==========
+// GET ORGANIZATION MEMBERS
+router.get('/:id/members', organizationController.getMembers);
+
+// INVITE MEMBER TO ORGANIZATION
+router.post('/:id/members', organizationController.inviteMember);
+
+// UPDATE MEMBER ROLE
+router.put('/:id/members/:userId', organizationController.updateMemberRole);
+
+// REMOVE MEMBER
+router.delete('/:id/members/:userId', organizationController.removeMember);
 
 module.exports = router;

@@ -1,5 +1,5 @@
 import api from '@/lib/api';
-import { ApiResponse, PaginatedResponse, Organization, Membership } from '@/types';
+import { ApiResponse, PaginatedResponse, Organization, Membership, MemberRole } from '@/types';
 
 export const organizationApi = {
   // Get all organizations for current user
@@ -20,9 +20,9 @@ export const organizationApi = {
     return response.data;
   },
 
-  // Update organization
+  // Update organization (use PATCH)
   update: async (id: string, data: Partial<Organization>) => {
-    const response = await api.put<ApiResponse<Organization>>(`/organizations/${id}`, data);
+    const response = await api.patch<ApiResponse<Organization>>(`/organizations/${id}`, data);
     return response.data;
   },
 
@@ -38,14 +38,12 @@ export const organizationApi = {
     return response.data;
   },
 
-  // Invite member
-  inviteMember: async (id: string, data: { email: string; role: 'admin' | 'member' }) => {
+  inviteMember: async (id: string, data: { email: string; role: MemberRole }) => {
     const response = await api.post<ApiResponse<Membership>>(`/organizations/${id}/members`, data);
     return response.data;
   },
 
-  // Update member role
-  updateMemberRole: async (id: string, userId: string, role: 'admin' | 'member') => {
+  updateMemberRole: async (id: string, userId: string, role: MemberRole) => {
     const response = await api.put<ApiResponse<Membership>>(
       `/organizations/${id}/members/${userId}`,
       { role }
