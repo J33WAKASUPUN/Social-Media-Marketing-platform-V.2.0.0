@@ -77,9 +77,8 @@ export default function Register() {
   };
 
   const handleGoogleSignup = () => {
-    // Redirect to backend Google OAuth endpoint
-    const googleAuthUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1'}/auth/google`;
-    window.location.href = googleAuthUrl;
+    // ✅ FIXED: Redirect to backend Google OAuth endpoint (NO /api prefix!)
+    window.location.href = 'http://localhost:5000/auth/google';
   };
 
   return (

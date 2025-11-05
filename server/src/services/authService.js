@@ -19,6 +19,7 @@ class AuthService {
       email: email.toLowerCase(),
       password,
       name,
+      provider: 'local',
     });
 
     // Generate verification token
@@ -186,6 +187,7 @@ class AuthService {
         user.googleEmail = email;
         user.googleAvatar = googleAvatar;
         user.emailVerified = true;
+        user.provider = 'google';
         await user.save();
       } else {
         // Create new user
@@ -197,6 +199,7 @@ class AuthService {
           googleAvatar,
           emailVerified: true,
           status: "active",
+          provider: 'google',
         });
       }
     } else {
@@ -257,6 +260,29 @@ class AuthService {
   }
 
   /**
+   * Change Password
+   */
+  async changePassword(userId, currentPassword, newPassword) {
+    const user = await User.findById(userId).select('+password');
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Verify current password
+    const isValid = await user.comparePassword(currentPassword);
+    if (!isValid) {
+      throw new Error('Current password is incorrect');
+    }
+
+    // Update password
+    user.password = newPassword;
+    await user.save();
+
+    return { success: true };
+  }
+
+  /**
    * Update Profile
    */
   async updateProfile(userId, data) {
@@ -282,18 +308,43 @@ class AuthService {
   }
 
   /**
+   * Delete Account
+   */
+  async deleteAccount(userId) {
+    const User = require('../models/User');
+    const Organization = require('../models/Organization');
+    const Brand = require('../models/Brand');
+    const Post = require('../models/Post');
+    const Media = require('../models/Media');
+    const Notification = require('../models/Notification');
+
+    // Delete all user's organizations (cascade will handle brands, channels, posts)
+    await Organization.deleteMany({ owner: userId });
+
+    // Delete user's notifications
+    await Notification.deleteMany({ user: userId });
+
+    // Delete user's media
+    await Media.deleteMany({ uploadedBy: userId });
+
+    // Finally delete user
+    await User.findByIdAndDelete(userId);
+
+    return { success: true };
+  }
+
+   /**
    * Upload Avatar
    */
-  async uploadAvatar(userId, filename) {
+  async uploadAvatar(userId, avatarUrl) {
     const user = await User.findById(userId);
 
     if (!user) {
-      throw new Error("User not found");
+      throw new Error('User not found');
     }
 
-    // TODO: Delete old avatar file if exists
-
-    user.avatar = filename;
+    // Update avatar URL (Cloudinary URL)
+    user.avatar = avatarUrl;
     await user.save();
 
     return user;

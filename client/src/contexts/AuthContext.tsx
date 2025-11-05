@@ -9,12 +9,16 @@ interface User {
   avatar?: string;
   avatarUrl?: string;
   emailVerified: boolean;
+  provider: 'local' | 'google';
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  setUser: React.Dispatch<React.SetStateAction<User | null>>; // ✅ ADD THIS
+  isAuthenticated: boolean;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -36,33 +40,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
-        // ✅ VERIFY TOKEN IS STILL VALID IN BACKGROUND
-        fetchCurrentUser().catch(() => {
-          // If verification fails, logout silently
-          console.warn('Token verification failed, logging out...');
-        });
       } catch (error) {
         console.error('Failed to parse stored user:', error);
         localStorage.removeItem('user');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
       }
     }
 
     setLoading(false);
   }, []);
-
-  const fetchCurrentUser = async () => {
-    try {
-      const { data } = await api.get('/auth/me');
-      const userData = data.data.user;
-      setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
-    } catch (error) {
-      console.error('Failed to fetch current user:', error);
-      // ✅ DON'T LOGOUT IMMEDIATELY - Token might just be expired
-      // Let the API interceptor handle token refresh
-      throw error;
-    }
-  };
 
   const login = async (email: string, password: string) => {
     try {
@@ -111,19 +98,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
+      localStorage.removeItem('currentOrganizationId');
+      localStorage.removeItem('currentBrandId');
       setUser(null);
       toast.success('Logged out successfully');
     }
   };
 
+  // FIXED: Only call API when updating profile fields, not when passing full user object
   const updateProfile = async (data: Partial<User>) => {
     try {
-      const response = await api.patch('/auth/profile', data);
-      const updatedUser = response.data.data.user;
-
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      toast.success('Profile updated successfully');
+      // If data contains only name/timezone, call API
+      if ('name' in data || 'timezone' in data) {
+        const response = await api.patch('/auth/profile', data);
+        const updatedUser = response.data.data.user;
+        
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        toast.success('Profile updated successfully');
+      } 
+      // If full user object is passed (from avatar upload), just update state
+      else if ('_id' in data) {
+        setUser(data as User);
+        localStorage.setItem('user', JSON.stringify(data));
+      }
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || 'Failed to update profile';
       toast.error(errorMessage);
@@ -131,8 +129,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const isAuthenticated = !!(user && localStorage.getItem('accessToken'));
+
   return (
-    <AuthContext.Provider value={{ user, loading, setUser, login, register, logout, updateProfile }}>
+    <AuthContext.Provider value={{ user, loading, isAuthenticated, setUser, login, register, logout, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

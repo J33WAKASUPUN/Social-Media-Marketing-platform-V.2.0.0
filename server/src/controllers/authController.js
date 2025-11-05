@@ -1,5 +1,6 @@
 const authService = require("../services/authService");
 const emailService = require("../services/emailService");
+const cloudinaryService = require("../services/cloudinaryService");
 const {
   verifyToken,
   blacklistToken,
@@ -158,7 +159,7 @@ class AuthController {
   /**
    * POST /api/v1/auth/upload-avatar
    */
-  async uploadAvatar(req, res, next) {
+   async uploadAvatar(req, res, next) {
     try {
       if (!req.file) {
         return res.status(400).json({
@@ -167,15 +168,67 @@ class AuthController {
         });
       }
 
+      // Upload to Cloudinary
+      const uploadResult = await cloudinaryService.uploadImage(req.file.path, {
+        folder: 'avatars',
+        public_id: `avatar-${req.user._id}`,
+        overwrite: true,
+      });
+
+      // Update user avatar
       const user = await authService.uploadAvatar(
         req.user._id,
-        req.file.filename
+        uploadResult.secure_url
       );
 
       res.json({
         success: true,
         message: "Avatar uploaded successfully",
         data: { user },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * PATCH /api/v1/auth/password
+   */
+  async changePassword(req, res, next) {
+    try {
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({
+          success: false,
+          message: "Current password and new password are required",
+        });
+      }
+
+      if (newPassword.length < 8) {
+        return res.status(400).json({
+          success: false,
+          message: "New password must be at least 8 characters",
+        });
+      }
+
+      // Only allow password change for local accounts
+      if (req.user.provider !== 'local') {
+        return res.status(400).json({
+          success: false,
+          message: "Cannot change password for OAuth accounts",
+        });
+      }
+
+      await authService.changePassword(
+        req.user._id,
+        currentPassword,
+        newPassword
+      );
+
+      res.json({
+        success: true,
+        message: "Password changed successfully",
       });
     } catch (error) {
       next(error);
@@ -312,6 +365,22 @@ class AuthController {
       res.json({
         success: true,
         message: "Verification email sent",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+   /**
+   * DELETE /api/v1/auth/account
+   */
+  async deleteAccount(req, res, next) {
+    try {
+      await authService.deleteAccount(req.user._id);
+
+      res.json({
+        success: true,
+        message: "Account deleted successfully",
       });
     } catch (error) {
       next(error);

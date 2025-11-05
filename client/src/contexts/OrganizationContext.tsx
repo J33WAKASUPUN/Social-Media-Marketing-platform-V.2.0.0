@@ -3,6 +3,7 @@ import { Organization } from '@/types';
 import { organizationApi } from '@/services/organizationApi';
 import { useToast } from '@/hooks/use-toast';
 import { handleApiError } from '@/lib/api';
+import { useAuth } from './AuthContext';
 
 interface OrganizationContextType {
   organizations: Organization[];
@@ -22,8 +23,17 @@ export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [currentOrganization, setCurrentOrganizationState] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { isAuthenticated, loading: authLoading } = useAuth();
 
   const fetchOrganizations = async () => {
+    // Don't fetch if not authenticated
+    if (!isAuthenticated) {
+      setOrganizations([]);
+      setCurrentOrganizationState(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const response = await organizationApi.getAll();
@@ -42,19 +52,27 @@ export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ childr
         setCurrentOrganizationState(response.data[0]);
       }
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: handleApiError(error),
-      });
+      // Don't show error toast on 401 (handled by interceptor)
+      if (!error.response || error.response.status !== 401) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: handleApiError(error),
+        });
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchOrganizations();
-  }, []);
+    // Only fetch when auth is done loading and user is authenticated
+    if (!authLoading && isAuthenticated) {
+      fetchOrganizations();
+    } else if (!authLoading && !isAuthenticated) {
+      setLoading(false);
+    }
+  }, [isAuthenticated, authLoading]);
 
   const setCurrentOrganization = (org: Organization | null) => {
     setCurrentOrganizationState(org);

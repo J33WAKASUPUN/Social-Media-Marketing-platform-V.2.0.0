@@ -3,6 +3,7 @@ import { Notification } from '@/types';
 import { notificationApi } from '@/services/notificationApi';
 import { useToast } from '@/hooks/use-toast';
 import { handleApiError } from '@/lib/api';
+import { useAuth } from './AuthContext';
 
 interface NotificationContextType {
   notifications: Notification[];
@@ -21,8 +22,15 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { isAuthenticated, loading: authLoading } = useAuth();
 
   const fetchNotifications = async () => {
+    if (!isAuthenticated) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+
     try {
       setLoading(true);
       const [notificationsResponse, countResponse] = await Promise.all([
@@ -32,6 +40,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       setNotifications(notificationsResponse.data);
       setUnreadCount(countResponse.data.count);
     } catch (error) {
+      // Silently fail - don't show error toast for notifications
       console.error('Failed to fetch notifications:', error);
     } finally {
       setLoading(false);
@@ -39,12 +48,14 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   };
 
   useEffect(() => {
-    fetchNotifications();
-    
-    // Poll for new notifications every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    if (!authLoading && isAuthenticated) {
+      fetchNotifications();
+      
+      // Poll for new notifications every 30 seconds
+      const interval = setInterval(fetchNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, authLoading]);
 
   const markAsRead = async (id: string) => {
     try {

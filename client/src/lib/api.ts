@@ -1,7 +1,7 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { ApiError, ApiResponse } from '@/types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -14,7 +14,8 @@ export const api = axios.create({
 // Request interceptor - Add auth token
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('token');
+    // ✅ USE accessToken instead of token
+    const token = localStorage.getItem('accessToken');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -37,10 +38,19 @@ api.interceptors.response.use(
 
       switch (status) {
         case 401:
-          // Unauthorized - clear token and redirect to login
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          if (window.location.pathname !== '/login') {
+          // ✅ Only logout if not on auth pages and not during initial load
+          const publicPaths = ['/login', '/register', '/auth/callback', '/'];
+          const currentPath = window.location.pathname;
+          
+          if (!publicPaths.includes(currentPath)) {
+            // Don't show toast - just silently redirect
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('user');
+            localStorage.removeItem('currentOrganizationId');
+            localStorage.removeItem('currentBrandId');
+            
+            // Use window.location for hard redirect
             window.location.href = '/login';
           }
           break;
@@ -49,8 +59,7 @@ api.interceptors.response.use(
           console.error('Access forbidden:', data.message);
           break;
         case 404:
-          // Not found
-          console.error('Resource not found:', data.message);
+          // Not found - silently ignore
           break;
         case 422:
           // Validation error

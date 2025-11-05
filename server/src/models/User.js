@@ -13,14 +13,19 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: function() {
-      // Password required only if not pending and not Google OAuth user
-      return this.status !== 'pending' && !this.googleId;
+      return this.provider === 'local' && this.status !== 'pending';
     },
   },
   name: {
     type: String,
     required: true,
     trim: true,
+  },
+  
+  provider: {
+    type: String,
+    enum: ['local', 'google'],
+    default: 'local',
   },
   
   // Profile
@@ -85,7 +90,6 @@ const userSchema = new mongoose.Schema({
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
   
-  // Skip hashing if password is not set (pending user)
   if (!this.password) return next();
   
   try {
@@ -99,7 +103,6 @@ userSchema.pre('save', async function(next) {
 
 // Compare password method
 userSchema.methods.comparePassword = async function(candidatePassword) {
-  // Return false if no password is set
   if (!this.password) return false;
   return await bcrypt.compare(candidatePassword, this.password);
 };

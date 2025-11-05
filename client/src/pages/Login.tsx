@@ -1,21 +1,27 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const location = useLocation();
+  const { user, login, loading: authLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user && !authLoading) {
+      const from = (location.state as any)?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
+    }
+  }, [user, authLoading, navigate, location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,13 +29,8 @@ export default function Login() {
 
     try {
       await login(email, password);
-      
-      // Store remember me preference
-      if (rememberMe) {
-        localStorage.setItem('rememberMe', 'true');
-      }
-      
-      navigate("/dashboard");
+      const from = (location.state as any)?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
     } catch (error: any) {
       // Error toast already shown by AuthContext
       console.error('Login error:', error);
@@ -39,10 +40,21 @@ export default function Login() {
   };
 
   const handleGoogleLogin = () => {
-    // Redirect to backend Google OAuth endpoint
-    const googleAuthUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1'}/auth/google`;
-    window.location.href = googleAuthUrl;
+    // ✅ FIXED: Redirect to backend Google OAuth endpoint (NO /api prefix!)
+    window.location.href = 'http://localhost:5000/auth/google';
   };
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-soft">
+        <div className="text-center">
+          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <p className="mt-4 text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-soft p-4">
@@ -78,29 +90,16 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={8}
                 disabled={loading}
                 autoComplete="current-password"
               />
             </div>
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="remember" 
-                  checked={rememberMe}
-                  onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                  disabled={loading}
-                />
-                <label
-                  htmlFor="remember"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Remember me
-                </label>
+              <div className="text-sm">
+                <Link to="/forgot-password" className="text-primary hover:underline">
+                  Forgot password?
+                </Link>
               </div>
-              <Link to="/forgot-password" className="text-sm text-primary hover:underline">
-                Forgot password?
-              </Link>
             </div>
             <Button 
               type="submit" 
@@ -122,7 +121,7 @@ export default function Login() {
           <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <Separator />
+                <div className="w-full border-t"></div>
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-card px-2 text-muted-foreground">Or</span>
