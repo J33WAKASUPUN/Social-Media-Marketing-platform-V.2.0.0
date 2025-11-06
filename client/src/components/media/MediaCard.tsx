@@ -53,17 +53,43 @@ export function MediaCard({
               className="absolute left-2 top-2 z-10"
               onClick={(e) => e.stopPropagation()}
             />
+            
+            {/* ✅ RENDER MEDIA */}
             {media.type === 'image' ? (
               <img
-                src={media.metadata?.thumbnailUrl || media.s3Url}
+                src={media.s3Url}
                 alt={media.altText || media.filename}
                 className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
               />
+            ) : media.type === 'video' ? (
+              <div className="relative h-full w-full bg-black">
+                {/* ✅ Video element with first frame */}
+                <video
+                  src={`${media.s3Url}#t=0.1`}
+                  className="h-full w-full object-cover"
+                  muted
+                  playsInline
+                  preload="metadata"
+                />
+                {/* ✅ Play icon overlay */}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                  <div className="rounded-full bg-white/90 p-3 transition-transform group-hover:scale-110">
+                    <Play className="h-8 w-8 text-black" fill="black" />
+                  </div>
+                </div>
+                {/* ✅ Duration badge (if available) */}
+                {media.metadata?.duration && (
+                  <div className="absolute bottom-2 right-2 rounded bg-black/70 px-2 py-1 text-xs text-white">
+                    {Math.floor(media.metadata.duration / 60)}:{String(Math.floor(media.metadata.duration % 60)).padStart(2, '0')}
+                  </div>
+                )}
+              </div>
             ) : (
-              <div className="flex h-full items-center justify-center bg-black/80">
-                <Play className="h-12 w-12 text-white" />
+              <div className="flex h-full items-center justify-center bg-muted">
+                <p className="text-sm text-muted-foreground">Unsupported format</p>
               </div>
             )}
+
             <div className="absolute bottom-2 right-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -107,7 +133,7 @@ export function MediaCard({
                 Used {media.usageCount}x
               </Badge>
             </div>
-            {media.tags.length > 0 && (
+            {media.tags && media.tags.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
                 {media.tags.slice(0, 2).map((tag) => (
                   <Badge key={tag} variant="secondary" className="text-xs">
@@ -127,7 +153,7 @@ export function MediaCard({
     );
   }
 
-  // List view
+  // ✅ LIST VIEW
   return (
     <Card className={cn("transition-all", isSelected && "ring-2 ring-primary")}>
       <div className="flex items-center gap-4 p-4">
@@ -138,13 +164,26 @@ export function MediaCard({
         >
           {media.type === 'image' ? (
             <img
-              src={media.metadata?.thumbnailUrl || media.s3Url}
+              src={media.s3Url}
               alt={media.altText || media.filename}
               className="h-full w-full object-cover"
             />
+          ) : media.type === 'video' ? (
+            <div className="relative h-full w-full bg-black">
+              <video
+                src={`${media.s3Url}#t=0.1`}
+                className="h-full w-full object-cover"
+                muted
+                playsInline
+                preload="metadata"
+              />
+              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                <Play className="h-4 w-4 text-white" fill="white" />
+              </div>
+            </div>
           ) : (
-            <div className="flex h-full items-center justify-center bg-black/30">
-              <Play className="h-6 w-6 text-white" />
+            <div className="flex h-full items-center justify-center bg-muted">
+              <p className="text-xs text-muted-foreground">?</p>
             </div>
           )}
         </div>
@@ -154,6 +193,9 @@ export function MediaCard({
             {formatFileSize(media.size)} • {media.metadata?.width && media.metadata?.height
               ? `${media.metadata.width}×${media.metadata.height}`
               : media.type}
+            {media.metadata?.duration && (
+              <> • {Math.floor(media.metadata.duration / 60)}:{String(Math.floor(media.metadata.duration % 60)).padStart(2, '0')}</>
+            )}
           </p>
         </div>
         <div className="text-right">

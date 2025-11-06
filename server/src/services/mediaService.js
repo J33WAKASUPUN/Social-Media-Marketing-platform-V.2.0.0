@@ -321,11 +321,11 @@ class MediaService {
   }
 
   /**
-   * Get storage statistics (Enhanced)
+   * Get storage statistics
    */
   async getStorageStats(brandId) {
     try {
-      // FIXED AGGREGATION
+      // Get stats by type
       const stats = await Media.aggregate([
         {
           $match: {
@@ -342,7 +342,7 @@ class MediaService {
         },
       ]);
 
-      // CALCULATE TOTAL SEPARATELY
+      // Get total stats
       const totalStats = await Media.aggregate([
         {
           $match: {
@@ -359,23 +359,28 @@ class MediaService {
         },
       ]);
 
-      // FORMAT RESPONSE WITH HUMAN-READABLE SIZES
+      // Get unique folder count
+      const folderCount = await Media.distinct("folder", {
+        brand: brandId,
+        status: "active",
+      });
+
+      // Format response
       const byType = stats.map((stat) => ({
         type: stat._id,
         count: stat.count,
         totalSize: stat.totalSize,
-        totalSizeFormatted: this.formatBytes(stat.totalSize),
+        sizeFormatted: this.formatBytes(stat.totalSize),
       }));
 
       const total = totalStats[0] || { totalCount: 0, totalSize: 0 };
 
       return {
+        totalFiles: total.totalCount,
+        totalSize: total.totalSize,
+        totalSizeFormatted: this.formatBytes(total.totalSize),
+        folderCount: folderCount.length,
         byType,
-        total: {
-          totalCount: total.totalCount,
-          totalSize: total.totalSize,
-          totalSizeFormatted: this.formatBytes(total.totalSize),
-        },
       };
     } catch (error) {
       logger.error("❌ Get storage stats failed", {

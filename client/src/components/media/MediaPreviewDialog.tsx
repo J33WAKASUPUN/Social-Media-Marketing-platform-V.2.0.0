@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Download, Edit, Trash2 } from 'lucide-react';
+import { Download, Edit, Trash2, Play } from 'lucide-react';
 import type { Media } from '@/types';
 
 interface MediaPreviewDialogProps {
@@ -40,7 +40,7 @@ export function MediaPreviewDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Preview */}
+          {/* ✅ PREVIEW */}
           <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted">
             {media.type === 'image' ? (
               <img
@@ -48,16 +48,29 @@ export function MediaPreviewDialog({
                 alt={media.altText || media.filename}
                 className="h-full w-full object-contain"
               />
-            ) : (
+            ) : media.type === 'video' ? (
               <video
+                key={media.s3Url}
                 src={media.s3Url}
                 controls
+                controlsList="nodownload"
                 className="h-full w-full"
-              />
+                preload="metadata"
+              >
+                <source src={media.s3Url} type={media.mimeType || 'video/mp4'} />
+                Your browser does not support the video tag.
+              </video>
+            ) : (
+              <div className="flex h-full items-center justify-center bg-muted">
+                <Play className="h-12 w-12 text-muted-foreground" />
+                <p className="mt-4 text-sm text-muted-foreground">
+                  Unsupported media type
+                </p>
+              </div>
             )}
           </div>
 
-          {/* Details */}
+          {/* ✅ DETAILS */}
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <Label className="text-muted-foreground">File Name</Label>
@@ -71,6 +84,15 @@ export function MediaPreviewDialog({
               <div>
                 <Label className="text-muted-foreground">Dimensions</Label>
                 <p className="text-sm">{media.metadata.width} × {media.metadata.height}</p>
+              </div>
+            )}
+            {media.metadata?.duration && (
+              <div>
+                <Label className="text-muted-foreground">Duration</Label>
+                <p className="text-sm">
+                  {Math.floor(media.metadata.duration / 60)}:
+                  {String(Math.floor(media.metadata.duration % 60)).padStart(2, '0')}
+                </p>
               </div>
             )}
             <div>

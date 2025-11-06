@@ -60,9 +60,12 @@ const mediaSchema = new mongoose.Schema({
     type: {
       width: Number,
       height: Number,
-      duration: Number, // for videos (in seconds)
-      aspectRatio: String, // e.g., "16:9", "4:3", "1:1"
-      format: String, // e.g., "jpeg", "png", "mp4"
+      duration: Number,
+      format: String,
+      codec: String,
+      bitrate: Number,
+      fps: Number,
+      aspectRatio: String,
       thumbnailUrl: String,
     },
     default: {},
