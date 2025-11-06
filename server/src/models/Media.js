@@ -57,11 +57,15 @@ const mediaSchema = new mongoose.Schema({
   
   // Media Metadata
   metadata: {
-    width: Number,
-    height: Number,
-    duration: Number, // for videos (in seconds)
-    aspectRatio: String, // e.g., "16:9", "4:3", "1:1"
-    format: String, // e.g., "jpeg", "png", "mp4"
+    type: {
+      width: Number,
+      height: Number,
+      duration: Number, // for videos (in seconds)
+      aspectRatio: String, // e.g., "16:9", "4:3", "1:1"
+      format: String, // e.g., "jpeg", "png", "mp4"
+      thumbnailUrl: String,
+    },
+    default: {},
   },
 
   // Organization

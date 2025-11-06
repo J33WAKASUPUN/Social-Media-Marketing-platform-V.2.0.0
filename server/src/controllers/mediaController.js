@@ -343,6 +343,151 @@ class MediaController {
     }
   }
 
+   /**
+   * POST /api/v1/media/folders
+   * Create new folder
+   */
+  async createFolder(req, res, next) {
+    try {
+      const { brandId, name, description, color } = req.body;
+
+      if (!brandId || !name) {
+        return res.status(400).json({
+          success: false,
+          message: 'Brand ID and folder name are required',
+        });
+      }
+
+      const folder = await mediaService.createFolder(brandId, req.user._id, {
+        name,
+        description,
+        color,
+      });
+
+      res.status(201).json({
+        success: true,
+        message: 'Folder created successfully',
+        data: folder,
+      });
+    } catch (error) {
+      logger.error('❌ Create folder failed', { error: error.message });
+      next(error);
+    }
+  }
+
+  /**
+   * PATCH /api/v1/media/folders/:folderName
+   * Rename folder
+   */
+  async renameFolder(req, res, next) {
+    try {
+      const { brandId, newName } = req.body;
+      const oldName = decodeURIComponent(req.params.folderName);
+
+      if (!brandId || !newName) {
+        return res.status(400).json({
+          success: false,
+          message: 'Brand ID and new folder name are required',
+        });
+      }
+
+      const result = await mediaService.renameFolder(brandId, oldName, newName);
+
+      res.json({
+        success: true,
+        message: `Folder renamed successfully (${result.updated} files updated)`,
+        data: result,
+      });
+    } catch (error) {
+      logger.error('❌ Rename folder failed', { error: error.message });
+      next(error);
+    }
+  }
+
+  /**
+   * DELETE /api/v1/media/folders/:folderName
+   * Delete folder (moves media to uncategorized)
+   */
+  async deleteFolder(req, res, next) {
+    try {
+      const { brandId } = req.query;
+      const folderName = decodeURIComponent(req.params.folderName);
+
+      if (!brandId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Brand ID is required',
+        });
+      }
+
+      const result = await mediaService.deleteFolder(brandId, folderName);
+
+      res.json({
+        success: true,
+        message: `Folder deleted (${result.moved} files moved to uncategorized)`,
+        data: result,
+      });
+    } catch (error) {
+      logger.error('❌ Delete folder failed', { error: error.message });
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/v1/media/move-to-folder
+   * Move media to folder
+   */
+  async moveToFolder(req, res, next) {
+    try {
+      const { brandId, mediaIds, targetFolder } = req.body;
+
+      if (!brandId || !mediaIds || !targetFolder) {
+        return res.status(400).json({
+          success: false,
+          message: 'Brand ID, media IDs, and target folder are required',
+        });
+      }
+
+      const result = await mediaService.moveToFolder(mediaIds, brandId, targetFolder);
+
+      res.json({
+        success: true,
+        message: `${result.moved} file(s) moved to ${targetFolder}`,
+        data: result,
+      });
+    } catch (error) {
+      logger.error('❌ Move to folder failed', { error: error.message });
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/v1/media/folders-metadata
+   * Get folders with metadata
+   */
+  async getFoldersMetadata(req, res, next) {
+    try {
+      const { brandId } = req.query;
+
+      if (!brandId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Brand ID is required',
+        });
+      }
+
+      const folders = await mediaService.getFoldersWithMetadata(brandId);
+
+      res.json({
+        success: true,
+        data: folders,
+      });
+    } catch (error) {
+      logger.error('❌ Get folders metadata failed', { error: error.message });
+      next(error);
+    }
+  }
+
   /**
    * Helper: Format bytes to human-readable
    */

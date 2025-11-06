@@ -1,11 +1,11 @@
 import { Badge } from "@/components/ui/badge";
-import { Linkedin, Facebook, Twitter, Instagram, Youtube, Music2 } from "lucide-react";
+import { Linkedin, Facebook, Twitter, Instagram, Youtube } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PlatformBadgeProps {
-  platform: string;
+  platform: 'linkedin' | 'facebook' | 'twitter' | 'instagram' | 'youtube';
+  size?: 'sm' | 'md' | 'lg';
   showIcon?: boolean;
-  size?: "sm" | "md" | "lg";
 }
 
 const platformConfig = {
@@ -34,32 +34,35 @@ const platformConfig = {
     icon: Youtube,
     color: "bg-[#FF0000] hover:bg-[#FF0000]/90",
   },
-  tiktok: {
-    name: "TikTok",
-    icon: Music2,
-    color: "bg-[#000000] hover:bg-[#000000]/90",
-  },
 };
 
-export const PlatformBadge = ({ platform, showIcon = true, size = "md" }: PlatformBadgeProps) => {
-  const config = platformConfig[platform as keyof typeof platformConfig];
-
-  if (!config) return null;
-
+export function PlatformBadge({ platform, size = 'md', showIcon = true }: PlatformBadgeProps) {
+  const config = platformConfig[platform];
   const Icon = config.icon;
+
+  const sizeClasses = {
+    sm: "h-6 px-2 text-xs",
+    md: "h-8 px-3 text-sm",
+    lg: "h-10 px-4 text-base",
+  };
+
+  const iconSizes = {
+    sm: "h-3 w-3",
+    md: "h-4 w-4",
+    lg: "h-5 w-5",
+  };
 
   return (
     <Badge
       className={cn(
-        "text-white border-0",
+        "text-white font-medium",
         config.color,
-        size === "sm" && "px-2 py-0.5 text-xs",
-        size === "md" && "px-3 py-1",
-        size === "lg" && "px-4 py-1.5 text-base"
+        sizeClasses[size],
+        "flex items-center gap-1.5"
       )}
     >
-      {showIcon && <Icon className={cn("mr-1", size === "sm" ? "h-3 w-3" : "h-4 w-4")} />}
+      {showIcon && <Icon className={iconSizes[size]} />}
       {config.name}
     </Badge>
   );
-};
+}

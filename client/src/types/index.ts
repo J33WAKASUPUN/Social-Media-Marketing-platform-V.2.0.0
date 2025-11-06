@@ -69,17 +69,29 @@ export type PlatformType = 'facebook' | 'instagram' | 'twitter' | 'linkedin' | '
 
 export interface Channel {
   _id: string;
-  platform: PlatformType;
-  platformAccountId: string;
-  platformUsername: string;
-  platformName: string;
-  profilePicture?: string;
-  accessToken: string;
-  refreshToken?: string;
-  tokenExpiry?: string;
-  isActive: boolean;
-  brand: string | Brand;
-  metadata?: Record<string, any>;
+  brand: string;
+  provider: PlatformType;
+  platformUserId: string;
+  platformUsername?: string;
+  displayName: string;
+  avatar?: string;
+  profileUrl?: string;
+  connectionStatus: 'active' | 'expired' | 'error' | 'disconnected';
+  lastHealthCheck?: string;
+  healthCheckError?: string;
+  providerData?: {
+    // Platform-specific data
+    followers?: number;
+    subscribers?: number;
+    videoCount?: number;
+    viewCount?: number;
+    mediaCount?: number;
+    tasks?: string[];
+    category?: string;
+    [key: string]: any;
+  };
+  connectedAt: string;
+  connectedBy: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -145,22 +157,57 @@ export interface PublishedPost {
 
 export interface Media {
   _id: string;
+  brand: string;
+  uploadedBy: string | User;
   filename: string;
   originalName: string;
   mimeType: string;
   size: number;
-  url: string;
-  thumbnailUrl?: string;
-  width?: number;
-  height?: number;
-  duration?: number;
-  provider: 'cloudinary' | 's3';
-  providerId?: string;
-  brand?: string | Brand;
-  organization: string | Organization;
-  uploadedBy: string | User;
+  s3Key: string;
+  s3Url: string;
+  s3Bucket: string;
+  type: 'image' | 'video' | 'document';
+  metadata: {
+    width?: number;
+    height?: number;
+    duration?: number;
+    aspectRatio?: string;
+    format?: string;
+    thumbnailUrl?: string;
+  };
+  folder: string;
+  tags: string[];
+  altText?: string;
+  caption?: string;
+  usageCount: number;
+  lastUsedAt?: string;
+  usedInPosts: string[];
+  status: 'active' | 'archived' | 'deleted';
   createdAt: string;
   updatedAt: string;
+}
+
+export interface MediaStats {
+  totalFiles: number;
+  totalSize: number;
+  totalSizeFormatted: string;
+  byType: Array<{
+    type: string;
+    count: number;
+    size: number;
+    sizeFormatted: string;
+  }>;
+}
+
+export interface FolderMetadata {
+  name: string;
+  description?: string;
+  color?: string;
+  mediaCount: number;
+  totalSize: number;
+  totalSizeFormatted: string;
+  lastUpdated: string;
+  createdAt?: string;
 }
 
 export type MemberRole = 'owner' | 'manager' | 'editor' | 'viewer';
@@ -236,8 +283,8 @@ export interface PaginatedResponse<T> {
   pagination: {
     page: number;
     limit: number;
-    total: number;
-    pages: number;
+    totalPages: number;
+    totalItems: number;
   };
 }
 

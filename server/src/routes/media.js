@@ -21,6 +21,10 @@ router.post('/upload', uploadMedia, mediaController.uploadMedia);
  */
 router.get('/', mediaController.getMediaLibrary);
 
+// ============================================
+// STATIC ROUTES MUST COME BEFORE DYNAMIC ROUTES (:id)
+// ============================================
+
 /**
  * @route   GET /api/v1/media/for-post
  * @desc    Get media formatted for post composer
@@ -36,6 +40,14 @@ router.get('/for-post', mediaController.getMediaForPostComposer);
 router.get('/folders', mediaController.getFolders);
 
 /**
+ * @route   GET /api/v1/media/folders-metadata
+ * @desc    Get folders with metadata
+ * @access  Private
+ * MUST BE BEFORE /:id ROUTE
+ */
+router.get('/folders-metadata', mediaController.getFoldersMetadata);
+
+/**
  * @route   GET /api/v1/media/tags
  * @desc    Get popular tags
  * @access  Private
@@ -48,6 +60,10 @@ router.get('/tags', mediaController.getPopularTags);
  * @access  Private
  */
 router.get('/stats', mediaController.getStorageStats);
+
+// ============================================
+// DYNAMIC ROUTES COME AFTER STATIC ROUTES
+// ============================================
 
 /**
  * @route   GET /api/v1/media/:id
@@ -69,6 +85,38 @@ router.patch('/:id', mediaController.updateMedia);
  * @access  Private
  */
 router.delete('/:id', mediaController.deleteMedia);
+
+// ============================================
+// FOLDER MANAGEMENT ROUTES
+// ============================================
+
+/**
+ * @route   POST /api/v1/media/folders
+ * @desc    Create new folder
+ * @access  Private
+ */
+router.post('/folders', mediaController.createFolder);
+
+/**
+ * @route   PATCH /api/v1/media/folders/:folderName
+ * @desc    Rename folder
+ * @access  Private
+ */
+router.patch('/folders/:folderName', mediaController.renameFolder);
+
+/**
+ * @route   DELETE /api/v1/media/folders/:folderName
+ * @desc    Delete folder
+ * @access  Private
+ */
+router.delete('/folders/:folderName', mediaController.deleteFolder);
+
+/**
+ * @route   POST /api/v1/media/move-to-folder
+ * @desc    Move media to folder
+ * @access  Private
+ */
+router.post('/move-to-folder', mediaController.moveToFolder);
 
 /**
  * @route   POST /api/v1/media/bulk-delete

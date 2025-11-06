@@ -1,4 +1,5 @@
 const Media = require("../models/Media");
+const Folder = require("../models/Folder");
 const s3Service = require("./s3Service");
 const sharp = require("sharp");
 const logger = require("../utils/logger");
@@ -438,6 +439,216 @@ class MediaService {
     const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
     const divisor = gcd(width, height);
     return `${width / divisor}:${height / divisor}`;
+  }
+
+   /**
+   * Create new folder
+   */
+  async createFolder(brandId, userId, folderData) {
+    try {
+      const { name, description, color } = folderData;
+
+      // Check if folder already exists
+      const existing = await Folder.findOne({
+        brand: brandId,
+        name,
+      });
+
+      if (existing) {
+        throw new Error('Folder already exists');
+      }
+
+      // Create folder in database
+      const folder = await Folder.create({
+        brand: brandId,
+        name,
+        description,
+        color: color || '#667eea',
+        createdBy: userId,
+      });
+
+      logger.info('✅ Folder created', { brandId, name, folderId: folder._id });
+
+      return {
+        name: folder.name,
+        description: folder.description,
+        color: folder.color,
+        mediaCount: 0,
+        totalSize: 0,
+        totalSizeFormatted: '0 B',
+        createdAt: folder.createdAt,
+      };
+    } catch (error) {
+      logger.error('❌ Create folder failed', { error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Rename folder (UPDATED)
+   */
+  async renameFolder(brandId, oldName, newName) {
+    try {
+      // Update folder in Folder collection
+      await Folder.updateOne(
+        {
+          brand: brandId,
+          name: oldName,
+        },
+        {
+          $set: { name: newName },
+        }
+      );
+
+      // Update all media with old folder name
+      const result = await Media.updateMany(
+        {
+          brand: brandId,
+          folder: oldName,
+          status: 'active',
+        },
+        {
+          $set: { folder: newName },
+        }
+      );
+
+      logger.info('✅ Folder renamed', { oldName, newName, updated: result.modifiedCount });
+
+      return { success: true, updated: result.modifiedCount };
+    } catch (error) {
+      logger.error('❌ Rename folder failed', { error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Delete folder (UPDATED)
+   */
+  async deleteFolder(brandId, folderName) {
+    try {
+      // Delete from Folder collection
+      await Folder.deleteOne({
+        brand: brandId,
+        name: folderName,
+      });
+
+      // Move all media to uncategorized
+      const result = await Media.updateMany(
+        {
+          brand: brandId,
+          folder: folderName,
+          status: 'active',
+        },
+        {
+          $set: { folder: 'uncategorized' },
+        }
+      );
+
+      logger.info('✅ Folder deleted', { folderName, moved: result.modifiedCount });
+
+      return { success: true, moved: result.modifiedCount };
+    } catch (error) {
+      logger.error('❌ Delete folder failed', { error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Move media to folder
+   */
+  async moveToFolder(mediaIds, brandId, targetFolder) {
+    try {
+      const result = await Media.updateMany(
+        {
+          _id: { $in: mediaIds },
+          brand: brandId,
+          status: 'active',
+        },
+        {
+          $set: { folder: targetFolder },
+        }
+      );
+
+      logger.info('✅ Media moved to folder', {
+        folder: targetFolder,
+        count: result.modifiedCount,
+      });
+
+      return { success: true, moved: result.modifiedCount };
+    } catch (error) {
+      logger.error('❌ Move to folder failed', { error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Get folders with metadata (UPDATED)
+   */
+  async getFoldersWithMetadata(brandId) {
+    try {
+      // Get all folders from Folder collection
+      const allFolders = await Folder.find({
+        brand: brandId,
+      }).sort({ name: 1 });
+
+      // Get media counts per folder
+      const mediaCounts = await Media.aggregate([
+        {
+          $match: {
+            brand: new mongoose.Types.ObjectId(brandId),
+            status: 'active',
+          },
+        },
+        {
+          $group: {
+            _id: '$folder',
+            mediaCount: { $sum: 1 },
+            totalSize: { $sum: '$size' },
+            lastUpdated: { $max: '$updatedAt' },
+          },
+        },
+      ]);
+
+      // Create a map for quick lookup
+      const countsMap = {};
+      mediaCounts.forEach(item => {
+        countsMap[item._id || 'uncategorized'] = {
+          mediaCount: item.mediaCount,
+          totalSize: item.totalSize,
+          lastUpdated: item.lastUpdated,
+        };
+      });
+
+      // Merge folder data with media counts
+      const result = allFolders.map(folder => ({
+        name: folder.name,
+        description: folder.description,
+        color: folder.color,
+        mediaCount: countsMap[folder.name]?.mediaCount || 0,
+        totalSize: countsMap[folder.name]?.totalSize || 0,
+        totalSizeFormatted: this.formatBytes(countsMap[folder.name]?.totalSize || 0),
+        lastUpdated: countsMap[folder.name]?.lastUpdated || folder.createdAt,
+        createdAt: folder.createdAt,
+      }));
+
+      // Add uncategorized if it has media
+      if (countsMap['uncategorized']) {
+        result.unshift({
+          name: 'uncategorized',
+          description: 'Default folder for uncategorized media',
+          color: '#6b7280',
+          mediaCount: countsMap['uncategorized'].mediaCount,
+          totalSize: countsMap['uncategorized'].totalSize,
+          totalSizeFormatted: this.formatBytes(countsMap['uncategorized'].totalSize),
+          lastUpdated: countsMap['uncategorized'].lastUpdated,
+        });
+      }
+
+      return result;
+    } catch (error) {
+      logger.error('❌ Get folders with metadata failed', { error: error.message });
+      throw error;
+    }
   }
 }
 

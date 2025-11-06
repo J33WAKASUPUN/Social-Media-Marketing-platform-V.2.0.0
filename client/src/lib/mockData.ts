@@ -53,24 +53,6 @@ export const mockChannels = [
     connected: false,
     connectedDate: "",
   },
-  {
-    id: "6",
-    platform: "pinterest",
-    name: "Pinterest",
-    username: "",
-    followers: "",
-    connected: false,
-    connectedDate: "",
-  },
-  {
-    id: "7",
-    platform: "tiktok",
-    name: "TikTok",
-    username: "",
-    followers: "",
-    connected: false,
-    connectedDate: "",
-  },
 ];
 
 export type PostStatus = "scheduled" | "published" | "draft" | "failed";
