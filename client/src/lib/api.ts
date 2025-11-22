@@ -38,8 +38,8 @@ api.interceptors.response.use(
 
       switch (status) {
         case 401:
-          // ✅ Only logout if not on auth pages and not during initial load
-          const publicPaths = ['/login', '/register', '/auth/callback', '/'];
+          // Only logout if not on auth pages and not during initial load
+          { const publicPaths = ['/login', '/register', '/auth/callback', '/'];
           const currentPath = window.location.pathname;
           
           if (!publicPaths.includes(currentPath)) {
@@ -53,7 +53,7 @@ api.interceptors.response.use(
             // Use window.location for hard redirect
             window.location.href = '/login';
           }
-          break;
+          break; }
         case 403:
           // Forbidden
           console.error('Access forbidden:', data.message);

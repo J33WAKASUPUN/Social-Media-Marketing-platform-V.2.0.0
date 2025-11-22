@@ -68,7 +68,8 @@ export interface Brand {
 export type PlatformType = 'facebook' | 'instagram' | 'twitter' | 'linkedin' | 'youtube';
 
 export interface Channel {
-  _id: string;
+  _id?: string;
+  id: string;
   brand: string;
   provider: PlatformType;
   platformUserId: string;
