@@ -173,12 +173,18 @@ class FacebookProvider extends BaseProvider {
       const accessToken = this.getAccessToken();
       const config = this.getConfig();
 
+      // Combine content and hashtags
+      let fullContent = post.content;
+      if (post.hashtags && post.hashtags.length > 0) {
+        fullContent += `\n\n${post.hashtags.join(' ')}`;
+      }
+
       if (!post.mediaUrls || post.mediaUrls.length === 0) {
         this.log("Publishing text-only post");
         const response = await axios.post(
           `${config.apiUrl}/${this.channel.platformUserId}/feed`,
           {
-            message: post.content,
+            message: fullContent,
             access_token: accessToken,
           }
         );
@@ -197,7 +203,7 @@ class FacebookProvider extends BaseProvider {
 
       if (hasVideo && post.mediaUrls.length === 1) {
         return await this.publishVideo(
-          post.content,
+          fullContent,
           post.mediaUrls[0],
           accessToken,
           config
@@ -206,7 +212,7 @@ class FacebookProvider extends BaseProvider {
 
       if (post.mediaUrls.length === 1) {
         return await this.publishPhoto(
-          post.content,
+          fullContent,
           post.mediaUrls[0],
           accessToken,
           config
@@ -215,7 +221,7 @@ class FacebookProvider extends BaseProvider {
 
       this.log(`Publishing ${post.mediaUrls.length} images`);
       return await this.publishMultiplePhotos(
-        post.content,
+        fullContent,
         post.mediaUrls,
         accessToken,
         config

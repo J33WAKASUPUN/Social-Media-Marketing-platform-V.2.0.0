@@ -354,11 +354,14 @@ class LinkedInProvider extends BaseProvider {
       const accessToken = this.getAccessToken();
       const config = this.getConfig();
 
-      // ADD TIMESTAMP TO PREVENT DUPLICATES
-      const timestamp = new Date().toISOString();
-      const uniqueContent = post.content.includes('[Scheduled]') 
-        ? post.content 
-        : `${post.content}\n\n[Scheduled: ${timestamp}]`;
+      // Combine content and hashtags
+      let fullContent = post.content;
+      if (post.hashtags && post.hashtags.length > 0) {
+        fullContent += `\n\n${post.hashtags.join(' ')}`;
+      }
+
+      // The user requested to remove the [Scheduled: ...] timestamp.
+      const uniqueContent = fullContent;
 
       const payload = {
         author: `urn:li:person:${this.channel.platformUserId}`,

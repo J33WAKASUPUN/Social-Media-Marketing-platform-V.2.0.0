@@ -24,6 +24,10 @@ const postSchema = new mongoose.Schema({
     required: true,
     maxlength: 10000,
   },
+  hashtags: {
+    type: [String],
+    default: [],
+  },
   mediaUrls: [{
     type: String,
   }],

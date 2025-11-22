@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBrand } from '@/contexts/BrandContext';
 import { PageHeader } from '@/components/PageHeader';
@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Save, Send, CalendarClock, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { Save, Send, CalendarClock, AlertTriangle, CheckCircle2, XCircle, Smile, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { channelApi } from '@/services/channelApi';
 import { mediaApi } from '@/services/mediaApi';
@@ -17,12 +17,17 @@ import { postApi, type CreatePostData } from '@/services/postApi';
 import { getPlatformCapability, type Platform } from '@/lib/platformCapabilities';
 import type { Channel, Media } from '@/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import EmojiPicker, { EmojiStyle } from 'emoji-picker-react';
 
 // Components
 import { PlatformSelector } from '@/components/post/PlatformSelector';
 import { MediaSelector } from '@/components/post/MediaSelector';
 import { PlatformWarnings } from '@/components/post/PlatformWarnings';
 import { PlatformBadge } from '@/components/PlatformBadge';
+import { MediaLibrary } from '@/components/media/MediaLibrary';
 
 export default function PostComposer() {
   const navigate = useNavigate();
@@ -30,6 +35,8 @@ export default function PostComposer() {
 
   // State
   const [content, setContent] = useState('');
+  const [hashtags, setHashtags] = useState<string[]>([]);
+  const [hashtagInput, setHashtagInput] = useState('');
   const [selectedChannel, setSelectedChannel] = useState<string>('');
   const [publishType, setPublishType] = useState<'now' | 'schedule'>('now');
   const [scheduledDate, setScheduledDate] = useState('');
@@ -44,6 +51,7 @@ export default function PostComposer() {
   // UI
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   const [showWarnings, setShowWarnings] = useState(false);
+  const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Load channels
   useEffect(() => {
@@ -106,6 +114,36 @@ export default function PostComposer() {
 
   // --- Handlers ---
   const handleChannelSelect = (channelId: string) => setSelectedChannel(channelId);
+
+  const handleEmojiClick = (emojiObject: { emoji: string }) => {
+    const textarea = contentTextareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newContent = content.substring(0, start) + emojiObject.emoji + content.substring(end);
+      setContent(newContent);
+      // Move cursor after the inserted emoji
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + emojiObject.emoji.length;
+        textarea.focus();
+      }, 0);
+    }
+  };
+
+  const handleHashtagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && hashtagInput.trim() !== '') {
+      e.preventDefault();
+      const newTag = hashtagInput.trim().startsWith('#') ? hashtagInput.trim() : `#${hashtagInput.trim()}`;
+      if (!hashtags.includes(newTag)) {
+        setHashtags([...hashtags, newTag]);
+      }
+      setHashtagInput('');
+    }
+  };
+
+  const removeHashtag = (tagToRemove: string) => {
+    setHashtags(hashtags.filter(tag => tag !== tagToRemove));
+  };
   
   const openMediaLibrary = async () => {
     try {
@@ -114,7 +152,7 @@ export default function PostComposer() {
         type: allowedMediaTypes.length === 1 ? allowedMediaTypes[0] as 'image' | 'video' : undefined,
         limit: 50,
       });
-      setLibraryMedia(response.data.media);
+      setLibraryMedia(response.data);
       setShowMediaLibrary(true);
     } catch (error: any) {
       toast.error('Failed to load media library');
@@ -155,7 +193,7 @@ export default function PostComposer() {
       }
       const allMediaIds = [...selectedLibraryMedia, ...uploadedMediaIds];
       const postData: CreatePostData = {
-        brandId: currentBrand._id, content, mediaLibraryIds: allMediaIds, schedules: [],
+        brandId: currentBrand._id, content, hashtags, mediaLibraryIds: allMediaIds, schedules: [],
       };
       await postApi.create(postData);
       toast.success('Post saved as draft');
@@ -167,51 +205,116 @@ export default function PostComposer() {
     }
   };
 
-  const handlePublish = async () => {
-    if (!currentBrand) return;
-    if (!selectedChannel) { toast.error('Please select a platform'); return; }
-    if (!content.trim()) { toast.error('Please enter some content'); return; }
-    if (publishType === 'schedule' && !scheduledDate) { toast.error('Please select a date and time'); return; }
+const handlePublish = async () => {
+  if (!currentBrand) return;
+  if (!selectedChannel) { toast.error('Please select a platform'); return; }
+  if (!content.trim()) { toast.error('Please enter some content'); return; }
+  if (publishType === 'schedule' && !scheduledDate) { toast.error('Please select a date and time'); return; }
 
-    try {
-      setLoading(true);
-      let uploadedMediaIds: string[] = [];
-      if (uploadedFiles.length > 0) {
-        const uploadResponse = await mediaApi.upload(uploadedFiles, {
-          brandId: currentBrand._id, folder: 'posts',
-        });
-        uploadedMediaIds = uploadResponse.data.map((m: Media) => m._id);
-      }
-      const allMediaIds = [...selectedLibraryMedia, ...uploadedMediaIds];
-      const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel)!;
-      const schedules = [{
-        channelId: channel._id || (channel as any).id,
-        provider: channel.provider,
-        scheduledFor: publishType === 'now' ? new Date().toISOString() : new Date(scheduledDate).toISOString(),
-      }];
-      const postData: CreatePostData = {
-        brandId: currentBrand._id, content, mediaLibraryIds: allMediaIds, schedules, settings: { notifyOnPublish: true },
-      };
-      await postApi.create(postData);
-      toast.success(publishType === 'now' ? 'Post is being published!' : 'Post scheduled successfully!');
-      navigate('/posts');
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Publishing failed');
-    } finally {
-      setLoading(false);
+  try {
+    setLoading(true);
+    
+    // Upload files first if any
+    let uploadedMediaIds: string[] = [];
+    if (uploadedFiles.length > 0) {
+      const uploadResponse = await mediaApi.upload(uploadedFiles, {
+        brandId: currentBrand._id, 
+        folder: 'posts',
+      });
+      uploadedMediaIds = uploadResponse.data.map((m: Media) => m._id);
     }
-  };
+    
+    const allMediaIds = [...selectedLibraryMedia, ...uploadedMediaIds];
+    const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel)!;
+    
+    // Calculate scheduledFor correctly
+    let scheduledFor: string;
+    
+    if (publishType === 'now') {
+      // For immediate publishing, use current time + 10 seconds buffer
+      const now = new Date();
+      scheduledFor = new Date(now.getTime() + 10 * 1000).toISOString();
+      
+      console.log('📅 Publishing now:', {
+        clientTime: now.toISOString(),
+        scheduledFor,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
+    } else {
+      // For scheduled posts, use the selected date/time
+      scheduledFor = new Date(scheduledDate).toISOString();
+      
+      console.log('📅 Scheduling for later:', {
+        clientTime: new Date().toISOString(),
+        scheduledFor,
+        userInput: scheduledDate,
+      });
+    }
+    
+    // Use "channel" instead of "channelId"
+    const schedules = [{
+      channel: channel._id || (channel as any).id,
+      provider: channel.provider,
+      scheduledFor,
+    }];
+    
+    const postData: CreatePostData = {
+      brandId: currentBrand._id, 
+      content,
+      hashtags,
+      mediaLibraryIds: allMediaIds, 
+      schedules, 
+      settings: { notifyOnPublish: true },
+    };
+    
+    console.log('📤 Sending post data:', postData);
+    
+    await postApi.create(postData);
+    
+    toast.success(
+      publishType === 'now' 
+        ? 'Post is being published!' 
+        : 'Post scheduled successfully!'
+    );
+    
+    navigate('/posts');
+  } catch (error: any) {
+    console.error('❌ Publishing failed:', error);
+    toast.error(error.response?.data?.message || 'Publishing failed');
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Determine the exact media type filter for the selected platform
+  const mediaTypeFilter = useMemo<'all' | 'image' | 'video'>(() => {
+    if (!selectedPlatform) return 'all';
+    
+    const cap = getPlatformCapability(selectedPlatform);
+    
+    // If platform supports both, show all
+    if (cap.supports.images && cap.supports.videos) return 'all';
+    
+    // If platform supports only videos (YouTube)
+    if (cap.supports.videos && !cap.supports.images) return 'video';
+    
+    // If platform supports only images
+    if (cap.supports.images && !cap.supports.videos) return 'image';
+    
+    // Default to all
+    return 'all';
+  }, [selectedPlatform]);
 
   if (!currentBrand) return <div>Select a brand</div>;
 
   return (
     <div className="min-h-screen bg-gray-50/30 p-4 md:p-6">
-      {/* ✅ FIXED MAX WIDTH: Prevents container from exploding on large screens */}
+      {/* Prevents container from exploding on large screens */}
       <div className="mx-auto max-w-6xl space-y-6">
         
         <PageHeader title="Create Post" description="Compose and schedule your social media post" />
 
-        {/* ✅ FIXED LAYOUT: CSS Grid forces the sidebar to respect width */}
+        {/* CSS Grid forces the sidebar to respect width */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           {/* LEFT COLUMN: Main Composer (Takes up 8/12 columns on Large screens) */}
@@ -239,6 +342,7 @@ export default function PostComposer() {
                   <Label className="text-sm font-medium text-gray-700">Content</Label>
                   <div className="relative">
                     <Textarea
+                      ref={contentTextareaRef}
                       placeholder={selectedPlatform ? `Write for ${selectedPlatform}...` : "What do you want to share?"}
                       className="min-h-[200px] resize-none text-base p-4 border-gray-200 focus-visible:ring-violet-500"
                       value={content}
@@ -247,6 +351,19 @@ export default function PostComposer() {
                       disabled={loading}
                     />
                     <div className="absolute bottom-3 right-3 flex items-center gap-2 bg-white/90 px-2 py-1 rounded text-xs text-gray-500 border shadow-sm">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full">
+                            <Smile className="h-4 w-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 border-0">
+                          <EmojiPicker
+                            emojiStyle={EmojiStyle.NATIVE}
+                            onEmojiClick={handleEmojiClick}
+                          />
+                        </PopoverContent>
+                      </Popover>
                       <span className={content.length > maxChars * 0.9 ? 'text-red-500 font-bold' : ''}>
                         {content.length}
                       </span>
@@ -254,6 +371,28 @@ export default function PostComposer() {
                       <span>{maxChars}</span>
                     </div>
                   </div>
+                </div>
+
+                {/* HASHTAGS */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">Hashtags</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {hashtags.map((tag, index) => (
+                      <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                        {tag}
+                        <button onClick={() => removeHashtag(tag)} className="rounded-full hover:bg-gray-300">
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                  <Input
+                    placeholder="Type a hashtag and press Enter..."
+                    value={hashtagInput}
+                    onChange={(e) => setHashtagInput(e.target.value)}
+                    onKeyDown={handleHashtagKeyDown}
+                    disabled={loading}
+                  />
                 </div>
 
                 {/* 3. MEDIA */}
@@ -499,42 +638,28 @@ export default function PostComposer() {
 
       {/* Media Library Dialog */}
       <Dialog open={showMediaLibrary} onOpenChange={setShowMediaLibrary}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle>Select Media from Library</DialogTitle>
-          </DialogHeader>
-          <ScrollArea className="h-[500px]">
-            <div className="grid grid-cols-4 gap-4 p-4">
-              {libraryMedia.length === 0 ? (
-                <div className="col-span-4 text-center py-8 text-muted-foreground">
-                  No media found in library
-                </div>
-              ) : (
-                libraryMedia.map(m => (
-                  <div
-                    key={m._id}
-                    className={`relative aspect-square cursor-pointer rounded-lg border-2 overflow-hidden transition-all ${
-                      selectedLibraryMedia.includes(m._id) ? 'border-violet-600 ring-2 ring-violet-200' : 'border-transparent'
-                    }`}
-                    onClick={() => handleLibraryMediaSelect(m._id)}
-                  >
-                    {m.type === 'image' ? (
-                      <img src={m.s3Url} alt={m.altText || m.filename} className="h-full w-full object-cover" />
-                    ) : (
-                      <video src={`${m.s3Url}#t=0.1`} className="h-full w-full object-cover" muted />
-                    )}
-                    {selectedLibraryMedia.includes(m._id) && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-violet-900/20">
-                        <div className="rounded-full bg-violet-600 p-2 shadow-lg">
-                          <CheckCircle2 className="h-6 w-6 text-white" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))
+            <DialogTitle>
+              Select Media from Library
+              {selectedPlatform && (
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  ({selectedPlatform === 'youtube' ? 'Videos only' : 
+                    mediaTypeFilter === 'video' ? 'Videos only' :
+                    mediaTypeFilter === 'image' ? 'Images only' : 'All media'})
+                </span>
               )}
-            </div>
-          </ScrollArea>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            <MediaLibrary
+              brandId={currentBrand._id}
+              isDialogMode={true}
+              initialSelectedIds={selectedLibraryMedia}
+              onSelectionChange={setSelectedLibraryMedia}
+              initialMediaTypeFilter={mediaTypeFilter} // ✅ NEW: Pass the filter
+            />
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowMediaLibrary(false)}>
               Cancel

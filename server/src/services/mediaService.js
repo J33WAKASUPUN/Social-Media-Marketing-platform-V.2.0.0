@@ -112,8 +112,7 @@ class MediaService {
           .populate("uploadedBy", "name email avatar")
           .sort(sort)
           .skip(skip)
-          .limit(limit)
-          .lean(),
+          .limit(limit),
         Media.countDocuments(query),
       ]);
 

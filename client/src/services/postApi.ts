@@ -8,7 +8,7 @@ export interface CreatePostData {
   mediaUrls?: string[];
   mediaLibraryIds?: string[]; // Use media from library
   schedules: Array<{
-    channelId: string;
+    channel: string;
     provider: string;
     scheduledFor: string; // ISO 8601 UTC format
   }>;

@@ -24,8 +24,8 @@ class YouTubeProvider extends BaseProvider {
       scopes: (
         process.env.YOUTUBE_SCOPES ||
         "https://www.googleapis.com/auth/youtube.upload," +
-          "https://www.googleapis.com/auth/youtube," +
-          "https://www.googleapis.com/auth/youtube.readonly"
+        "https://www.googleapis.com/auth/youtube," +
+        "https://www.googleapis.com/auth/youtube.readonly"
       ).split(","),
 
       // Settings
@@ -244,7 +244,12 @@ class YouTubeProvider extends BaseProvider {
 
       const videoUrl = post.mediaUrls[0];
       const title = post.title || post.content.substring(0, 100);
-      const description = post.content;
+      
+      // Combine content and hashtags for the description
+      let description = post.content;
+      if (post.hashtags && post.hashtags.length > 0) {
+        description += `\n\n${post.hashtags.join(' ')}`;
+      }
 
       // CHECK IF USER WANTS TO PUBLISH AS SHORT
       const isShort =

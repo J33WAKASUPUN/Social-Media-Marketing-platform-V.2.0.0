@@ -289,17 +289,23 @@ class TwitterProvider extends BaseProvider {
       // Check rate limit
       await this.checkRateLimit();
 
+      // Combine content and hashtags
+      let fullContent = post.content;
+      if (post.hashtags && post.hashtags.length > 0) {
+        fullContent += `\n\n${post.hashtags.join(' ')}`;
+      }
+
       // Validate content length (280 characters)
-      if (post.content.length > 280) {
-        throw new Error(`Tweet exceeds 280 character limit (${post.content.length} chars)`);
+      if (fullContent.length > 280) {
+        throw new Error(`Tweet exceeds 280 character limit (${fullContent.length} chars)`);
       }
 
       const payload = {
-        text: post.content,
+        text: fullContent,
       };
 
       this.log("Publishing tweet", {
-        textLength: post.content.length,
+        textLength: fullContent.length,
         hasMedia: !!post.mediaUrls?.length,
       });
 
@@ -326,7 +332,7 @@ class TwitterProvider extends BaseProvider {
         platformPostId: tweet.id,
         platformUrl: `https://twitter.com/${this.channel.platformUsername}/status/${tweet.id}`,
         provider: "twitter",
-        content: post.content,
+        content: fullContent,
         mediaUrls: post.mediaUrls || [],
         mediaType: "none", // Free tier doesn't support media upload via API v2
       };

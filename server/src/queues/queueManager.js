@@ -50,23 +50,12 @@ class QueueManager {
    */
   async addPublishJob(postId, scheduleId, scheduledFor, priority = 'normal') {
     try {
-      const now = Date.now();
-      const scheduledTime = new Date(scheduledFor).getTime();
-      const delay = Math.max(0, scheduledTime - now);
-      
-      // VALIDATE DELAY
-      if (delay === 0) {
-        logger.warn('⚠️ Schedule time is in the past or now, publishing immediately', {
-          scheduledFor: new Date(scheduledFor).toISOString(),
-          currentTime: new Date(now).toISOString(),
-        });
-      }
-      
-      const priorityValue = {
-        high: 1,
-        normal: 2,
-        low: 3,
-      }[priority] || 2;
+      const scheduledDate = new Date(scheduledFor);
+      const now = new Date();
+      const delay = Math.max(0, scheduledDate.getTime() - now.getTime());
+
+      // ✅ FIX: If delay is less than 10 seconds, publish immediately with high priority
+      const jobPriority = delay < 10000 ? 1 : (priority === 'high' ? 2 : 3);
 
       const job = await this.publishQueue.add(
         {
@@ -75,38 +64,30 @@ class QueueManager {
           scheduledFor,
         },
         {
-          jobId: `${postId}_${scheduleId}`,
           delay,
-          priority: priorityValue,
+          priority: jobPriority, // ✅ Lower number = higher priority
           attempts: 3,
           backoff: {
             type: 'exponential',
-            delay: 60000, // 1 minute
+            delay: 5000,
           },
-          removeOnComplete: false,
+          removeOnComplete: true,
           removeOnFail: false,
         }
       );
 
-      // IMPROVED LOGGING
-      const delayMinutes = Math.round(delay / 1000 / 60);
-      const delaySeconds = Math.round(delay / 1000);
-      
-      logger.info('📅 Publish job queued', {
+      logger.info('📤 Publish job added to queue', {
         jobId: job.id,
-        postId, 
+        postId,
         scheduleId,
-        scheduledFor: new Date(scheduledFor).toISOString(),
-        currentTime: new Date(now).toISOString(),
-        delay: delayMinutes > 0 
-          ? `${delayMinutes} minutes (${delaySeconds}s)` 
-          : `${delaySeconds} seconds`,
-        willPublishAt: new Date(now + delay).toISOString(),
+        scheduledFor,
+        delay: `${Math.round(delay / 1000)}s`,
+        priority: jobPriority,
       });
 
-      return job.id;
-    } catch (error) { 
-      logger.error('Failed to queue publish job:', error);
+      return job;
+    } catch (error) {
+      logger.error('❌ Failed to add publish job', { error: error.message });
       throw error;
     }
   }

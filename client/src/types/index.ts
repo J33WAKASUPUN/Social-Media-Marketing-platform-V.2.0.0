@@ -125,6 +125,7 @@ export interface Post {
   scheduledFor?: string;
   publishedAt?: string;
   content: PostContent;
+  hashtags?: string[];
   platformSpecificContent?: PlatformSpecificContent[];
   selectedChannels: (string | Channel)[];
   media?: (string | Media)[];

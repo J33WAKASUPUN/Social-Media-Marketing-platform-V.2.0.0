@@ -35,7 +35,7 @@ const Dashboard = () => {
         setLoading(true);
         const [postsRes, analyticsRes] = await Promise.all([
           postApi.getAll(currentBrand._id, { status: 'scheduled', limit: 5 }),
-          analyticsApi.getOverview(currentBrand._id),
+          analyticsApi.get({ brandId: currentBrand._id }),
         ]);
 
         setPosts(postsRes.data);

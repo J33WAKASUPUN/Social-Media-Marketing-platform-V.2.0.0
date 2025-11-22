@@ -331,8 +331,14 @@ class InstagramProvider extends BaseProvider {
       const accessToken = this.getAccessToken();
       const config = this.getConfig();
 
+      // Combine content and hashtags
+      let fullContent = post.content;
+      if (post.hashtags && post.hashtags.length > 0) {
+        fullContent += `\n\n${post.hashtags.join(' ')}`;
+      }
+
       // Validate caption
-      if (!post.content || post.content.length > 2200) {
+      if (!fullContent || fullContent.length > 2200) {
         throw new Error("Instagram caption must be 1-2200 characters");
       }
 
@@ -348,14 +354,14 @@ class InstagramProvider extends BaseProvider {
         // Single image or video
         if (hasVideo) {
           return await this.publishVideo(
-            post.content,
+            fullContent,
             post.mediaUrls[0],
             accessToken,
             config
           );
         } else {
           return await this.publishPhoto(
-            post.content,
+            fullContent,
             post.mediaUrls[0],
             accessToken,
             config
@@ -367,7 +373,7 @@ class InstagramProvider extends BaseProvider {
           throw new Error("Instagram carousels support max 10 items");
         }
         return await this.publishCarousel(
-          post.content,
+          fullContent,
           post.mediaUrls,
           accessToken,
           config

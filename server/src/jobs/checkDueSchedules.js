@@ -14,7 +14,7 @@ class ScheduleChecker {
   start() {
     // Run every minute
     this.cronJob = cron.schedule('* * * * *', async () => {
-      logger.info('⏰ Schedule checker running...'); // ✅ KEEP THIS LOG
+      logger.info('⏰ Schedule checker running...');
       await this.checkDueSchedules();
     });
 
@@ -36,11 +36,11 @@ class ScheduleChecker {
    */
   async checkDueSchedules() {
     try {
-      // ✅ USE UTC TIME EXPLICITLY
+      // USE UTC TIME EXPLICITLY
       const now = new Date();
       const nowUTC = new Date(now.toISOString());
 
-      // ✅ LOG CURRENT TIME IN MULTIPLE FORMATS
+      // LOG CURRENT TIME IN MULTIPLE FORMATS
       logger.info('🕐 Current time check', {
         serverLocalTime: now.toLocaleString('en-US'),
         utcTime: nowUTC.toISOString(),

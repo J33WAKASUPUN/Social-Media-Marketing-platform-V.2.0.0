@@ -10,7 +10,7 @@ class PostService {
    * Create new post
    */
   async createPost(userId, data) {
-    const { brandId, title, content, mediaUrls, mediaLibraryIds, schedules, settings } = data;
+    const { brandId, title, content, hashtags, mediaUrls, mediaLibraryIds, schedules, settings } = data;
 
     // Check user access
     const membership = await Membership.findOne({
@@ -19,95 +19,57 @@ class PostService {
     });
 
     if (!membership || !membership.hasPermission('create_posts')) {
-      throw new Error('Access denied');
+      throw new Error('Permission denied');
     }
 
     // HANDLE MEDIA FROM LIBRARY
     let finalMediaUrls = mediaUrls || [];
     
     if (mediaLibraryIds && mediaLibraryIds.length > 0) {
-      logger.info('📚 Using media from library', {
-        count: mediaLibraryIds.length,
-        mediaIds: mediaLibraryIds,
-      });
-
-      // Fetch media from library
-      const mediaItems = await Media.find({
-        _id: { $in: mediaLibraryIds },
-        brand: brandId,
-        status: 'active',
-      });
-
-      if (mediaItems.length !== mediaLibraryIds.length) {
-        throw new Error('Some media items not found or inactive');
-      }
-
-      // Extract S3 URLs
-      const libraryUrls = mediaItems.map(m => m.s3Url);
-      finalMediaUrls = [...finalMediaUrls, ...libraryUrls];
-
-      logger.info('✅ Media from library loaded', {
-        libraryUrls: libraryUrls.length,
-        totalUrls: finalMediaUrls.length,
-      });
+      console.log('📚 Using media from library', { mediaLibraryIds });
+      const mediaItems = await Media.find({ _id: { $in: mediaLibraryIds } });
+      finalMediaUrls = [...finalMediaUrls, ...mediaItems.map(m => m.s3Url)];
+      console.log('✅ Media from library loaded', { count: mediaItems.length });
     }
 
-    // ENHANCED SCHEDULE VALIDATION WITH TIMEZONE LOGGING
     if (schedules && schedules.length > 0) {
       const now = new Date();
-      const nowUTC = new Date(now.toISOString());
-      
-      // Get brand timezone (if set)
-      const Brand = require('../models/Brand');
-      const brand = await Brand.findById(brandId);
-      const brandTimezone = brand?.settings?.timezone || 'UTC';
       
       logger.info('🕐 Timezone info', {
-        serverTime: nowUTC.toISOString(),
-        brandTimezone,
+        serverTime: now.toISOString(),
+        serverLocalTime: now.toLocaleString(),
+        serverTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
 
       for (const schedule of schedules) {
-        const scheduledTime = new Date(schedule.scheduledFor);
+        const scheduledDate = new Date(schedule.scheduledFor);
         
-        if (isNaN(scheduledTime.getTime())) {
-          throw new Error(`Invalid scheduledFor date: ${schedule.scheduledFor}`);
+        // Allow posts scheduled within the last 5 minutes (for "Publish Now")
+        const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+        
+        logger.info('📅 Schedule validation', {
+          scheduledFor: scheduledDate.toISOString(),
+          now: now.toISOString(),
+          fiveMinutesAgo: fiveMinutesAgo.toISOString(),
+          isValid: scheduledDate >= fiveMinutesAgo,
+        });
+
+        if (scheduledDate < fiveMinutesAgo) {
+          throw new Error(
+            `scheduledFor must be in the future or within the last 5 minutes (got: ${schedule.scheduledFor})`
+          );
         }
 
-        if (scheduledTime <= nowUTC) {
-          throw new Error(`scheduledFor must be in the future (got: ${scheduledTime.toISOString()})`);
+        // Validate channel exists
+        const channel = await Channel.findById(schedule.channel);
+        if (!channel) {
+          throw new Error(`Channel ${schedule.channel} not found`);
         }
 
-        const oneYearFromNow = new Date(nowUTC);
-        oneYearFromNow.setFullYear(nowUTC.getFullYear() + 1);
-        
-        if (scheduledTime > oneYearFromNow) {
-          throw new Error('Cannot schedule posts more than 1 year in advance');
+        if (channel.connectionStatus !== 'active') {
+          throw new Error(`Channel ${channel.displayName} is not active`);
         }
       }
-
-      const channelIds = schedules.map(s => s.channelId);
-      const channels = await Channel.find({
-        _id: { $in: channelIds },
-        brand: brandId,
-      });
-
-      if (channels.length !== channelIds.length) {
-        throw new Error('Invalid channels');
-      }
-
-      // Build schedule objects
-      const scheduleObjects = schedules.map(s => {
-        const channel = channels.find(c => c._id.toString() === s.channelId);
-        return {
-          channel: channel._id,
-          provider: channel.provider,
-          scheduledFor: new Date(s.scheduledFor),
-          status: 'pending',
-        };
-      });
-
-      data.schedules = scheduleObjects;
     }
 
     // Determine post status
@@ -119,7 +81,8 @@ class PostService {
       createdBy: userId,
       title,
       content,
-      mediaUrls: finalMediaUrls, // USE COMBINED URLS
+      hashtags: hashtags || [],
+      mediaUrls: finalMediaUrls,
       mediaType: this.detectMediaType(finalMediaUrls),
       schedules: data.schedules || [],
       status,
@@ -128,71 +91,39 @@ class PostService {
 
     // MARK LIBRARY MEDIA AS USED
     if (mediaLibraryIds && mediaLibraryIds.length > 0) {
-      await Promise.all(
-        mediaLibraryIds.map(async (mediaId) => {
-          const media = await Media.findById(mediaId);
-          if (media) {
-            await media.markAsUsed(post._id);
-            logger.info('📊 Media usage tracked', {
-              mediaId,
-              postId: post._id,
-              usageCount: media.usageCount + 1,
-            });
-          }
-        })
+      await Media.updateMany(
+        { _id: { $in: mediaLibraryIds } },
+        {
+          $inc: { usageCount: 1 },
+          $set: { lastUsedAt: new Date() },
+          $addToSet: { usedInPosts: post._id },
+        }
       );
     }
 
-    // Queue scheduled posts
-    if (post.schedules && post.schedules.length > 0) {
+    // ✅ QUEUE PUBLISHING JOBS
+    if (schedules && schedules.length > 0) {
+      const queueManager = require('../queues/queueManager');
+      
       for (const schedule of post.schedules) {
-        const jobId = await queueManager.addPublishJob(
-          post._id.toString(),
-          schedule._id.toString(),
-          schedule.scheduledFor
-        );
+        const scheduledDate = new Date(schedule.scheduledFor);
+        const delay = Math.max(0, scheduledDate.getTime() - Date.now());
 
-        schedule.jobId = jobId;
-        
-        // ✅ ENHANCED LOGGING WITH LOCAL TIME
-        const Brand = require('../models/Brand');
-        const brand = await Brand.findById(brandId);
-        const brandTimezone = brand?.settings?.timezone || 'UTC';
-        
-        const localScheduledTime = schedule.scheduledFor.toLocaleString('en-US', {
-          timeZone: brandTimezone,
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: true
-        });
-        
-        logger.info('📅 Post scheduled', {
+        logger.info('📤 Queueing publish job', {
           postId: post._id,
           scheduleId: schedule._id,
-          scheduledForUTC: schedule.scheduledFor.toISOString(),
-          scheduledForLocal: localScheduledTime,
-          timezone: brandTimezone,
-          provider: schedule.provider,
-          delay: Math.round((new Date(schedule.scheduledFor) - new Date()) / 1000 / 60) + ' minutes',
+          scheduledFor: schedule.scheduledFor,
+          delay: `${Math.round(delay / 1000)}s`,
         });
+
+        await queueManager.addPublishJob(
+          post._id.toString(),
+          schedule._id.toString(),
+          schedule.scheduledFor,
+          delay === 0 ? 'high' : 'normal' // High priority for immediate posts
+        );
       }
-
-      await post.save();
     }
-
-    logger.info('📝 Post created', {
-      postId: post._id,
-      brandId,
-      status,
-      schedulesCount: post.schedules.length,
-      createdAtUTC: post.createdAt.toISOString(),
-      mediaFromLibrary: mediaLibraryIds?.length || 0,
-      totalMediaUrls: finalMediaUrls.length,
-    });
 
     return post;
   }
@@ -253,7 +184,7 @@ class PostService {
     }
 
     // Update allowed fields
-    const allowedUpdates = ['title', 'content', 'mediaUrls', 'settings'];
+    const allowedUpdates = ['title', 'content', 'hashtags', 'mediaUrls', 'settings'];
     Object.keys(data).forEach(key => {
       if (allowedUpdates.includes(key)) {
         post[key] = data[key];
