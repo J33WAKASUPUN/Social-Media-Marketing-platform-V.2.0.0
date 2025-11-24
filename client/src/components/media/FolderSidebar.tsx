@@ -80,37 +80,34 @@ export function FolderSidebar({
               </div>
             ) : (
               folders.map((folder) => (
-                <button
-                  key={folder.name}
-                  className={cn(
-                    "w-full flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent",
-                    selectedFolder === folder.name && "bg-accent"
-                  )}
-                  onClick={() => onSelectFolder(folder.name)}
-                >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="h-3 w-3 rounded-full"
-                      style={{ backgroundColor: folder.color || "#667eea" }}
-                    />
-                    <Folder className="h-4 w-4 text-muted-foreground" />
-                    <div className="text-left">
-                      <p className="font-medium">{folder.name}</p>
-                      {folder.description && (
-                        <p className="text-xs text-muted-foreground truncate">
-                          {folder.description}
-                        </p>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        {folder.totalSizeFormatted}
-                      </p>
-                    </div>
-                  </div>
-                  <Badge variant="secondary" className="text-xs">
-                    {folder.mediaCount}
-                  </Badge>
-                </button>
-              ))
+  <button
+    key={folder.name}
+    className={cn(
+      "w-full flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent",
+      selectedFolder === folder.name && "bg-accent" // Exact match
+    )}
+    onClick={() => onSelectFolder(folder.name)} // Pass exact name
+  >
+    <div className="flex items-center gap-2">
+      <Folder
+        className="h-4 w-4"
+        style={{ color: folder.name === 'Default' ? '#6b7280' : '#8b5cf6' }}
+      />
+      <span>
+        {folder.name}
+        {folder.name === 'Default' && (
+          <Badge variant="outline" className="ml-2 text-xs">
+            Default
+          </Badge>
+        )}
+      </span>
+    </div>
+    <div className="flex flex-col items-end">
+      <span className="text-xs font-medium">{folder.mediaCount}</span>
+      <span className="text-xs text-muted-foreground">{folder.totalSizeFormatted}</span>
+    </div>
+  </button>
+))
             )}
           </div>
         </ScrollArea>

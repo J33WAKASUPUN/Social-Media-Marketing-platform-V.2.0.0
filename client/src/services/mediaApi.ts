@@ -1,3 +1,4 @@
+// filepath: e:\React Projects\Social-Media-Marketing-platform-V.2.0.1\Social-Media-Marketing-platform-V.2.0.1\client\src\services\mediaApi.ts
 import api from '@/lib/api';
 import { ApiResponse, PaginatedResponse, Media } from '@/types';
 
@@ -33,6 +34,17 @@ export interface MediaStats {
   }>;
 }
 
+export interface FolderMetadata {
+  name: string;
+  description?: string;
+  color?: string;
+  mediaCount: number;
+  totalSize: number;
+  totalSizeFormatted: string;
+  lastUpdated: string;
+  createdAt?: string;
+}
+
 export const mediaApi = {
   // Get media library with filters
   getAll: async (filters: MediaFilters): Promise<PaginatedResponse<Media>> => {
@@ -40,7 +52,7 @@ export const mediaApi = {
     
     params.append('brandId', filters.brandId);
     if (filters.type) params.append('type', filters.type);
-    if (filters.folder) params.append('folder', filters.folder);
+    if (filters.folder) params.append('folder', filters.folder.trim());
     if (filters.tags?.length) params.append('tags', filters.tags.join(','));
     if (filters.search) params.append('search', filters.search);
     if (filters.sortBy) params.append('sortBy', filters.sortBy);
@@ -48,8 +60,34 @@ export const mediaApi = {
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());
 
-    const response = await api.get<PaginatedResponse<Media>>(`/media?${params.toString()}`);
-    return response.data;
+    // ✅ FIX: Axios response is { data: { success, data: Media[], pagination: {...} } }
+    const response = await api.get<ApiResponse<Media[]>>(`/media?${params.toString()}`);
+    
+    console.log('🔍 Raw axios response:', response);
+    console.log('🔍 Response.data:', response.data);
+    
+    // ✅ CORRECT EXTRACTION:
+    // response.data = { success: true, data: [...], pagination: {...} }
+    const responseBody = response.data;
+    
+    // The array is directly in .data
+    const mediaItems = Array.isArray(responseBody.data) ? responseBody.data : [];
+    
+    // The pagination is directly in .pagination
+    const pagination = responseBody.pagination || {
+      page: 1,
+      limit: 50,
+      total: 0,
+      pages: 1,
+    };
+
+    return {
+      data: mediaItems,
+      media: mediaItems, // Keep for backward compatibility
+      pagination: pagination,
+      success: responseBody.success,
+      message: responseBody.message,
+    };
   },
 
   // Get media formatted for post composer

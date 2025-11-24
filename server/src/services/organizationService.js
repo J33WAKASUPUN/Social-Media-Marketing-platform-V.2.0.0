@@ -1,6 +1,7 @@
 const Organization = require('../models/Organization');
 const Brand = require('../models/Brand');
 const Membership = require('../models/Membership');
+const logger = require('../utils/logger');
 
 class OrganizationService {
   /**
@@ -46,7 +47,7 @@ class OrganizationService {
    * Get user's organizations
    */
   async getUserOrganizations(userId) {
-    // Find all brands where user is a member
+    // Find all memberships where user is a member
     const memberships = await Membership.find({ user: userId })
       .populate('organization')
       .populate('brand');
@@ -55,6 +56,11 @@ class OrganizationService {
     const organizationsMap = new Map();
 
     memberships.forEach(membership => {
+      // Skip if organization is null or deleted
+      if (!membership.organization || membership.organization.status === 'deleted') {
+        return;
+      }
+
       const orgId = membership.organization._id.toString();
       
       if (!organizationsMap.has(orgId)) {
@@ -64,14 +70,21 @@ class OrganizationService {
         });
       }
 
-      organizationsMap.get(orgId).brands.push({
-        ...membership.brand.toObject(),
-        role: membership.role,
-        permissions: membership.permissions,
-      });
+      // Only add brand if it exists and is active
+      if (membership.brand && membership.brand.status === 'active') {
+        organizationsMap.get(orgId).brands.push({
+          ...membership.brand.toObject(),
+          role: membership.role,
+          permissions: membership.permissions,
+        });
+      }
     });
 
-    return Array.from(organizationsMap.values());
+    const organizations = Array.from(organizationsMap.values());
+
+    logger.info(`📋 User ${userId} has ${organizations.length} organizations`);
+
+    return organizations;
   }
 
   /**
@@ -89,7 +102,7 @@ class OrganizationService {
       throw new Error('Only organization owner can update settings');
     }
 
-    const allowedUpdates = ['name', 'description', 'settings']; // ✅ ADD description
+    const allowedUpdates = ['name', 'description', 'settings'];
     Object.keys(data).forEach(key => {
       if (allowedUpdates.includes(key)) {
         organization[key] = data[key];

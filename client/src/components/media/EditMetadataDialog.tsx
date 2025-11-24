@@ -43,7 +43,7 @@ export function EditMetadataDialog({
   popularTags,
 }: EditMetadataDialogProps) {
   const [formData, setFormData] = useState({
-    folder: 'uncategorized',
+    folder: 'Default',
     tags: [] as string[],
     altText: '',
     caption: '',
@@ -53,7 +53,7 @@ export function EditMetadataDialog({
   useEffect(() => {
     if (media) {
       setFormData({
-        folder: media.folder || 'uncategorized',
+        folder: media.folder || 'Default',
         tags: media.tags || [],
         altText: media.altText || '',
         caption: media.caption || '',
@@ -108,8 +108,8 @@ export function EditMetadataDialog({
                   <SelectValue placeholder="Select folder" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="uncategorized">Uncategorized</SelectItem>
-                  {folders.filter(f => f && f !== 'uncategorized').map((folder) => (
+                  <SelectItem value="Default">Default</SelectItem>
+                  {folders.filter(f => f && f !== 'Default').map((folder) => (
                     <SelectItem key={folder} value={folder}>
                       {folder}
                     </SelectItem>

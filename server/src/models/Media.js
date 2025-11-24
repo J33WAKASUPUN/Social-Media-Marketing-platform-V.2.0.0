@@ -74,7 +74,7 @@ const mediaSchema = new mongoose.Schema({
   // Organization
   folder: {
     type: String,
-    default: 'uncategorized',
+    default: 'Default',
     index: true,
   },
   tags: [{

@@ -34,36 +34,55 @@ export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ childr
       return;
     }
 
-    try {
-      setLoading(true);
-      const response = await organizationApi.getAll();
-      setOrganizations(response.data);
+     try {
+    setLoading(true);
+    const response = await organizationApi.getAll();
+    
+    // Filter out any null/undefined organizations
+    const validOrganizations = (response.data || []).filter(
+      (org: Organization) => org && org._id
+    );
+    
+    setOrganizations(validOrganizations);
 
-      // Set current organization from localStorage or first available
-      const savedOrgId = localStorage.getItem('currentOrganizationId');
-      if (savedOrgId) {
-        const savedOrg = response.data.find(org => org._id === savedOrgId);
-        if (savedOrg) {
-          setCurrentOrganizationState(savedOrg);
-        } else if (response.data.length > 0) {
-          setCurrentOrganizationState(response.data[0]);
-        }
-      } else if (response.data.length > 0) {
-        setCurrentOrganizationState(response.data[0]);
+    // IF NO ORGANIZATIONS, SHOW TOAST TO CREATE ONE
+    if (validOrganizations.length === 0) {
+      toast({
+        title: 'Welcome!',
+        description: 'Create your first organization to get started.',
+      });
+    }
+
+    // Set current organization from localStorage or first available
+    const savedOrgId = localStorage.getItem('currentOrganizationId');
+    if (savedOrgId) {
+      const savedOrg = validOrganizations.find((org: Organization) => org._id === savedOrgId);
+      if (savedOrg) {
+        setCurrentOrganizationState(savedOrg);
+      } else if (validOrganizations.length > 0) {
+        setCurrentOrganizationState(validOrganizations[0]);
       }
-    } catch (error) {
-      // Don't show error toast on 401 (handled by interceptor)
-      if (!error.response || error.response.status !== 401) {
+    } else if (validOrganizations.length > 0) {
+      setCurrentOrganizationState(validOrganizations[0]);
+    }
+  } catch (error: any) {
+    console.error('Failed to fetch organizations:', error);
+    
+    // BETTER ERROR HANDLING
+    if (!error.response || error.response.status !== 401) {
+      // Don't show error if organizations array is just empty
+      if (error.response?.status !== 404) {
         toast({
           variant: 'destructive',
           title: 'Error',
           description: handleApiError(error),
         });
       }
-    } finally {
-      setLoading(false);
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     // Only fetch when auth is done loading and user is authenticated

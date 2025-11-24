@@ -49,7 +49,7 @@ export function UploadDialog({
   const [dragActive, setDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [metadata, setMetadata] = useState({
-    folder: 'uncategorized',
+    folder: 'Default',
     tags: [] as string[],
     altText: '',
     caption: '',
@@ -105,7 +105,7 @@ export function UploadDialog({
       // Reset form
       setSelectedFiles(null);
       setMetadata({
-        folder: 'uncategorized',
+        folder: 'Default',
         tags: [],
         altText: '',
         caption: '',
@@ -117,7 +117,7 @@ export function UploadDialog({
   const handleClose = () => {
     setSelectedFiles(null);
     setMetadata({
-      folder: 'uncategorized',
+      folder: 'Default',
       tags: [],
       altText: '',
       caption: '',
@@ -214,11 +214,11 @@ export function UploadDialog({
                 <Label>Folder (Optional)</Label>
                 <Select value={metadata.folder} onValueChange={(v) => setMetadata(prev => ({ ...prev, folder: v }))}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select folder or leave uncategorized" />
+                    <SelectValue placeholder="Select folder or leave default" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="uncategorized">Uncategorized</SelectItem>
-                    {folders.filter(f => f && f !== 'uncategorized').map((folder) => (
+                    <SelectItem value="Default">Default</SelectItem>
+                    {folders.filter(f => f && f !== 'Default').map((folder) => (
                       <SelectItem key={folder} value={folder}>
                         {folder}
                       </SelectItem>

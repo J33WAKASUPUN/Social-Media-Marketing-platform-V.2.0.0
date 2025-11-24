@@ -52,34 +52,44 @@ const Dashboard = () => {
 
   // Show setup prompt if no organization or brand
   if (!currentOrganization) {
-    return (
-      <div className="flex min-h-[80vh] items-center justify-center p-6">
-        <Alert className="max-w-md">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Get Started</AlertTitle>
-          <AlertDescription className="mt-2 space-y-4">
-            <p>Create your first organization to start managing your social media.</p>
+  return (
+    <div className="flex min-h-[80vh] items-center justify-center p-6">
+      <Alert className="max-w-md">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Welcome! Let's Get Started</AlertTitle>
+        <AlertDescription className="mt-2 space-y-4">
+          <p>Create your first organization to start managing your social media.</p>
+          <div className="space-y-2">
             <CreateOrganizationDialog />
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
+            <p className="text-xs text-muted-foreground">
+              An organization helps you manage multiple brands and team members.
+            </p>
+          </div>
+        </AlertDescription>
+      </Alert>
+    </div>
+  );
+}
 
-  if (!currentBrand) {
-    return (
-      <div className="flex min-h-[80vh] items-center justify-center p-6">
-        <Alert className="max-w-md">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Create a Brand</AlertTitle>
-          <AlertDescription className="mt-2 space-y-4">
-            <p>Create your first brand under {currentOrganization.name} to get started.</p>
+if (!currentBrand) {
+  return (
+    <div className="flex min-h-[80vh] items-center justify-center p-6">
+      <Alert className="max-w-md">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Create Your First Brand</AlertTitle>
+        <AlertDescription className="mt-2 space-y-4">
+          <p>Create your first brand under {currentOrganization.name} to get started.</p>
+          <div className="space-y-2">
             <CreateBrandDialog />
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
+            <p className="text-xs text-muted-foreground">
+              A brand represents a specific social media presence (e.g., your company, product, or client).
+            </p>
+          </div>
+        </AlertDescription>
+      </Alert>
+    </div>
+  );
+}
 
   return (
     <div className="space-y-6 p-6">

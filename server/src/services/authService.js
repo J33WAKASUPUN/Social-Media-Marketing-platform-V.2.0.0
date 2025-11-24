@@ -5,43 +5,58 @@ const emailService = require("./emailService");
 
 class AuthService {
   /**
-   * Register New User
-   */
-  async register(email, password, name) {
-    // Check if user exists
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
-    if (existingUser) {
-      throw new Error("Email already registered");
-    }
-
-    // Create user
-    const user = await User.create({
-      email: email.toLowerCase(),
-      password,
-      name,
-      provider: 'local',
-    });
-
-    // Generate verification token
-    const verificationToken = crypto.randomBytes(32).toString("hex");
-    user.verificationToken = verificationToken;
-    user.verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
-    await user.save();
-
-    // Send verification email
-    await emailService.sendVerificationEmail(
-      user.email,
-      verificationToken,
-      user.name
-    );
-
-    // Send welcome email
-    await emailService.sendWelcomeEmail(user.email, user.name);
-
-    const tokens = await generateTokenPair(user._id);
-
-    return { user, tokens };
+ * Register New User
+ */
+async register(email, password, name) {
+  // Check if user exists
+  const existingUser = await User.findOne({ email: email.toLowerCase() });
+  if (existingUser) {
+    throw new Error("Email already registered");
   }
+
+  // Create user
+  const user = await User.create({
+    email: email.toLowerCase(),
+    password,
+    name,
+    provider: 'local',
+  });
+
+  // Generate verification token
+  const verificationToken = crypto.randomBytes(32).toString("hex");
+  user.verificationToken = verificationToken;
+  user.verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
+  await user.save();
+
+  // Send verification email
+  await emailService.sendVerificationEmail(
+    user.email,
+    verificationToken,
+    user.name
+  );
+
+  // Send welcome email
+  await emailService.sendWelcomeEmail(user.email, user.name);
+
+  // AUTO-CREATE DEFAULT ORGANIZATION
+  const organizationService = require('./organizationService');
+  
+  try {
+    await organizationService.createOrganization(user._id, {
+      name: `${name}'s Workspace`,
+      description: 'Your default workspace',
+    });
+    
+    logger.info(`✅ Auto-created default organization for new user: ${user.email}`);
+  } catch (error) {
+    logger.error('❌ Failed to create default organization:', error);
+    // Don't throw error - user can create org manually later
+  }
+
+  const tokens = await generateTokenPair(user._id);
+
+  return { user, tokens };
+}
 
   /**
    * Verify Email
@@ -166,54 +181,75 @@ class AuthService {
     return { user, tokens };
   }
 
-  /**
-   * Google OAuth Login/Register
-   */
-  async googleAuth(profile) {
-    const { id: googleId, emails, displayName, photos } = profile;
-    const email = emails[0].value;
-    const googleAvatar = photos && photos[0] ? photos[0].value : null;
+/**
+ * Google OAuth Login/Register
+ */
+async googleAuth(profile) {
+  const { id: googleId, emails, displayName, photos } = profile;
+  const email = emails[0].value;
+  const googleAvatar = photos && photos[0] ? photos[0].value : null;
 
-    // Check if user exists with this Google ID
-    let user = await User.findOne({ googleId });
+  // Check if user exists with this Google ID
+  let user = await User.findOne({ googleId });
 
-    if (!user) {
-      // Check if user exists with this email
-      user = await User.findOne({ email: email.toLowerCase() });
+  if (!user) {
+    // Check if user exists with this email
+    user = await User.findOne({ email: email.toLowerCase() });
 
-      if (user) {
-        // Link Google account to existing user
-        user.googleId = googleId;
-        user.googleEmail = email;
-        user.googleAvatar = googleAvatar;
-        user.emailVerified = true;
-        user.provider = 'google';
-        await user.save();
-      } else {
-        // Create new user
-        user = await User.create({
-          email: email.toLowerCase(),
-          name: displayName,
-          googleId,
-          googleEmail: email,
-          googleAvatar,
-          emailVerified: true,
-          status: "active",
-          provider: 'google',
-        });
-      }
-    } else {
-      // Update last login
-      user.lastLogin = new Date();
-      user.googleAvatar = googleAvatar; // Update avatar if changed
+    if (user) {
+      // Link Google account to existing user
+      user.googleId = googleId;
+      user.googleEmail = email;
+      user.googleAvatar = googleAvatar;
+      user.emailVerified = true;
+      user.provider = 'google';
       await user.save();
+    } else {
+      // Create new user
+      user = await User.create({
+        email: email.toLowerCase(),
+        name: displayName,
+        googleId,
+        googleEmail: email,
+        googleAvatar,
+        emailVerified: true,
+        status: "active",
+        provider: 'google',
+      });
     }
-
-    // Generate tokens
-    const tokens = await generateTokenPair(user._id);
-
-    return { user, tokens };
+  } else {
+    // Update last login
+    user.lastLogin = new Date();
+    user.googleAvatar = googleAvatar; // Update avatar if changed
+    await user.save();
   }
+
+  // CHECK IF USER HAS ANY ORGANIZATIONS
+  const Membership = require('../models/Membership');
+  const existingMemberships = await Membership.countDocuments({ user: user._id });
+
+  // IF NO ORGANIZATIONS, CREATE DEFAULT ONE
+  if (existingMemberships === 0) {
+    const organizationService = require('./organizationService');
+    
+    try {
+      await organizationService.createOrganization(user._id, {
+        name: `${displayName}'s Workspace`,
+        description: 'Your default workspace',
+      });
+      
+      logger.info(`✅ Auto-created default organization for user: ${user.email}`);
+    } catch (error) {
+      logger.error('❌ Failed to create default organization:', error);
+      // Don't throw error - user can create org manually later
+    }
+  }
+
+  // Generate tokens
+  const tokens = await generateTokenPair(user._id);
+
+  return { user, tokens };
+}
 
   /**
    * Request Password Reset

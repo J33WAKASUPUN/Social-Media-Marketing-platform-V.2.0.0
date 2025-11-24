@@ -18,20 +18,15 @@ class MediaService {
         brandId,
       });
 
-      // Determine media type
       const type = this.getMediaType(file.mimetype);
-
-      // Upload to S3
       const uploadResult = await s3Service.uploadFile(file.path, "media", {
         brandId: brandId.toString(),
         uploadedBy: userId.toString(),
         type,
       });
 
-      // Extract metadata
       const metadata = await this.extractMetadata(file.path, type);
 
-      // Create database record
       const media = await Media.create({
         brand: brandId,
         uploadedBy: userId,
@@ -44,8 +39,7 @@ class MediaService {
         s3Bucket: uploadResult.bucket,
         type,
         metadata,
-        folder: options.folder || "uncategorized",
-        tags: options.tags || [],
+        folder: options.folder || "Default",
         altText: options.altText || "",
         caption: options.caption || "",
       });
@@ -53,6 +47,7 @@ class MediaService {
       logger.info("✅ Media uploaded successfully", {
         mediaId: media._id,
         s3Url: media.s3Url,
+        folder: media.folder,
       });
 
       return media;
@@ -66,73 +61,84 @@ class MediaService {
   }
 
   /**
-   * Get media library for a brand
-   */
-  async getMediaLibrary(brandId, filters = {}) {
-    try {
-      const {
-        type,
-        folder,
-        tags,
-        search,
-        sortBy = "createdAt",
-        sortOrder = "desc",
-        page = 1,
-        limit = 20,
-      } = filters;
+ * Get media library for a brand
+ */
+async getMediaLibrary(brandId, filters = {}) {
+  try {
+    const query = {
+      brand: brandId,
+      status: 'active',
+    };
 
-      // Build query
-      const query = {
-        brand: brandId,
-        status: "active",
-      };
-
-      if (type) query.type = type;
-      if (folder) query.folder = folder;
-      if (tags && tags.length > 0) query.tags = { $in: tags };
-
-      if (search) {
-        query.$or = [
-          { originalName: { $regex: search, $options: "i" } },
-          { altText: { $regex: search, $options: "i" } },
-          { caption: { $regex: search, $options: "i" } },
-          { tags: { $regex: search, $options: "i" } },
-        ];
-      }
-
-      // Sort
-      const sort = { [sortBy]: sortOrder === "asc" ? 1 : -1 };
-
-      // Pagination
-      const skip = (page - 1) * limit;
-
-      // Execute query
-      const [media, totalCount] = await Promise.all([
-        Media.find(query)
-          .populate("uploadedBy", "name email avatar")
-          .sort(sort)
-          .skip(skip)
-          .limit(limit),
-        Media.countDocuments(query),
-      ]);
-
-      return {
-        media,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          totalPages: Math.ceil(totalCount / limit),
-          totalItems: totalCount,
-        },
-      };
-    } catch (error) {
-      logger.error("❌ Get media library failed", {
-        error: error.message,
-        brandId,
-      });
-      throw error;
+    // Type filter
+    if (filters.type) {
+      query.type = filters.type;
     }
+
+    // ✅ FIX: Only add folder filter if it's explicitly provided and not 'all'
+    if (filters.folder && filters.folder !== 'all') {
+      query.folder = filters.folder.trim();
+    }
+    // ✅ DON'T add folder: undefined to query
+
+    // Search filter
+    if (filters.search) {
+      query.$or = [
+        { originalName: { $regex: filters.search, $options: 'i' } },
+        { filename: { $regex: filters.search, $options: 'i' } },
+        { tags: { $in: [new RegExp(filters.search, 'i')] } },
+      ];
+    }
+
+    // Tags filter
+    if (filters.tags && filters.tags.length > 0) {
+      query.tags = { $all: filters.tags };
+    }
+
+    // ✅ LOG THE EXACT QUERY
+    console.log('🔍 Media Query:', JSON.stringify(query, null, 2));
+
+    const sortField = filters.sortBy || 'createdAt';
+    const sortOrder = filters.sortOrder === 'asc' ? 1 : -1;
+    const sortOptions = { [sortField]: sortOrder };
+
+    const page = parseInt(filters.page) || 1;
+    const limit = parseInt(filters.limit) || 50;
+    const skip = (page - 1) * limit;
+
+    const [media, total] = await Promise.all([
+      Media.find(query)
+        .populate('uploadedBy', 'name email')
+        .sort(sortOptions)
+        .limit(limit)
+        .skip(skip),
+      Media.countDocuments(query),
+    ]);
+
+    console.log('✅ Media fetched:', {
+      total,
+      returned: media.length,
+      folders: [...new Set(media.map(m => m.folder))],
+    });
+
+    return {
+      media,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    };
+  } catch (error) {
+    console.error('❌ Get media library failed:', {
+      error: error.message,
+      stack: error.stack,
+      filters,
+    });
+    throw error;
   }
+}
 
   /**
    * Get single media by ID
@@ -528,15 +534,20 @@ class MediaService {
   /**
    * Delete folder (UPDATED)
    */
-  async deleteFolder(brandId, folderName) {
+ async deleteFolder(brandId, folderName) {
     try {
+      // Prevent deletion of "Default" folder
+      if (folderName === 'Default') {
+        throw new Error('Cannot delete the Default folder');
+      }
+
       // Delete from Folder collection
       await Folder.deleteOne({
         brand: brandId,
         name: folderName,
       });
 
-      // Move all media to uncategorized
+      // Move all media to "Default" instead of "uncategorized"
       const result = await Media.updateMany(
         {
           brand: brandId,
@@ -544,7 +555,7 @@ class MediaService {
           status: 'active',
         },
         {
-          $set: { folder: 'uncategorized' },
+          $set: { folder: 'Default' }, // "uncategorized"
         }
       );
 
@@ -556,6 +567,8 @@ class MediaService {
       throw error;
     }
   }
+
+
 
   /**
    * Move media to folder
@@ -585,17 +598,84 @@ class MediaService {
     }
   }
 
-  /**
-   * Get folders with metadata (UPDATED)
-   */
-  async getFoldersWithMetadata(brandId) {
-    try {
-      // Get all folders from Folder collection
-      const allFolders = await Folder.find({
-        brand: brandId,
-      }).sort({ name: 1 });
+  // /**
+  //  * Get folders with metadata (UPDATED)
+  //  */
+  // async getFoldersMetadata(brandId) {
+  //   try {
+  //     // Get all folders from Folder collection
+  //     const folders = await Folder.find({
+  //       brand: brandId,
+  //     }).sort({ name: 1 });
 
-      // Get media counts per folder
+  //     // Get media counts grouped by folder
+  //     const mediaCounts = await Media.aggregate([
+  //       {
+  //         $match: {
+  //           brand: new mongoose.Types.ObjectId(brandId),
+  //           status: 'active',
+  //         },
+  //       },
+  //       {
+  //         $group: {
+  //           _id: '$folder',
+  //           mediaCount: { $sum: 1 },
+  //           totalSize: { $sum: '$size' },
+  //           lastUpdated: { $max: '$updatedAt' },
+  //         },
+  //       },
+  //     ]);
+
+  //     // Convert to map for easy lookup
+  //     const countsMap = {};
+  //     mediaCounts.forEach(item => {
+  //       countsMap[item._id] = {
+  //         mediaCount: item.mediaCount,
+  //         totalSize: item.totalSize,
+  //         lastUpdated: item.lastUpdated,
+  //       };
+  //     });
+
+  //     // Include "Default" folder even if not in Folder collection
+  //     const allFolders = [
+  //       {
+  //         name: 'Default',
+  //         description: 'Default folder for uploads',
+  //         color: '#6b7280',
+  //         createdAt: new Date(),
+  //       },
+  //       ...folders.map(f => ({
+  //         name: f.name,
+  //         description: f.description,
+  //         color: f.color,
+  //         createdAt: f.createdAt,
+  //       })),
+  //     ];
+
+  //     const result = allFolders.map(folder => ({
+  //       name: folder.name,
+  //       description: folder.description,
+  //       color: folder.color,
+  //       mediaCount: countsMap[folder.name]?.mediaCount || 0,
+  //       totalSize: countsMap[folder.name]?.totalSize || 0,
+  //       totalSizeFormatted: this.formatBytes(countsMap[folder.name]?.totalSize || 0),
+  //       lastUpdated: countsMap[folder.name]?.lastUpdated || folder.createdAt,
+  //       createdAt: folder.createdAt,
+  //     }));
+
+  //     return result;
+  //   } catch (error) {
+  //     logger.error('❌ Get folders with metadata failed', { error: error.message });
+  //     throw error;
+  //   }
+  // }
+
+  /**
+   * Get folders with metadata (Fixed to show ghost folders)
+   */
+  async getFoldersMetadata(brandId) {
+    try {
+      // 1. Get stats for ALL folders currently used in Media collection
       const mediaCounts = await Media.aggregate([
         {
           $match: {
@@ -613,44 +693,58 @@ class MediaService {
         },
       ]);
 
-      // Create a map for quick lookup
-      const countsMap = {};
-      mediaCounts.forEach(item => {
-        countsMap[item._id || 'uncategorized'] = {
-          mediaCount: item.mediaCount,
-          totalSize: item.totalSize,
-          lastUpdated: item.lastUpdated,
+      // 2. Get explicitly defined folders
+      const folders = await Folder.find({ brand: brandId }).lean();
+      
+      // 3. Merge them map
+      const folderMap = {};
+      
+      // Initialize with explicit folders
+      folders.forEach(f => {
+        folderMap[f.name] = {
+          name: f.name,
+          description: f.description,
+          color: f.color,
+          mediaCount: 0,
+          totalSize: 0,
+          totalSizeFormatted: '0 B',
+          createdAt: f.createdAt
         };
       });
 
-      // Merge folder data with media counts
-      const result = allFolders.map(folder => ({
-        name: folder.name,
-        description: folder.description,
-        color: folder.color,
-        mediaCount: countsMap[folder.name]?.mediaCount || 0,
-        totalSize: countsMap[folder.name]?.totalSize || 0,
-        totalSizeFormatted: this.formatBytes(countsMap[folder.name]?.totalSize || 0),
-        lastUpdated: countsMap[folder.name]?.lastUpdated || folder.createdAt,
-        createdAt: folder.createdAt,
-      }));
-
-      // Add uncategorized if it has media
-      if (countsMap['uncategorized']) {
-        result.unshift({
-          name: 'uncategorized',
-          description: 'Default folder for uncategorized media',
+      // Initialize Default if missing
+      if (!folderMap['Default']) {
+        folderMap['Default'] = {
+          name: 'Default',
+          description: 'Default folder',
           color: '#6b7280',
-          mediaCount: countsMap['uncategorized'].mediaCount,
-          totalSize: countsMap['uncategorized'].totalSize,
-          totalSizeFormatted: this.formatBytes(countsMap['uncategorized'].totalSize),
-          lastUpdated: countsMap['uncategorized'].lastUpdated,
-        });
+          mediaCount: 0,
+          totalSize: 0,
+          totalSizeFormatted: '0 B',
+          createdAt: new Date()
+        };
       }
 
-      return result;
+      // Merge real counts (This discovers the "ghost" folders)
+      mediaCounts.forEach(stat => {
+        const name = stat._id || 'Default';
+        if (!folderMap[name]) {
+            // Found a ghost folder (like 'posts')! Create an entry for it.
+            folderMap[name] = {
+                name: name,
+                description: 'Auto-detected folder',
+                color: '#f59e0b', // Give it a warning color
+                createdAt: new Date()
+            };
+        }
+        folderMap[name].mediaCount = stat.mediaCount;
+        folderMap[name].totalSize = stat.totalSize;
+        folderMap[name].totalSizeFormatted = this.formatBytes(stat.totalSize);
+      });
+
+      return Object.values(folderMap);
     } catch (error) {
-      logger.error('❌ Get folders with metadata failed', { error: error.message });
+      logger.error('❌ Get folders metadata failed', { error: error.message });
       throw error;
     }
   }

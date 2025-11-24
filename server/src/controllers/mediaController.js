@@ -8,6 +8,20 @@ class MediaController {
    */
   async uploadMedia(req, res, next) {
     try {
+      console.log('📥 Upload request received', {
+        filesCount: req.files?.length,
+        bodyKeys: Object.keys(req.body),
+        brandId: req.body.brandId,
+        folder: req.body.folder,
+      });
+
+      if (!req.files || req.files.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'No files uploaded',
+        });
+      }
+
       const { brandId, folder, tags, altText, caption } = req.body;
 
       if (!brandId) {
@@ -17,30 +31,37 @@ class MediaController {
         });
       }
 
-      if (!req.files || req.files.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'No files uploaded',
-        });
+      const uploadedMedia = [];
+      
+      for (const file of req.files) {
+        try {
+          console.log('📤 Processing file:', file.originalname);
+          
+          const media = await mediaService.uploadMedia(
+            file,
+            req.user._id,
+            brandId,
+            {
+              folder: folder || 'Default',
+              tags: tags ? tags.split(',').map(t => t.trim()) : [],
+              altText: altText || '',
+              caption: caption || '',
+            }
+          );
+
+          uploadedMedia.push(media);
+          console.log('✅ File uploaded:', media._id);
+        } catch (fileError) {
+          console.error('❌ Failed to upload file:', file.originalname, fileError.message);
+          // Continue with other files
+        }
       }
 
-      // Upload all files
-      const uploadedMedia = [];
-
-      for (const file of req.files) {
-        const media = await mediaService.uploadMedia(
-          file,
-          req.user._id,
-          brandId,
-          {
-            folder: folder || 'uncategorized',
-            tags: tags ? tags.split(',').map(t => t.trim()) : [],
-            altText: altText || '',
-            caption: caption || '',
-          }
-        );
-
-        uploadedMedia.push(media);
+      if (uploadedMedia.length === 0) {
+        return res.status(500).json({
+          success: false,
+          message: 'All file uploads failed',
+        });
       }
 
       res.status(201).json({
@@ -49,18 +70,39 @@ class MediaController {
         data: uploadedMedia,
       });
     } catch (error) {
-      logger.error('❌ Upload media failed', { error: error.message });
+      console.error('❌ Upload controller error:', {
+        message: error.message,
+        stack: error.stack,
+      });
+      
+      logger.error('❌ Upload media failed', { 
+        error: error.message,
+        stack: error.stack,
+      });
+      
       next(error);
     }
   }
 
   /**
    * GET /api/v1/media
-   * Get media library
+   * Get media library with filters
    */
   async getMediaLibrary(req, res, next) {
     try {
-      const { brandId } = req.query;
+      const { brandId, type, folder, tags, search, sortBy, sortOrder, page, limit } = req.query;
+
+      console.log('🔍 Media library request:', {
+        brandId,
+        type,
+        folder,
+        tags,
+        search,
+        sortBy,
+        sortOrder,
+        page,
+        limit,
+      });
 
       if (!brandId) {
         return res.status(400).json({
@@ -70,14 +112,14 @@ class MediaController {
       }
 
       const filters = {
-        type: req.query.type,
-        folder: req.query.folder,
-        tags: req.query.tags ? req.query.tags.split(',') : undefined,
-        search: req.query.search,
-        sortBy: req.query.sortBy || 'createdAt',
-        sortOrder: req.query.sortOrder || 'desc',
-        page: parseInt(req.query.page) || 1,
-        limit: parseInt(req.query.limit) || 20,
+        type,
+        folder: folder && folder !== 'all' ? folder : undefined,
+        tags: tags ? tags.split(',') : undefined,
+        search,
+        sortBy: sortBy || 'createdAt',
+        sortOrder: sortOrder || 'desc',
+        page: parseInt(page) || 1,
+        limit: parseInt(limit) || 50,
       };
 
       const result = await mediaService.getMediaLibrary(brandId, filters);
@@ -88,14 +130,28 @@ class MediaController {
         pagination: result.pagination,
       });
     } catch (error) {
-      logger.error('❌ Get media library failed', { error: error.message });
-      next(error);
+      console.error('❌ Get media library controller error:', {
+        message: error.message,
+        stack: error.stack,
+        query: req.query,
+      });
+      
+      logger.error('❌ Get media library failed', { 
+        error: error.message,
+        stack: error.stack,
+      });
+      
+      // ✅ CRITICAL: Don't just throw - send proper error response
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to fetch media library',
+      });
     }
   }
 
   /**
    * GET /api/v1/media/:id
-   * Get single media
+   * Get single media by ID
    */
   async getMediaById(req, res, next) {
     try {
@@ -306,7 +362,7 @@ class MediaController {
       }
 
       const filters = {
-        type, // 'image', 'video', or undefined for all
+        type,
         sortBy: 'createdAt',
         sortOrder: 'desc',
         limit: 50,
@@ -315,7 +371,6 @@ class MediaController {
       
       const result = await mediaService.getMediaLibrary(brandId, filters);
       
-      // Format for post composer
       const formattedMedia = result.media.map(m => ({
         id: m._id,
         url: m.s3Url,
@@ -343,7 +398,7 @@ class MediaController {
     }
   }
 
-   /**
+  /**
    * POST /api/v1/media/folders
    * Create new folder
    */
@@ -406,7 +461,7 @@ class MediaController {
 
   /**
    * DELETE /api/v1/media/folders/:folderName
-   * Delete folder (moves media to uncategorized)
+   * Delete folder
    */
   async deleteFolder(req, res, next) {
     try {
@@ -424,7 +479,7 @@ class MediaController {
 
       res.json({
         success: true,
-        message: `Folder deleted (${result.moved} files moved to uncategorized)`,
+        message: `Folder deleted (${result.moved} files moved to Default)`,
         data: result,
       });
     } catch (error) {
@@ -469,6 +524,8 @@ class MediaController {
     try {
       const { brandId } = req.query;
 
+      console.log('📁 Fetching folders metadata for brand:', brandId); // ✅ FIX: Log brandId, not req
+
       if (!brandId) {
         return res.status(400).json({
           success: false,
@@ -476,15 +533,29 @@ class MediaController {
         });
       }
 
-      const folders = await mediaService.getFoldersWithMetadata(brandId);
+      const folders = await mediaService.getFoldersMetadata(brandId);
+
+      console.log('✅ Folders fetched:', folders.length);
 
       res.json({
         success: true,
         data: folders,
       });
     } catch (error) {
-      logger.error('❌ Get folders metadata failed', { error: error.message });
-      next(error);
+      console.error('❌ Get folders metadata controller error:', {
+        message: error.message,
+        stack: error.stack,
+      });
+      
+      logger.error('❌ Get folders metadata failed', { 
+        error: error.message,
+        stack: error.stack,
+      });
+      
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to fetch folders',
+      });
     }
   }
 

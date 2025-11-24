@@ -184,7 +184,7 @@ export function FolderManagementDialog({
                             ) : (
                               <span className="font-medium">
                                 {folder.name}
-                                {folder.name === 'uncategorized' && (
+                                {folder.name === 'Default' && (
                                   <Badge variant="outline" className="ml-2 text-xs">
                                     Default
                                   </Badge>
@@ -225,7 +225,7 @@ export function FolderManagementDialog({
                                 Cancel
                               </Button>
                             </div>
-                          ) : folder.name !== 'uncategorized' ? (
+                          ) : folder.name !== 'Default' ? (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon">
@@ -316,7 +316,7 @@ export function FolderManagementDialog({
             <AlertDialogTitle>Delete Folder</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete "{deletingFolder}"? All files in this
-              folder will be moved to "Uncategorized". This action cannot be undone.
+              folder will be moved to "Default". This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

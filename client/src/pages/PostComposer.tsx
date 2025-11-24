@@ -187,7 +187,7 @@ export default function PostComposer() {
       let uploadedMediaIds: string[] = [];
       if (uploadedFiles.length > 0) {
         const uploadResponse = await mediaApi.upload(uploadedFiles, {
-          brandId: currentBrand._id, folder: 'posts',
+          brandId: currentBrand._id, folder: 'Default',
         });
         uploadedMediaIds = uploadResponse.data.map((m: Media) => m._id);
       }
@@ -219,9 +219,11 @@ const handlePublish = async () => {
     if (uploadedFiles.length > 0) {
       const uploadResponse = await mediaApi.upload(uploadedFiles, {
         brandId: currentBrand._id, 
-        folder: 'posts',
+        folder: 'Default', // ✅ EXPLICITLY SET TO "Default" (capital D)
       });
       uploadedMediaIds = uploadResponse.data.map((m: Media) => m._id);
+      
+      console.log('✅ Uploaded media to Default folder:', uploadedMediaIds);
     }
     
     const allMediaIds = [...selectedLibraryMedia, ...uploadedMediaIds];
@@ -231,27 +233,12 @@ const handlePublish = async () => {
     let scheduledFor: string;
     
     if (publishType === 'now') {
-      // For immediate publishing, use current time + 10 seconds buffer
       const now = new Date();
       scheduledFor = new Date(now.getTime() + 10 * 1000).toISOString();
-      
-      console.log('📅 Publishing now:', {
-        clientTime: now.toISOString(),
-        scheduledFor,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      });
     } else {
-      // For scheduled posts, use the selected date/time
       scheduledFor = new Date(scheduledDate).toISOString();
-      
-      console.log('📅 Scheduling for later:', {
-        clientTime: new Date().toISOString(),
-        scheduledFor,
-        userInput: scheduledDate,
-      });
     }
     
-    // Use "channel" instead of "channelId"
     const schedules = [{
       channel: channel._id || (channel as any).id,
       provider: channel.provider,
