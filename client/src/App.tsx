@@ -23,6 +23,7 @@ import Analytics from "./pages/Analytics";
 import Channels from "./pages/Channels";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import EditPost from "./pages/EditPost";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,11 @@ const App = () => (
                   <Route path="/posts/new" element={
                     <ProtectedRoute>
                       <MainLayout><PostComposer /></MainLayout>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/posts/edit/:id" element={
+                    <ProtectedRoute>
+                      <MainLayout><EditPost /></MainLayout>
                     </ProtectedRoute>
                   } />
                   <Route path="/calendar" element={

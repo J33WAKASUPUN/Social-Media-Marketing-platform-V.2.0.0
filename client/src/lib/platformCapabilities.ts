@@ -8,8 +8,8 @@ export interface PlatformCapability {
     images: boolean;
     videos: boolean;
     multipleImages: boolean;
-    update: boolean;
-    delete: boolean;
+    update: boolean; // ❌ Always false now
+    delete: boolean; // ❌ Always false now
   };
   limits: {
     maxTextLength: number;
@@ -30,8 +30,8 @@ export const PLATFORM_CAPABILITIES: Record<Platform, PlatformCapability> = {
       images: true,
       videos: true,
       multipleImages: true,
-      update: true,
-      delete: true,
+      update: false, // ❌ Disabled
+      delete: false, // ❌ Disabled
     },
     limits: {
       maxTextLength: 3000,
@@ -41,9 +41,8 @@ export const PLATFORM_CAPABILITIES: Record<Platform, PlatformCapability> = {
       videoDuration: '10 minutes',
     },
     warnings: [
-      '✅ Full support for text, images, and videos',
-      '✅ Can update and delete posts',
-      '⚠️ Videos limited to 10 minutes',
+      '⚠️ To edit or delete this post, visit LinkedIn directly',
+      '✅ Full support for text, images, and videos during publishing',
     ],
   },
 
@@ -55,19 +54,19 @@ export const PLATFORM_CAPABILITIES: Record<Platform, PlatformCapability> = {
       images: true,
       videos: true,
       multipleImages: true,
-      update: true, // Limited - only text
-      delete: true,
+      update: false, // ❌ Disabled
+      delete: false, // ❌ Disabled
     },
     limits: {
       maxTextLength: 63206,
       maxImages: 10,
       maxVideos: 1,
-      maxVideoSize: '10GB',
+      maxVideoSize: '4GB',
+      videoDuration: '240 minutes',
     },
     warnings: [
-      '✅ Full support for text, images, and videos',
-      '⚠️ Can only update text, not media',
-      '✅ Can delete posts',
+      '⚠️ To edit or delete this post, visit Facebook directly',
+      '✅ Supports text, images, and videos',
     ],
   },
 
@@ -79,21 +78,19 @@ export const PLATFORM_CAPABILITIES: Record<Platform, PlatformCapability> = {
       images: true,
       videos: true,
       multipleImages: true,
-      update: false, // ❌ NO UPDATE
-      delete: true,
+      update: false, // ❌ Disabled
+      delete: false, // ❌ Disabled
     },
     limits: {
       maxTextLength: 2200,
       maxImages: 10,
       maxVideos: 1,
       maxVideoSize: '100MB',
-      videoDuration: '60 seconds (Reels) or 60 minutes',
+      videoDuration: '60 seconds (Reels)',
     },
     warnings: [
-      '✅ Supports images and videos',
-      '❌ CANNOT update posts after publishing',
-      '✅ Can delete posts',
-      '⚠️ Videos under 60s = Reels, longer = Feed post',
+      '⚠️ To edit or delete this post, visit Instagram directly',
+      '✅ Supports photos, carousels, and Reels',
     ],
   },
 
@@ -102,11 +99,11 @@ export const PLATFORM_CAPABILITIES: Record<Platform, PlatformCapability> = {
     displayName: 'Twitter (X)',
     supports: {
       text: true,
-      images: false, // ❌ NOT IMPLEMENTED
-      videos: false, // ❌ NOT IMPLEMENTED
+      images: false,
+      videos: false,
       multipleImages: false,
-      update: false, // ❌ NO UPDATE
-      delete: false, // ❌ NO DELETE (API limitation)
+      update: false, // ❌ Disabled
+      delete: false, // ❌ Disabled
     },
     limits: {
       maxTextLength: 280,
@@ -115,10 +112,8 @@ export const PLATFORM_CAPABILITIES: Record<Platform, PlatformCapability> = {
       maxVideoSize: 'N/A',
     },
     warnings: [
-      '⚠️ TEXT ONLY - No images or videos',
-      '❌ CANNOT update tweets',
-      '❌ CANNOT delete tweets (API limitation)',
-      '⚠️ Free API tier: 17 tweets per 24 hours',
+      '⚠️ TEXT ONLY - No images or videos (free API)',
+      '⚠️ To edit or delete this tweet, visit Twitter/X directly',
     ],
   },
 
@@ -126,72 +121,27 @@ export const PLATFORM_CAPABILITIES: Record<Platform, PlatformCapability> = {
     provider: 'youtube',
     displayName: 'YouTube',
     supports: {
-      text: true, // Title + Description
+      text: true,
       images: false,
       videos: true,
       multipleImages: false,
-      update: true, // Can update title, description, privacy
-      delete: true,
+      update: false, // ❌ Disabled
+      delete: false, // ❌ Disabled
     },
     limits: {
-      maxTextLength: 5000, // Description
+      maxTextLength: 5000,
       maxImages: 0,
       maxVideos: 1,
       maxVideoSize: '256GB',
-      videoDuration: 'Up to 12 hours',
+      videoDuration: '12 hours',
     },
     warnings: [
-      '✅ VIDEO UPLOADS ONLY',
-      '✅ Can update title, description, and privacy',
-      '✅ Can delete videos',
-      '⚠️ Shorts: Max 60 seconds, vertical (9:16)',
-      '⚠️ Regular videos: Any length, any aspect ratio',
+      '⚠️ VIDEOS ONLY - YouTube does not support text-only posts',
+      '⚠️ To edit or delete this video, visit YouTube Studio directly',
     ],
   },
 };
 
-/**
- * Get capabilities for a specific platform
- */
-export function getPlatformCapability(provider: Platform): PlatformCapability {
-  return PLATFORM_CAPABILITIES[provider];
-}
-
-/**
- * Check if platform supports a specific feature
- */
-export function platformSupports(provider: Platform, feature: keyof PlatformCapability['supports']): boolean {
-  return PLATFORM_CAPABILITIES[provider]?.supports[feature] || false;
-}
-
-/**
- * Get max character limit for platform
- */
-export function getMaxCharLimit(providers: Platform[]): number {
-  if (providers.length === 0) return 3000;
-  
-  const limits = providers.map(p => PLATFORM_CAPABILITIES[p].limits.maxTextLength);
-  return Math.min(...limits); // Use strictest limit
-}
-
-/**
- * Check if any selected platform has limitations
- */
-export function hasAnyLimitations(providers: Platform[]): boolean {
-  return providers.some(p => 
-    PLATFORM_CAPABILITIES[p].warnings.some(w => w.includes('❌') || w.includes('⚠️'))
-  );
-}
-
-/**
- * Get aggregated warnings for selected platforms
- */
-export function getAggregatedWarnings(providers: Platform[]): string[] {
-  const warnings = new Set<string>();
-  
-  providers.forEach(provider => {
-    PLATFORM_CAPABILITIES[provider].warnings.forEach(w => warnings.add(w));
-  });
-  
-  return Array.from(warnings);
+export function getPlatformCapability(platform: Platform): PlatformCapability {
+  return PLATFORM_CAPABILITIES[platform] || PLATFORM_CAPABILITIES.linkedin;
 }
