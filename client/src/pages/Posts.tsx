@@ -135,6 +135,19 @@ const handleCancel = async (id: string) => {
   }
 };
 
+  // ✅ PUBLISH DRAFT POST
+  const handlePublish = async (id: string) => {
+    if (!window.confirm('Publish this draft post now?')) return;
+
+    try {
+      // Navigate to edit page where user can select platform and schedule
+      navigate(`/posts/edit/${id}`);
+      toast.info('Please select platform and publishing options');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to publish post');
+    }
+  };
+
   // ✅ REMOVE FROM HISTORY (LOCAL DB DELETE ONLY)
   const handleRemoveFromHistory = async (id: string) => {
     try {
@@ -255,6 +268,7 @@ const handleCancel = async (id: string) => {
                       onRemoveFromHistory={handleRemoveFromHistory}
                       onEdit={handleEdit}
                       onCancel={handleCancel}
+                      onPublish={handlePublish}
                     />
                   ))}
                 </div>
@@ -273,6 +287,7 @@ const handleCancel = async (id: string) => {
                       onRemoveFromHistory={handleRemoveFromHistory}
                       onEdit={handleEdit}
                       onCancel={handleCancel}
+                      onPublish={handlePublish}
                     />
                   ))}
                 </div>
@@ -289,6 +304,7 @@ const handleCancel = async (id: string) => {
                       key={post._id}
                       post={post}
                       onRemoveFromHistory={handleRemoveFromHistory}
+                      onPublish={handlePublish}
                     />
                   ))}
                 </div>
@@ -306,6 +322,7 @@ const handleCancel = async (id: string) => {
                       post={post}
                       onRemoveFromHistory={handleRemoveFromHistory}
                       onEdit={handleEdit}
+                      onPublish={handlePublish}
                     />
                   ))}
                 </div>
@@ -323,6 +340,7 @@ const handleCancel = async (id: string) => {
                       post={post}
                       onRemoveFromHistory={handleRemoveFromHistory}
                       onEdit={handleEdit}
+                      onPublish={handlePublish}
                     />
                   ))}
                 </div>

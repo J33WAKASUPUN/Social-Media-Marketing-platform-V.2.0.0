@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PlatformBadge } from "@/components/PlatformBadge";
-import { MoreVertical, ExternalLink, Archive, Calendar, CheckCircle, Clock, AlertTriangle, Info, Edit2, XCircle } from "lucide-react";
+import { MoreVertical, ExternalLink, Archive, Calendar, CheckCircle, Clock, AlertTriangle, Info, Edit2, XCircle, Send, FileText } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,8 +38,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 interface PostCardProps {
   post: Post;
   onRemoveFromHistory?: (id: string) => void;
-  onEdit?: (id: string) => void; // ✅ For scheduled posts
-  onCancel?: (id: string) => void; // ✅ For scheduled posts
+  onEdit?: (id: string) => void;
+  onCancel?: (id: string) => void;
+  onPublish?: (id: string) => void;
 }
 
 const statusConfig = {
@@ -50,44 +51,37 @@ const statusConfig = {
   publishing: { label: "Publishing...", color: "bg-info text-info-foreground", icon: Clock },
 };
 
-// ✅ HELPER FUNCTION: Generate platform-specific post URL
 const getPlatformPostUrl = (platform: string, platformPostId: string, username?: string): string => {
   switch (platform.toLowerCase()) {
     case 'linkedin':
       return `https://www.linkedin.com/feed/update/${platformPostId}`;
-    
     case 'facebook':
       return `https://www.facebook.com/${platformPostId.replace('_', '/posts/')}`;
-    
     case 'twitter':
       if (username) {
         return `https://twitter.com/${username.replace('@', '')}/status/${platformPostId}`;
       }
       return `https://twitter.com/i/status/${platformPostId}`;
-    
     case 'instagram':
       return `https://www.instagram.com/p/${platformPostId}/`;
-    
     case 'youtube':
       return `https://www.youtube.com/watch?v=${platformPostId}`;
-    
     default:
       return '#';
   }
 };
 
-export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCardProps) => {
+export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel, onPublish }: PostCardProps) => {
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showLimitationsDialog, setShowLimitationsDialog] = useState(false);
   
   const statusStyle = statusConfig[post.status] || statusConfig.draft;
   const StatusIcon = statusStyle.icon;
-  const contentPreview = post.content.length > 120 ? post.content.slice(0, 120) + "..." : post.content;
+  const contentPreview = post.content.length > 100 ? post.content.slice(0, 100) + "..." : post.content;
 
-  // Get media URLs
   const mediaUrls = post.mediaUrls || [];
   
-  // Get scheduled platforms with their post URLs
   const platformsWithUrls = post.schedules?.map(s => ({
     platform: s.channel.provider,
     displayName: s.channel.displayName,
@@ -97,17 +91,14 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
     postUrl: s.platformPostId ? getPlatformPostUrl(s.channel.provider, s.platformPostId, s.channel.platformUsername) : null,
   })) || [];
   
-  // Get next schedule date
   const nextSchedule = post.schedules?.find(s => s.status === 'pending' || s.status === 'queued');
   const scheduledDate = nextSchedule ? format(new Date(nextSchedule.scheduledFor), 'MMM dd, yyyy HH:mm') : null;
 
-  // Get published platforms (for "View on..." button)
   const publishedPlatforms = platformsWithUrls.filter(p => p.status === 'published' && p.postUrl);
 
-  // ✅ Check if post is scheduled (not yet published)
   const isScheduled = post.status === 'scheduled' && !publishedPlatforms.length;
+  const isDraft = post.status === 'draft';
 
-  // Check if post has platform limitations (always true now)
   const platformLimitations = platformsWithUrls.map(p => {
     const cap = getPlatformCapability(p.platform as any);
     return {
@@ -124,44 +115,70 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
     setShowRemoveDialog(false);
   };
 
+  const handleCancelSchedule = () => {
+    onCancel?.(post._id);
+    setShowCancelDialog(false);
+  };
+
   return (
     <>
-      <Card className="group overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-        {/* Media Preview */}
-        {mediaUrls.length > 0 && (
-          <div className="relative aspect-video overflow-hidden bg-muted">
-            <img
-              src={mediaUrls[0]}
-              alt="Post media"
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-              onError={(e) => {
-                e.currentTarget.src = 'https://via.placeholder.com/800x450?text=Media+Not+Found';
-              }}
-            />
-            {mediaUrls.length > 1 && (
-              <div className="absolute top-2 right-2 bg-background/90 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-medium">
-                +{mediaUrls.length - 1} more
-              </div>
-            )}
-          </div>
-        )}
-        
-        <div className="p-4 space-y-3">
-          {/* Header: Status and Actions */}
-          <div className="flex items-start justify-between gap-2">
-            <Badge className={cn("flex items-center gap-1", statusStyle.color)}>
-              <StatusIcon className="h-3 w-3" />
+      <Card className="group flex flex-col h-full overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-primary/20">
+        {/* Media Preview - Fixed Height */}
+        <div className="relative h-48 overflow-hidden bg-gradient-to-br from-muted to-muted/50">
+          {mediaUrls.length > 0 ? (
+            <>
+              <img
+                src={mediaUrls[0]}
+                alt="Post media"
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                onError={(e) => {
+                  e.currentTarget.src = 'https://via.placeholder.com/800x450?text=Media+Not+Found';
+                }}
+              />
+              {mediaUrls.length > 1 && (
+                <div className="absolute top-3 right-3 bg-background/95 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg">
+                  +{mediaUrls.length - 1} more
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <FileText className="h-16 w-16 text-muted-foreground/30" />
+            </div>
+          )}
+          
+          {/* Status Badge - Overlay */}
+          <div className="absolute top-3 left-3">
+            <Badge className={cn("flex items-center gap-1.5 px-3 py-1 shadow-lg", statusStyle.color)}>
+              <StatusIcon className="h-3.5 w-3.5" />
               {statusStyle.label}
             </Badge>
+          </div>
+        </div>
+        
+        {/* Content Area - Fixed Height with Flex */}
+        <div className="flex flex-col flex-1 p-5 space-y-4">
+          {/* Header: Actions */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex flex-wrap gap-1.5 flex-1">
+              {platformsWithUrls.length > 0 ? (
+                platformsWithUrls.map((platform, index) => (
+                  <PlatformBadge key={index} platform={platform.platform as any} size="sm" />
+                ))
+              ) : (
+                isDraft && (
+                  <span className="text-xs text-muted-foreground italic">No platform selected</span>
+                )
+              )}
+            </div>
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                {/* ✅ FOR PUBLISHED POSTS: Open on Platform */}
                 {publishedPlatforms.length > 0 && (
                   <>
                     {publishedPlatforms.map((platform, i) => (
@@ -177,7 +194,24 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
                   </>
                 )}
 
-                {/* ✅ FOR SCHEDULED POSTS: Edit/Cancel */}
+                {isDraft && (
+                  <>
+                    {onEdit && (
+                      <DropdownMenuItem onClick={() => onEdit(post._id)}>
+                        <Edit2 className="mr-2 h-4 w-4" />
+                        Edit Draft
+                      </DropdownMenuItem>
+                    )}
+                    {onPublish && (
+                      <DropdownMenuItem onClick={() => onPublish(post._id)} className="text-green-600">
+                        <Send className="mr-2 h-4 w-4" />
+                        Publish Now
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+
                 {isScheduled && (
                   <>
                     {onEdit && (
@@ -187,7 +221,7 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
                       </DropdownMenuItem>
                     )}
                     {onCancel && (
-                      <DropdownMenuItem onClick={() => onCancel(post._id)} className="text-amber-600">
+                      <DropdownMenuItem onClick={() => setShowCancelDialog(true)} className="text-amber-600">
                         <XCircle className="mr-2 h-4 w-4" />
                         Cancel Schedule
                       </DropdownMenuItem>
@@ -196,15 +230,16 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
                   </>
                 )}
 
-                {/* Platform Info */}
-                <DropdownMenuItem onClick={() => setShowLimitationsDialog(true)}>
-                  <Info className="mr-2 h-4 w-4" />
-                  Platform Info
-                </DropdownMenuItem>
+                {platformsWithUrls.length > 0 && (
+                  <>
+                    <DropdownMenuItem onClick={() => setShowLimitationsDialog(true)}>
+                      <Info className="mr-2 h-4 w-4" />
+                      Platform Info
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
 
-                <DropdownMenuSeparator />
-
-                {/* ✅ REMOVE FROM HISTORY */}
                 {onRemoveFromHistory && (
                   <DropdownMenuItem
                     className="text-muted-foreground"
@@ -218,38 +253,85 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
             </DropdownMenu>
           </div>
 
-          {/* Content */}
-          <p className="text-sm leading-relaxed text-foreground/90 line-clamp-3">
-            {contentPreview}
-          </p>
-
-          {/* Platforms */}
-          <div className="flex flex-wrap gap-1.5">
-            {platformsWithUrls.map((platform, index) => (
-              <PlatformBadge key={index} platform={platform.platform as any} size="sm" />
-            ))}
+          {/* Content - Fixed Height with line clamp */}
+          <div className="flex-1 min-h-0">
+            {isDraft && !contentPreview ? (
+              <div className="flex flex-col items-center justify-center h-full text-center space-y-2 py-4">
+                <Edit2 className="h-8 w-8 text-muted-foreground/50" />
+                <p className="text-sm text-muted-foreground">
+                  Edit, publish, or schedule this post
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm leading-relaxed text-foreground/80 line-clamp-3">
+                {contentPreview}
+              </p>
+            )}
           </div>
 
-          {/* Footer: Date/Time */}
-          {scheduledDate && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t">
-              <Calendar className="h-3 w-3" />
-              <span>Scheduled for {scheduledDate}</span>
-            </div>
-          )}
-          
-          {post.status === 'published' && post.schedules?.[0]?.publishedAt && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t">
-              <CheckCircle className="h-3 w-3" />
-              <span>Published {format(new Date(post.schedules[0].publishedAt), 'MMM dd, yyyy HH:mm')}</span>
-            </div>
-          )}
+          {/* Footer: Date/Time - Fixed at bottom */}
+          <div className="pt-3 border-t">
+            {scheduledDate && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Calendar className="h-3.5 w-3.5" />
+                <span>{scheduledDate}</span>
+              </div>
+            )}
+            
+            {post.status === 'published' && post.schedules?.[0]?.publishedAt && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                <span>{format(new Date(post.schedules[0].publishedAt), 'MMM dd, yyyy HH:mm')}</span>
+              </div>
+            )}
+            
+            {isDraft && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Clock className="h-3.5 w-3.5" />
+                <span>Created {format(new Date(post.createdAt || Date.now()), 'MMM dd, yyyy')}</span>
+              </div>
+            )}
+          </div>
         </div>
       </Card>
 
-      {/* ✅ REMOVE FROM HISTORY DIALOG (FIXED RED BUTTON) */}
+      {/* ✅ CANCEL SCHEDULE DIALOG */}
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-amber-500" />
+              Cancel Scheduled Post?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will cancel the scheduled post and move it to drafts. You can reschedule it later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          {scheduledDate && (
+            <Alert>
+              <Calendar className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Scheduled for:</strong> {scheduledDate}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <AlertDialogFooter className="sm:space-x-2">
+            <AlertDialogCancel>Keep Schedule</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelSchedule}
+              className="bg-amber-500 text-white hover:bg-amber-600"
+            >
+              Cancel Schedule
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ✅ REMOVE FROM HISTORY DIALOG - FIXED */}
       <AlertDialog open={showRemoveDialog} onOpenChange={setShowRemoveDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="sm:max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>Remove from History?</AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
@@ -268,10 +350,9 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <AlertDialogCancel className="mt-0 sm:mt-0">Cancel</AlertDialogCancel>
 
-            {/* Secondary Action: Go to Platform */}
             {publishedPlatforms.length > 0 && (
               <Button
                 variant="outline"
@@ -287,20 +368,19 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
               </Button>
             )}
 
-            {/* ✅ PRIMARY ACTION: Remove from History (RED BUTTON, INSIDE DIALOG) */}
             <AlertDialogAction
               onClick={handleRemoveFromHistory}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
             >
-              I Understand, Remove from History
+              Remove from History
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ✅ PLATFORM INFORMATION DIALOG (SAME FOR ALL PLATFORMS) */}
+      {/* ✅ PLATFORM INFORMATION DIALOG */}
       <Dialog open={showLimitationsDialog} onOpenChange={setShowLimitationsDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Info className="h-5 w-5 text-blue-500" />
@@ -324,21 +404,20 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
 
                   <div className="space-y-2 text-sm">
                     <div className="flex items-start gap-2">
-                      <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5" />
+                      <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
                       <div>
                         <strong>Edit Post:</strong> Not supported - must edit on platform
                       </div>
                     </div>
 
                     <div className="flex items-start gap-2">
-                      <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5" />
+                      <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
                       <div>
                         <strong>Delete Post:</strong> Not supported - must delete on platform
                       </div>
                     </div>
                   </div>
 
-                  {/* Platform-specific warnings */}
                   {limit.warnings.length > 0 && (
                     <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-md">
                       <ul className="text-xs text-amber-700 dark:text-amber-300 space-y-1">
@@ -349,7 +428,6 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
                     </div>
                   )}
 
-                  {/* ✅ Link to platform */}
                   {limit.postUrl && limit.status === 'published' && (
                     <Button
                       variant="default"

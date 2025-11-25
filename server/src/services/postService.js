@@ -227,6 +227,29 @@ async updatePost(userId, postId, data) {
     post.hashtags = data.hashtags;
   }
 
+  // ✅ SIMPLIFIED MEDIA HANDLING: Just replace with new media
+  if (data.mediaLibraryIds !== undefined) {
+    // Load media URLs from library
+    const libraryMedia = await Media.find({
+      _id: { $in: data.mediaLibraryIds },
+      brand: post.brand,
+      status: 'active',
+    });
+
+    const libraryUrls = libraryMedia.map(m => m.s3Url);
+    
+    // ✅ REPLACE media completely (don't merge with old)
+    post.mediaUrls = libraryUrls;
+    post.mediaLibraryItems = data.mediaLibraryIds;
+    post.mediaType = this.detectMediaType(libraryUrls);
+    
+    logger.info('✅ Replaced post media', {
+      oldMedia: post.mediaUrls?.length || 0,
+      newMedia: libraryUrls.length,
+      mediaType: post.mediaType,
+    });
+  }
+
   // ✅ UPDATE SCHEDULE TIME
   if (data.schedules && data.schedules.length > 0) {
     for (const newSchedule of data.schedules) {
@@ -270,9 +293,19 @@ async updatePost(userId, postId, data) {
     }
   }
 
+  // ✅ Handle schedule removal (save as draft)
+  if (data.schedules && data.schedules.length === 0) {
+    post.schedules = [];
+    post.status = 'draft';
+  }
+
   await post.save();
 
-  logger.info('✅ Post updated', { postId });
+  logger.info('✅ Post updated', { 
+    postId,
+    updatedMedia: data.mediaLibraryIds !== undefined,
+    totalMedia: post.mediaUrls?.length || 0,
+  });
 
   return post;
 }

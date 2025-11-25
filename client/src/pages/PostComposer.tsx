@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import EmojiPicker, { EmojiStyle } from 'emoji-picker-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Components
 import { PlatformSelector } from '@/components/post/PlatformSelector';
@@ -28,6 +29,7 @@ import { MediaSelector } from '@/components/post/MediaSelector';
 import { PlatformWarnings } from '@/components/post/PlatformWarnings';
 import { PlatformBadge } from '@/components/PlatformBadge';
 import { MediaLibrary } from '@/components/media/MediaLibrary';
+import { cn } from '@/lib/utils';
 
 export default function PostComposer() {
   const navigate = useNavigate();
@@ -41,6 +43,7 @@ export default function PostComposer() {
   const [publishType, setPublishType] = useState<'now' | 'schedule'>('now');
   const [scheduledDate, setScheduledDate] = useState('');
   const [loading, setLoading] = useState(false);
+  const [previewImageIndex, setPreviewImageIndex] = useState(0);
   
   // Data
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -112,6 +115,28 @@ export default function PostComposer() {
     return types;
   }, [selectedPlatform]);
 
+  // Calculate totalMediaCount BEFORE using it
+  const totalMediaCount = uploadedFiles.length + selectedLibraryMedia.length;
+
+  const allPreviewMedia = useMemo(() => {
+    const libraryItems = libraryMedia.filter(m => selectedLibraryMedia.includes(m._id));
+    const uploadedItems = uploadedFiles.map((file, index) => ({
+      type: 'upload' as const,
+      url: URL.createObjectURL(file),
+      index,
+    }));
+
+    return [
+      ...libraryItems.map(m => ({ type: 'library' as const, url: m.s3Url })),
+      ...uploadedItems,
+    ];
+  }, [libraryMedia, selectedLibraryMedia, uploadedFiles]);
+
+  // Reset preview index when media changes
+  useEffect(() => {
+    setPreviewImageIndex(0);
+  }, [totalMediaCount]);
+
   // --- Handlers ---
   const handleChannelSelect = (channelId: string) => setSelectedChannel(channelId);
 
@@ -177,7 +202,6 @@ export default function PostComposer() {
 
   const removeUploadedFile = (index: number) => setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   const removeLibraryMedia = (mediaId: string) => setSelectedLibraryMedia(prev => prev.filter(id => id !== mediaId));
-  const totalMediaCount = uploadedFiles.length + selectedLibraryMedia.length;
 
   // --- Save & Publish ---
   const handleSaveDraft = async () => {
@@ -219,10 +243,9 @@ const handlePublish = async () => {
     if (uploadedFiles.length > 0) {
       const uploadResponse = await mediaApi.upload(uploadedFiles, {
         brandId: currentBrand._id, 
-        folder: 'Default', // ✅ EXPLICITLY SET TO "Default" (capital D)
+        folder: 'Default', // EXPLICITLY SET TO "Default" (capital D)
       });
       uploadedMediaIds = uploadResponse.data.map((m: Media) => m._id);
-      
       console.log('✅ Uploaded media to Default folder:', uploadedMediaIds);
     }
     
@@ -292,6 +315,19 @@ const handlePublish = async () => {
     return 'all';
   }, [selectedPlatform]);
 
+  // Image navigation
+  const nextImage = () => {
+    if (totalMediaCount > 0) {
+      setPreviewImageIndex((prev) => (prev + 1) % totalMediaCount);
+    }
+  };
+
+  const prevImage = () => {
+    if (totalMediaCount > 0) {
+      setPreviewImageIndex((prev) => (prev - 1 + totalMediaCount) % totalMediaCount);
+    }
+  };
+
   if (!currentBrand) return <div>Select a brand</div>;
 
   return (
@@ -348,6 +384,8 @@ const handlePublish = async () => {
                           <EmojiPicker
                             emojiStyle={EmojiStyle.NATIVE}
                             onEmojiClick={handleEmojiClick}
+                            width={350}
+                            height={400}
                           />
                         </PopoverContent>
                       </Popover>
@@ -456,67 +494,134 @@ const handlePublish = async () => {
                       value={scheduledDate}
                       onChange={(e) => setScheduledDate(e.target.value)}
                       min={new Date().toISOString().slice(0, 16)}
-                      className="flex h-10 w-full rounded-md border border-input bg-white px-3 text-sm shadow-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
                     />
                   </div>
                 )}
 
-                <div className="space-y-2 pt-2">
+                <div className="flex gap-2">
                   <Button 
-                    className="w-full bg-violet-600 hover:bg-violet-700 text-white shadow-md shadow-violet-200/50"
-                    size="lg"
+                    variant="outline" 
+                    className="flex-1" 
+                    onClick={handleSaveDraft}
+                    disabled={loading || !content.trim()}
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Draft
+                  </Button>
+                  <Button 
+                    variant="gradient" 
+                    className="flex-1" 
                     onClick={handlePublish}
                     disabled={loading || !selectedChannel || !content.trim()}
                   >
-                    {loading ? 'Processing...' : publishType === 'now' ? 'Publish Post' : 'Schedule Post'}
-                  </Button>
-                  <Button variant="ghost" className="w-full text-gray-500" size="sm" onClick={handleSaveDraft}>
-                    Save Draft
+                    {loading ? (
+                      <>
+                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        Publishing...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="mr-2 h-4 w-4" />
+                        {publishType === 'now' ? 'Publish' : 'Schedule'}
+                      </>
+                    )}
                   </Button>
                 </div>
               </CardContent>
             </Card>
 
-            {/* PREVIEW CARD */}
+            {/* ENHANCED PREVIEW CARD */}
             <Card className="border shadow-sm overflow-hidden bg-gray-50/50">
-               <div className="p-2 border-b bg-white/80 backdrop-blur text-center">
-                 <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Live Preview</span>
-               </div>
-               <CardContent className="p-4">
-                 {!selectedPlatform ? (
-                   <div className="h-48 flex flex-col items-center justify-center text-center text-gray-400 border-2 border-dashed border-gray-200 rounded-lg bg-white">
-                     <Send className="h-8 w-8 mb-2 opacity-20" />
-                     <p className="text-sm">Select a platform<br/>to see preview</p>
-                   </div>
-                 ) : (
-                   <div className="bg-white rounded-xl border shadow-sm p-4 space-y-3">
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-gray-200 flex-shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold text-gray-900 truncate">Your Brand</p>
-                          <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                             <PlatformBadge platform={selectedPlatform} size="sm" />
-                             <span>• Just now</span>
-                          </div>
+              <div className="p-2 border-b bg-white/80 backdrop-blur text-center">
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Live Preview</span>
+              </div>
+              <CardContent className="p-4">
+                {!selectedPlatform ? (
+                  <div className="h-48 flex flex-col items-center justify-center text-center text-gray-400 border-2 border-dashed border-gray-200 rounded-lg bg-white">
+                    <Send className="h-8 w-8 mb-2 opacity-20" />
+                    <p className="text-sm">Select a platform<br/>to see preview</p>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-xl border shadow-sm p-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                      {/* Gray circle avatar */}
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-gray-900 truncate">Your Brand</p>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                          <PlatformBadge platform={selectedPlatform} size="sm" />
+                          <span>• Just now</span>
                         </div>
                       </div>
-                      <div className="text-sm text-gray-800 whitespace-pre-wrap break-words">
-                        {content || <span className="text-gray-300 italic">Write something...</span>}
-                      </div>
-                      {totalMediaCount > 0 && (
-                        <div className={`grid gap-1 rounded-lg overflow-hidden ${totalMediaCount === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                           {[...selectedLibraryMedia, ...uploadedFiles.map((_, i) => `upload-${i}`)].slice(0, 4).map((id) => (
-                             <div key={id} className="aspect-square bg-gray-100 relative border">
-                               <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-400">Img</div>
-                             </div>
-                           ))}
-                        </div>
-                      )}
-                   </div>
-                 )}
-               </CardContent>
-            </Card>
+                    </div>
 
+                    {/* POST CONTENT */}
+                    <div className="text-sm text-gray-800 whitespace-pre-wrap break-words">
+                      {content || <span className="text-gray-300 italic">Write something...</span>}
+                    </div>
+
+                    {/* IMAGE SLIDER */}
+                    {totalMediaCount > 0 && allPreviewMedia.length > 0 && (
+                      <div className="relative rounded-lg overflow-hidden bg-gray-100">
+                        {/* Image */}
+                        <div className="aspect-video relative">
+                          <img
+                            src={allPreviewMedia[previewImageIndex]?.url}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src = 'https://via.placeholder.com/600x400?text=Image+Preview';
+                            }}
+                          />
+
+                          {/* Navigation Arrows */}
+                          {totalMediaCount > 1 && (
+                            <>
+                              <button
+                                onClick={prevImage}
+                                className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
+                                aria-label="Previous image"
+                              >
+                                <ChevronLeft className="h-5 w-5" />
+                              </button>
+                              <button
+                                onClick={nextImage}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-2 transition-colors"
+                                aria-label="Next image"
+                              >
+                                <ChevronRight className="h-5 w-5" />
+                              </button>
+
+                              {/* Dot Indicators */}
+                              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+                                {allPreviewMedia.map((_, index) => (
+                                  <button
+                                    key={index}
+                                    onClick={() => setPreviewImageIndex(index)}
+                                    className={cn(
+                                      "w-2 h-2 rounded-full transition-all",
+                                      index === previewImageIndex
+                                        ? "bg-white w-6"
+                                        : "bg-white/50 hover:bg-white/75"
+                                    )}
+                                    aria-label={`Go to image ${index + 1}`}
+                                  />
+                                ))}
+                              </div>
+
+                              {/* Counter */}
+                              <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-full text-xs text-white font-medium">
+                                {previewImageIndex + 1} / {totalMediaCount}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
@@ -644,7 +749,7 @@ const handlePublish = async () => {
               isDialogMode={true}
               initialSelectedIds={selectedLibraryMedia}
               onSelectionChange={setSelectedLibraryMedia}
-              initialMediaTypeFilter={mediaTypeFilter} // ✅ NEW: Pass the filter
+              initialMediaTypeFilter={mediaTypeFilter} // Pass the filter
             />
           </div>
           <DialogFooter>
