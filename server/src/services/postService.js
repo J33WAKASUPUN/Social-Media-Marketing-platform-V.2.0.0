@@ -506,58 +506,79 @@ async cancelSchedule(userId, postId, scheduleId) {
   return post;
 }
 
-  /**
-   * Get calendar view
-   */
-  async getCalendar(userId, brandId, startDate, endDate) {
-    // Check access
-    const membership = await Membership.findOne({
-      user: userId,
-      brand: brandId,
-    });
+/**
+ * Get calendar view
+ */
+async getCalendar(userId, brandId, startDate, endDate) {
+  // Check access
+  const membership = await Membership.findOne({
+    user: userId,
+    brand: brandId,
+  });
 
-    if (!membership) {
-      throw new Error('Access denied');
-    }
+  if (!membership) {
+    throw new Error('Access denied');
+  }
 
-    const posts = await Post.find({
-      brand: brandId,
-      'schedules.scheduledFor': {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
-      },
-    })
-      .populate('createdBy', 'name avatar')
-      .populate('schedules.channel', 'provider displayName')
-      .sort({ 'schedules.scheduledFor': 1 });
+  // Parse dates correctly in UTC
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  logger.info('📅 Calendar query', {
+    startDate: start.toISOString(),
+    endDate: end.toISOString(),
+  });
 
-    // Group by date
-    const calendar = {};
+  const posts = await Post.find({
+    brand: brandId,
+    'schedules.scheduledFor': {
+      $gte: start,
+      $lte: end,
+    },
+  })
+    .populate('createdBy', 'name avatar')
+    .populate('schedules.channel', 'provider displayName')
+    .sort({ 'schedules.scheduledFor': 1 });
 
-    posts.forEach(post => {
-      post.schedules.forEach(schedule => {
-        const date = schedule.scheduledFor.toISOString().split('T')[0];
+  // Group by date (using UTC date string)
+  const calendar = {};
 
-        if (!calendar[date]) {
-          calendar[date] = [];
-        }
+  posts.forEach(post => {
+    post.schedules.forEach(schedule => {
+      // Use UTC date for grouping
+      const scheduledDate = new Date(schedule.scheduledFor);
+      const dateKey = scheduledDate.toISOString().split('T')[0]; // YYYY-MM-DD in UTC
 
-        calendar[date].push({
+      if (!calendar[dateKey]) {
+        calendar[dateKey] = [];
+      }
+
+      // Only show SCHEDULED posts (not published ones)
+      // Published posts should not appear in calendar
+      if (schedule.status === 'pending' || schedule.status === 'queued') {
+        calendar[dateKey].push({
           postId: post._id,
           scheduleId: schedule._id,
           title: post.title,
           content: post.content,
           mediaUrls: post.mediaUrls,
+          mediaType: post.mediaType,
           channel: schedule.channel,
           scheduledFor: schedule.scheduledFor,
           status: schedule.status,
           createdBy: post.createdBy,
         });
-      });
+      }
     });
+  });
 
-    return calendar;
-  }
+  logger.info('📅 Calendar grouped', {
+    totalDates: Object.keys(calendar).length,
+    dates: Object.keys(calendar),
+  });
+
+  return calendar;
+}
 
   /**
    * Detect media type from URLs
