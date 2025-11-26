@@ -164,71 +164,60 @@ class AnalyticsService {
       .sort((a, b) => b.count - a.count);
   }
 
-  /**
-   * Calculate posting trends over time
-   */
-  calculateTrends(posts, daysInRange) {
-    const trends = {};
-    const today = new Date();
-
-    // Initialize all dates in range
-    for (let i = daysInRange - 1; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const dateKey = date.toISOString().split('T')[0];
-      trends[dateKey] = {
-        date: dateKey,
-        posts: 0,
-        platforms: new Set(),
-      };
-    }
-
-    // Count posts per day
-    posts.forEach(post => {
-      if (post.publishedAt) {
-        const dateKey = post.publishedAt.toISOString().split('T')[0];
-        if (trends[dateKey]) {
-          trends[dateKey].posts++;
-          trends[dateKey].platforms.add(post.provider || 'unknown');
-        }
-      }
+/**
+ * Calculate posting trends over time
+ */
+calculateTrends(posts, daysInRange) {
+  const trends = [];
+  const now = new Date();
+  
+  // Create date buckets for the range
+  for (let i = daysInRange - 1; i >= 0; i--) {
+    const date = new Date(now);
+    date.setDate(date.getDate() - i);
+    date.setHours(0, 0, 0, 0);
+    
+    const dateStr = date.toISOString().split('T')[0];
+    
+    // Count posts for this date
+    const count = posts.filter(post => {
+      const postDate = new Date(post.publishedAt);
+      postDate.setHours(0, 0, 0, 0);
+      return postDate.toISOString().split('T')[0] === dateStr;
+    }).length;
+    
+    trends.push({
+      date: dateStr,
+      count,
     });
-
-    return Object.values(trends)
-      .map(day => ({
-        date: day.date,
-        posts: day.posts,
-        platforms: day.platforms.size,
-      }))
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
   }
+  
+  return trends;
+}
 
-  /**
-   * Get top posting days of the week
-   */
-  getTopPostingDays(posts) {
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const dayCounts = {
-      0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0,
-    };
-
-    posts.forEach(post => {
-      if (post.publishedAt) {
-        const dayIndex = new Date(post.publishedAt).getDay();
-        dayCounts[dayIndex]++;
-      }
-    });
-
-    return Object.entries(dayCounts)
-      .map(([index, count]) => ({
-        day: dayNames[parseInt(index)],
-        posts: count,
-        percentage: posts.length > 0
-          ? ((count / posts.length) * 100).toFixed(1)
-          : 0,
-      }))
-      .sort((a, b) => b.posts - a.posts);
-  }
+/**
+ * Get top posting days of the week
+ */
+getTopPostingDays(posts) {
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const dayCounts = new Array(7).fill(0);
+  
+  posts.forEach(post => {
+    const dayIndex = new Date(post.publishedAt).getDay();
+    dayCounts[dayIndex]++;
+  });
+  
+  const total = posts.length;
+  
+  return dayNames
+    .map((day, index) => ({
+      day,
+      count: dayCounts[index],
+      percentage: total > 0 ? ((dayCounts[index] / total) * 100).toFixed(1) : '0',
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5); // Top 5 days
+}
 
   /**
    * Get recent activity
