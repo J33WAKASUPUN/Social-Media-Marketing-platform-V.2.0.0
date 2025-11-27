@@ -250,61 +250,135 @@ async updatePost(userId, postId, data) {
     });
   }
 
-  // ✅ UPDATE SCHEDULE TIME
-  if (data.schedules && data.schedules.length > 0) {
-    for (const newSchedule of data.schedules) {
-      const existingSchedule = post.schedules.find(
-        s => s.channel.toString() === newSchedule.channel
-      );
-
-      if (existingSchedule) {
-        const oldScheduledFor = existingSchedule.scheduledFor;
-        existingSchedule.scheduledFor = new Date(newSchedule.scheduledFor);
-
-        // ✅ CANCEL OLD JOB AND CREATE NEW ONE
-        if (existingSchedule.jobId) {
-          const queueManager = require('../queues/queueManager');
-          await queueManager.cancelJob(existingSchedule.jobId);
-          
-          logger.info('✅ Old job cancelled', { 
-            jobId: existingSchedule.jobId,
-            oldScheduledFor,
-          });
-
-          // Create new job
-          const newJobId = await queueManager.addPublishJob(
-            post._id.toString(),
-            existingSchedule._id.toString(),
-            existingSchedule.scheduledFor,
-            'normal'
-          );
-
-          existingSchedule.jobId = newJobId;
-
-          logger.info('✅ New job created', { 
-            jobId: newJobId,
-            newScheduledFor: existingSchedule.scheduledFor,
-          });
+  // ✅ HANDLE SCHEDULES - This is the key fix for draft → scheduled
+  if (data.schedules !== undefined) {
+    const now = new Date();
+    
+    // ✅ CASE 1: Empty schedules = save as draft
+    if (data.schedules.length === 0) {
+      // Cancel any existing jobs
+      for (const schedule of post.schedules) {
+        if (schedule.jobId) {
+          try {
+            await queueManager.cancelJob(schedule.jobId);
+            logger.info('✅ Cancelled job for draft', { jobId: schedule.jobId });
+          } catch (err) {
+            logger.warn('Failed to cancel job', { jobId: schedule.jobId, error: err.message });
+          }
+        }
+      }
+      post.schedules = [];
+      post.status = 'draft';
+      logger.info('✅ Post saved as draft', { postId });
+    }
+    // ✅ CASE 2: New schedules = schedule or publish now
+    else {
+      for (const newSchedule of data.schedules) {
+        // Validate channel
+        const channel = await Channel.findById(newSchedule.channel);
+        if (!channel) {
+          throw new Error(`Channel ${newSchedule.channel} not found`);
+        }
+        if (channel.connectionStatus !== 'active') {
+          throw new Error(`Channel ${channel.displayName} is not active`);
         }
 
-        // Reset status to pending
-        existingSchedule.status = 'pending';
+        const scheduledFor = new Date(newSchedule.scheduledFor);
+        const thirtySecondsFromNow = new Date(now.getTime() + 30 * 1000);
+        const isImmediate = scheduledFor <= thirtySecondsFromNow;
+
+        logger.info('📅 Processing schedule', {
+          channel: channel.displayName,
+          scheduledFor: scheduledFor.toISOString(),
+          isImmediate,
+        });
+
+        // Check if we're updating an existing schedule for this channel
+        const existingSchedule = post.schedules.find(
+          s => s.channel.toString() === newSchedule.channel
+        );
+
+        if (existingSchedule) {
+          // ✅ CANCEL OLD JOB
+          if (existingSchedule.jobId) {
+            try {
+              await queueManager.cancelJob(existingSchedule.jobId);
+              logger.info('✅ Cancelled old job', { jobId: existingSchedule.jobId });
+            } catch (err) {
+              logger.warn('Failed to cancel old job', { error: err.message });
+            }
+          }
+
+          // Update existing schedule
+          existingSchedule.scheduledFor = scheduledFor;
+          existingSchedule.status = 'pending';
+          existingSchedule.provider = newSchedule.provider || channel.provider;
+
+          // ✅ CREATE NEW JOB - FIX: Extract job.id from returned Job object
+          const job = await queueManager.addPublishJob(
+            post._id.toString(),
+            existingSchedule._id.toString(),
+            scheduledFor,
+            isImmediate ? 'high' : 'normal'
+          );
+          existingSchedule.jobId = job.id.toString(); // ✅ FIX: Use job.id, not the whole job object
+
+          logger.info('✅ Updated existing schedule with new job', {
+            scheduleId: existingSchedule._id,
+            jobId: job.id,
+            scheduledFor: scheduledFor.toISOString(),
+          });
+        } else {
+          // ✅ CREATE NEW SCHEDULE
+          const scheduleDoc = {
+            channel: newSchedule.channel,
+            provider: newSchedule.provider || channel.provider,
+            scheduledFor: scheduledFor,
+            status: 'pending',
+          };
+
+          // Add to post schedules first to get the _id
+          post.schedules.push(scheduleDoc);
+          const addedSchedule = post.schedules[post.schedules.length - 1];
+
+          // ✅ CREATE JOB - FIX: Extract job.id from returned Job object
+          const job = await queueManager.addPublishJob(
+            post._id.toString(),
+            addedSchedule._id.toString(),
+            scheduledFor,
+            isImmediate ? 'high' : 'normal'
+          );
+          addedSchedule.jobId = job.id.toString(); // ✅ FIX: Use job.id, not the whole job object
+
+          logger.info('✅ Created new schedule with job', {
+            scheduleId: addedSchedule._id,
+            jobId: job.id,
+            scheduledFor: scheduledFor.toISOString(),
+            isImmediate,
+          });
+        }
+      }
+
+      // ✅ DETERMINE POST STATUS
+      const firstSchedule = new Date(data.schedules[0].scheduledFor);
+      const thirtySecondsFromNow = new Date(now.getTime() + 30 * 1000);
+      
+      if (firstSchedule <= thirtySecondsFromNow) {
+        post.status = 'publishing';
+        logger.info('✅ Post status set to publishing (immediate)');
+      } else {
+        post.status = 'scheduled';
+        logger.info('✅ Post status set to scheduled');
       }
     }
   }
 
-  // ✅ Handle schedule removal (save as draft)
-  if (data.schedules && data.schedules.length === 0) {
-    post.schedules = [];
-    post.status = 'draft';
-  }
-
   await post.save();
 
-  logger.info('✅ Post updated', { 
+  logger.info('✅ Post updated successfully', { 
     postId,
-    updatedMedia: data.mediaLibraryIds !== undefined,
-    totalMedia: post.mediaUrls?.length || 0,
+    status: post.status,
+    schedulesCount: post.schedules?.length || 0,
   });
 
   return post;

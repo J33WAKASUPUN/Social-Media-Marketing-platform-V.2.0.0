@@ -166,7 +166,7 @@ const handleCancel = async (id: string) => {
       </div>
       <h3 className="mt-4 text-lg font-semibold">No posts yet</h3>
       <p className="mt-2 text-sm text-muted-foreground">Create your first post to get started</p>
-      <Button className="mt-4" variant="gradient" onClick={() => navigate("/posts/new")}>
+      <Button className="mt-4 bg-purple-600" variant="gradient" onClick={() => navigate("/posts/new")}>
         <Plus className="mr-2 h-4 w-4" />
         Create Post
       </Button>
@@ -208,7 +208,7 @@ const handleCancel = async (id: string) => {
             This is a log of posts sent to platforms. Changes made here do not affect live posts.
           </p>
         </div>
-        <Button variant="gradient" onClick={() => navigate("/posts/new")}>
+        <Button variant="gradient" className="bg-purple-600" onClick={() => navigate("/posts/new")}>
           <Plus className="mr-2 h-4 w-4" />
           Create Post
         </Button>

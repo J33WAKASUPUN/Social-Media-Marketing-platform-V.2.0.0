@@ -1,23 +1,19 @@
-import { Card } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { PlatformBadge } from "@/components/PlatformBadge";
-import { MoreVertical, ExternalLink, Archive, Calendar, CheckCircle, Clock, AlertTriangle, Info, Edit2, XCircle, Send, FileText } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,12 +24,35 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Post } from "@/types";
-import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Clock,
+  MoreVertical,
+  ExternalLink,
+  CheckCircle,
+  AlertTriangle,
+  Calendar,
+  Edit2,
+  XCircle,
+  Archive,
+  Info,
+  Image as ImageIcon,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import { PlatformBadge } from "@/components/PlatformBadge";
+import { Post } from "@/services/postApi";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { getPlatformCapability } from "@/lib/platformCapabilities";
 import { useState } from "react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface PostCardProps {
   post: Post;
@@ -71,10 +90,11 @@ const getPlatformPostUrl = (platform: string, platformPostId: string, username?:
   }
 };
 
-export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel, onPublish }: PostCardProps) => {
+export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCardProps) => {
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showLimitationsDialog, setShowLimitationsDialog] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
   const statusStyle = statusConfig[post.status] || statusConfig.draft;
   const StatusIcon = statusStyle.icon;
@@ -120,65 +140,129 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel, onPublis
     setShowCancelDialog(false);
   };
 
+  // Image navigation functions
+  const nextImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (mediaUrls.length > 1) {
+      setCurrentImageIndex((prev) => (prev + 1) % mediaUrls.length);
+    }
+  };
+
+  const prevImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (mediaUrls.length > 1) {
+      setCurrentImageIndex((prev) => (prev - 1 + mediaUrls.length) % mediaUrls.length);
+    }
+  };
+
+  const goToImage = (index: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentImageIndex(index);
+  };
+
   return (
     <>
       <Card className="group flex flex-col h-full overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-primary/20">
-        {/* Media Preview - Fixed Height */}
+        {/* Media Preview with Slider */}
         <div className="relative h-48 overflow-hidden bg-gradient-to-br from-muted to-muted/50">
           {mediaUrls.length > 0 ? (
             <>
               <img
-                src={mediaUrls[0]}
-                alt="Post media"
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                src={mediaUrls[currentImageIndex]}
+                alt={`Post media ${currentImageIndex + 1}`}
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 onError={(e) => {
-                  e.currentTarget.src = 'https://via.placeholder.com/800x450?text=Media+Not+Found';
+                  e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Image+Not+Found';
                 }}
               />
+              
+              {/* Navigation Arrows */}
               {mediaUrls.length > 1 && (
-                <div className="absolute top-3 right-3 bg-background/95 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg">
-                  +{mediaUrls.length - 1} more
+                <>
+                  <button
+                    onClick={prevImage}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 z-10"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={nextImage}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 z-10"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </>
+              )}
+
+              {/* Dot Indicators */}
+              {mediaUrls.length > 1 && (
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                  {mediaUrls.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={(e) => goToImage(index, e)}
+                      className={cn(
+                        "w-2 h-2 rounded-full transition-all duration-200",
+                        currentImageIndex === index
+                          ? "bg-white w-4"
+                          : "bg-white/50 hover:bg-white/80"
+                      )}
+                    />
+                  ))}
                 </div>
               )}
+
+              {/* Image Counter Badge */}
+              {mediaUrls.length > 1 && (
+                <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-black/60 text-white text-xs font-medium flex items-center gap-1 z-10">
+                  <ImageIcon className="h-3 w-3" />
+                  {currentImageIndex + 1}/{mediaUrls.length}
+                </div>
+              )}
+
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
             </>
           ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <FileText className="h-16 w-16 text-muted-foreground/30" />
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center text-muted-foreground/50">
+                <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p className="text-xs">No media</p>
+              </div>
             </div>
           )}
           
-          {/* Status Badge - Overlay */}
-          <div className="absolute top-3 left-3">
-            <Badge className={cn("flex items-center gap-1.5 px-3 py-1 shadow-lg", statusStyle.color)}>
+          {/* Status badge overlay */}
+          <div className="absolute top-3 left-3 z-10">
+            <Badge className={cn("flex items-center gap-1.5 shadow-lg", statusStyle.color)}>
               <StatusIcon className="h-3.5 w-3.5" />
               {statusStyle.label}
             </Badge>
           </div>
         </div>
-        
-        {/* Content Area - Fixed Height with Flex */}
-        <div className="flex flex-col flex-1 p-5 space-y-4">
-          {/* Header: Actions */}
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex flex-wrap gap-1.5 flex-1">
-              {platformsWithUrls.length > 0 ? (
-                platformsWithUrls.map((platform, index) => (
-                  <PlatformBadge key={index} platform={platform.platform as any} size="sm" />
-                ))
-              ) : (
-                isDraft && (
-                  <span className="text-xs text-muted-foreground italic">No platform selected</span>
-                )
+
+        {/* Card Content */}
+        <div className="flex-1 p-4 flex flex-col">
+          {/* Platform badges and menu */}
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex flex-wrap gap-1.5">
+              {platformsWithUrls.slice(0, 3).map((p, i) => (
+                <PlatformBadge key={i} platform={p.platform as any} size="sm" />
+              ))}
+              {platformsWithUrls.length > 3 && (
+                <Badge variant="secondary" className="text-xs">
+                  +{platformsWithUrls.length - 3}
+                </Badge>
               )}
             </div>
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-1">
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
+                {/* ✅ Published posts - Show platform links */}
                 {publishedPlatforms.length > 0 && (
                   <>
                     {publishedPlatforms.map((platform, i) => (
@@ -194,24 +278,18 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel, onPublis
                   </>
                 )}
 
-                {isDraft && (
+                {/* ✅ SIMPLIFIED: Draft posts - Only "Edit Draft" option */}
+                {isDraft && onEdit && (
                   <>
-                    {onEdit && (
-                      <DropdownMenuItem onClick={() => onEdit(post._id)}>
-                        <Edit2 className="mr-2 h-4 w-4" />
-                        Edit Draft
-                      </DropdownMenuItem>
-                    )}
-                    {onPublish && (
-                      <DropdownMenuItem onClick={() => onPublish(post._id)} className="text-green-600">
-                        <Send className="mr-2 h-4 w-4" />
-                        Publish Now
-                      </DropdownMenuItem>
-                    )}
+                    <DropdownMenuItem onClick={() => onEdit(post._id)}>
+                      <Edit2 className="mr-2 h-4 w-4" />
+                      Edit Draft or Publish Now
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                   </>
                 )}
 
+                {/* ✅ Scheduled posts - Edit and Cancel options */}
                 {isScheduled && (
                   <>
                     {onEdit && (
@@ -230,6 +308,7 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel, onPublis
                   </>
                 )}
 
+                {/* Platform info */}
                 {platformsWithUrls.length > 0 && (
                   <>
                     <DropdownMenuItem onClick={() => setShowLimitationsDialog(true)}>
@@ -240,6 +319,7 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel, onPublis
                   </>
                 )}
 
+                {/* Remove from history */}
                 {onRemoveFromHistory && (
                   <DropdownMenuItem
                     className="text-muted-foreground"
@@ -253,13 +333,13 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel, onPublis
             </DropdownMenu>
           </div>
 
-          {/* Content - Fixed Height with line clamp */}
+          {/* Content */}
           <div className="flex-1 min-h-0">
             {isDraft && !contentPreview ? (
               <div className="flex flex-col items-center justify-center h-full text-center space-y-2 py-4">
                 <Edit2 className="h-8 w-8 text-muted-foreground/50" />
                 <p className="text-sm text-muted-foreground">
-                  Edit, publish, or schedule this post
+                  Edit this draft to publish or schedule
                 </p>
               </div>
             ) : (
@@ -269,7 +349,7 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel, onPublis
             )}
           </div>
 
-          {/* Footer: Date/Time - Fixed at bottom */}
+          {/* Footer: Date/Time */}
           <div className="pt-3 border-t">
             {scheduledDate && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -295,7 +375,7 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel, onPublis
         </div>
       </Card>
 
-      {/* ✅ CANCEL SCHEDULE DIALOG */}
+      {/* Cancel Schedule Dialog */}
       <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
         <AlertDialogContent className="sm:max-w-md">
           <AlertDialogHeader>
@@ -329,7 +409,7 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel, onPublis
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ✅ REMOVE FROM HISTORY DIALOG - FIXED */}
+      {/* Remove from History Dialog */}
       <AlertDialog open={showRemoveDialog} onOpenChange={setShowRemoveDialog}>
         <AlertDialogContent className="sm:max-w-lg">
           <AlertDialogHeader>
@@ -351,26 +431,10 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel, onPublis
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-            <AlertDialogCancel className="mt-0 sm:mt-0">Cancel</AlertDialogCancel>
-
-            {publishedPlatforms.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  publishedPlatforms.forEach(p => window.open(p.postUrl!, '_blank'));
-                  setShowRemoveDialog(false);
-                }}
-                className="w-full sm:w-auto"
-              >
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Go to {publishedPlatforms[0].displayName}
-                {publishedPlatforms.length > 1 && ` (+${publishedPlatforms.length - 1})`}
-              </Button>
-            )}
-
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleRemoveFromHistory}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Remove from History
             </AlertDialogAction>
@@ -378,82 +442,41 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel, onPublis
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ✅ PLATFORM INFORMATION DIALOG */}
+      {/* Platform Limitations Dialog */}
       <Dialog open={showLimitationsDialog} onOpenChange={setShowLimitationsDialog}>
-        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Info className="h-5 w-5 text-blue-500" />
-              Platform Information
-            </DialogTitle>
+            <DialogTitle>Platform Information</DialogTitle>
             <DialogDescription>
-              How to manage this post on each platform
+              Details about this post on each platform
             </DialogDescription>
           </DialogHeader>
-
-          <div className="space-y-4 mt-4">
-            {platformLimitations.map((limit, index) => (
-              <Alert key={index}>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <PlatformBadge platform={limit.platform as any} size="sm" />
-                    {limit.status === 'published' && (
-                      <Badge variant="outline" className="text-xs">Published</Badge>
-                    )}
-                  </div>
-
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-                      <div>
-                        <strong>Edit Post:</strong> Not supported - must edit on platform
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-                      <div>
-                        <strong>Delete Post:</strong> Not supported - must delete on platform
-                      </div>
-                    </div>
-                  </div>
-
-                  {limit.warnings.length > 0 && (
-                    <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-md">
-                      <ul className="text-xs text-amber-700 dark:text-amber-300 space-y-1">
-                        {limit.warnings.map((warning, i) => (
-                          <li key={i}>{warning}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {limit.postUrl && limit.status === 'published' && (
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+            {platformLimitations.map((p, i) => (
+              <div key={i} className="border rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <PlatformBadge platform={p.platform as any} size="md" />
+                  {p.postUrl && (
                     <Button
-                      variant="default"
+                      variant="outline"
                       size="sm"
-                      className="w-full"
-                      onClick={() => window.open(limit.postUrl!, '_blank')}
+                      onClick={() => window.open(p.postUrl!, '_blank')}
                     >
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      Open on {limit.displayName}
+                      <ExternalLink className="h-4 w-4 mr-1" />
+                      View
                     </Button>
                   )}
                 </div>
-              </Alert>
+                {p.warnings.length > 0 && (
+                  <div className="text-sm space-y-1">
+                    {p.warnings.map((w, j) => (
+                      <p key={j} className="text-muted-foreground">{w}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
-
-          <Alert className="mt-4">
-            <AlertTitle>💡 How to Manage Posts</AlertTitle>
-            <AlertDescription className="text-xs space-y-2">
-              <ol className="list-decimal list-inside space-y-1">
-                <li>Click "Open on [Platform]" to manage the post directly on the social network</li>
-                <li>Edit or delete the post on that platform using their native tools</li>
-                <li>Return here and click "Remove from History" to clean up your log</li>
-              </ol>
-            </AlertDescription>
-          </Alert>
         </DialogContent>
       </Dialog>
     </>

@@ -441,7 +441,7 @@ export function MediaLibrary({
                       <FolderCog className="mr-2 h-4 w-4" />
                       Manage Folders
                     </Button>
-                    <Button variant="gradient" onClick={() => setUploadDialogOpen(true)}>
+                    <Button variant="gradient" className="bg-purple-600" onClick={() => setUploadDialogOpen(true)}>
                       <Upload className="mr-2 h-4 w-4" />
                       Upload Media
                     </Button>

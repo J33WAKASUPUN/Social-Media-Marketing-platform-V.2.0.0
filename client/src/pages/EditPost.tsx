@@ -284,8 +284,7 @@ export default function EditPost() {
 
   // --- Save & Update ---
   const handleUpdate = async () => {
-    if (!currentBrand) return;
-    if (!content.trim()) {
+    if (!currentBrand || !content.trim()) {
       toast.error('Please enter some content');
       return;
     }
@@ -315,7 +314,7 @@ export default function EditPost() {
         uploadedMediaIds = uploadResponse.data.map((m: Media) => m._id);
         console.log('✅ Uploaded new files:', uploadedMediaIds);
       }
-      
+
       // ✅ SIMPLIFIED: Combine all media IDs (existing library + new uploads)
       const allMediaIds = [...selectedLibraryMedia, ...uploadedMediaIds];
 
@@ -328,8 +327,11 @@ export default function EditPost() {
       };
 
       console.log('📤 Sending update:', {
+        publishType,
         mediaLibraryIds: allMediaIds,
         totalMedia: allMediaIds.length,
+        selectedChannel,
+        scheduledDate,
       });
 
       // ✅ CASE 1: SAVE AS DRAFT (No schedule)
@@ -341,10 +343,17 @@ export default function EditPost() {
       else if (publishType === 'now') {
         if (!selectedChannel) {
           toast.error('Please select a platform');
+          setSaving(false);
           return;
         }
 
-        const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel)!;
+        const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel);
+        if (!channel) {
+          toast.error('Selected channel not found');
+          setSaving(false);
+          return;
+        }
+
         const now = new Date();
         const scheduledFor = new Date(now.getTime() + 10 * 1000).toISOString();
         
@@ -353,23 +362,46 @@ export default function EditPost() {
           provider: channel.provider,
           scheduledFor,
         }];
+        // ✅ Don't set status here - let backend determine it
       }
       // ✅ CASE 3: SCHEDULE FOR LATER
       else if (publishType === 'schedule') {
-        if (!selectedChannel || !scheduledDate) {
-          toast.error('Please select platform and date/time');
+        if (!selectedChannel) {
+          toast.error('Please select a platform');
+          setSaving(false);
+          return;
+        }
+        if (!scheduledDate) {
+          toast.error('Please select a date and time');
+          setSaving(false);
           return;
         }
 
-        const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel)!;
+        const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel);
+        if (!channel) {
+          toast.error('Selected channel not found');
+          setSaving(false);
+          return;
+        }
+
         const scheduledFor = new Date(scheduledDate).toISOString();
+        
+        // ✅ Validate scheduled time is in the future
+        if (new Date(scheduledFor) <= new Date()) {
+          toast.error('Scheduled time must be in the future');
+          setSaving(false);
+          return;
+        }
         
         updates.schedules = [{
           channel: channel._id || (channel as any).id,
           provider: channel.provider,
           scheduledFor,
         }];
+        // ✅ Don't set status here - let backend determine it
       }
+
+      console.log('📤 Final update payload:', updates);
 
       await postApi.update(id!, updates);
       
@@ -629,7 +661,7 @@ export default function EditPost() {
 
                 <Button 
                   variant="gradient" 
-                  className="w-full" 
+                  className="w-full bg-purple-600" 
                   onClick={handleUpdate}
                   disabled={saving || !content.trim()}
                 >

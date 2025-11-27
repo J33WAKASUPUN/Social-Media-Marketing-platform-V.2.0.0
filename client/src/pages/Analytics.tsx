@@ -81,16 +81,16 @@ const PLATFORM_COLORS: Record<string, string> = {
 const CONTENT_TYPE_COLORS: Record<string, string> = {
   text: '#6B7280',
   image: '#10B981',
-  video: '#8B5CF6',
+  video: '#1E103FFF',
   carousel: '#F59E0B',
   multiImage: '#3B82F6',
 };
 
 // ✨ Updated gradient configs - Using main theme purple colors
 const TOP_DAY_GRADIENTS = [
-  { id: 'rank-1', from: '#7B90ECFF', to: '#A273D1FF', label: 'Best Day 🥇' },
-  { id: 'rank-2', from: '#7B90ECFF', to: '#A273D1FF', label: '2nd Place 🥈' },
-  { id: 'rank-3', from: '#7B90ECFF', to: '#A273D1FF', label: '3rd Place 🥉' },
+  { id: 'rank-1', from: '#EF63FFFF', to: '#FF324EFF', label: 'Best Day' },
+  { id: 'rank-2', from: '#00F2FFFF', to: '#34A0FFFF', label: '2nd Place' },
+  { id: 'rank-3', from: '#31FD86FF', to: '#00AE3AFF', label: '3rd Place' },
 ];
 
 // Status config for recent activity

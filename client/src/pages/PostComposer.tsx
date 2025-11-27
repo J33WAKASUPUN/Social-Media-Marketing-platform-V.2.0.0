@@ -511,7 +511,7 @@ const handlePublish = async () => {
                   </Button>
                   <Button 
                     variant="gradient" 
-                    className="flex-1" 
+                    className="flex-1 bg-purple-600" 
                     onClick={handlePublish}
                     disabled={loading || !selectedChannel || !content.trim()}
                   >

@@ -24,6 +24,8 @@ import Channels from "./pages/Channels";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import EditPost from "./pages/EditPost";
+import ResetPassword from "@/pages/ResetPassword";
+import ForgotPassword from "@/pages/ForgotPassword";
 
 const queryClient = new QueryClient();
 
@@ -55,7 +57,9 @@ const App = () => (
                   <Route path="/" element={<Navigate to="/login" replace />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/register" element={<Register />} />
-                  <Route path="/auth/callback" element={<GoogleCallback />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/auth/google/callback" element={<GoogleCallback />} />
                   
                   {/* Protected Routes */}
                   <Route path="/dashboard" element={
