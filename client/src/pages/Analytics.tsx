@@ -528,7 +528,7 @@ export default function Analytics() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <PieChart className="h-5 w-5" />
+                    <PieChart className="h-10 w-5" />
                     Platform Distribution
                   </CardTitle>
                   <CardDescription>
@@ -538,14 +538,14 @@ export default function Analytics() {
                 <CardContent>
                   {platformDistribution.length > 0 ? (
                     <div className="flex flex-col lg:flex-row items-center gap-4">
-                      <ResponsiveContainer width="100%" height={250}>
+                      <ResponsiveContainer width="100%" height={280}>
                         <RechartsPieChart>
                           <Pie
                             data={platformDistribution}
                             cx="50%"
                             cy="50%"
-                            innerRadius={60}
-                            outerRadius={100}
+                            innerRadius={80}
+                            outerRadius={120}
                             paddingAngle={2}
                             dataKey="total"
                             nameKey="provider"

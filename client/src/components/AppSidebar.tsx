@@ -115,10 +115,12 @@ export function AppSidebar() {
         <SidebarGroup>
           {/* Logo */}
           <SidebarGroupLabel className="px-4 py-6">
-            <NavLink to="/dashboard" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-purple-600">
-                <span className="text-lg font-bold text-white">S</span>
-              </div>
+            <NavLink to="/dashboard" className="flex items-center gap-0">
+                <img 
+                src="/logo.png" 
+                alt="SocialFlow" 
+                className="h-10 w-10"
+              />
               {!isCollapsed && (
                 <span className="text-lg font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
                   SocialFlow

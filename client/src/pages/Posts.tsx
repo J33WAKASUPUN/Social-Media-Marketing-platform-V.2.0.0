@@ -21,7 +21,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Search, FileText, Loader2, HelpCircle, CheckCircle, ExternalLink, Archive, Eye } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Plus, Search, FileText, Loader2, HelpCircle, CheckCircle, ExternalLink, Archive, Eye, RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useBrand } from "@/contexts/BrandContext";
 import { postApi } from "@/services/postApi";
 import { Post } from "@/types";
@@ -166,6 +168,25 @@ export default function Posts() {
     }
   };
 
+  const PostCardSkeleton = () => (
+    <div className="rounded-lg border bg-card p-4 space-y-3">
+      <div className="flex items-start justify-between">
+        <Skeleton className="h-5 w-24" />
+        <Skeleton className="h-8 w-8 rounded-md" />
+      </div>
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-3/4" />
+      <div className="flex gap-2 pt-2">
+        <Skeleton className="h-6 w-20 rounded-full" />
+        <Skeleton className="h-6 w-16 rounded-full" />
+      </div>
+      <div className="flex gap-2 pt-2">
+        <Skeleton className="h-9 flex-1" />
+        <Skeleton className="h-9 flex-1" />
+      </div>
+    </div>
+  );
+
   const EmptyState = () => (
     <div className="flex flex-col items-center justify-center py-16">
       <div className="rounded-full bg-muted p-6">
@@ -226,13 +247,26 @@ export default function Posts() {
           </p>
         </div>
         
-        {/* ✅ Only show Create Post button for users who can create posts */}
-        {permissions.canCreatePosts && (
-          <Button variant="gradient" className="bg-purple-600" onClick={() => navigate("/posts/new")}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Post
+        {/* ✅ REFRESH BUTTON + CREATE POST BUTTON */}
+        <div className="flex gap-2">
+          {/* ✅ REFRESH BUTTON - VISIBLE TO ALL USERS */}
+          <Button
+            variant="outline"
+            onClick={fetchPosts}
+            disabled={loading}
+            title="Refresh posts"
+          >
+            <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
           </Button>
-        )}
+
+          {/* ✅ Only show Create Post button for users who can create posts */}
+          {permissions.canCreatePosts && (
+            <Button variant="gradient" className="bg-purple-600" onClick={() => navigate("/posts/new")}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Post
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* ✅ For viewers, show read-only message */}
@@ -282,8 +316,10 @@ export default function Posts() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <PostCardSkeleton key={i} />
+            ))}
           </div>
         ) : (
           <>

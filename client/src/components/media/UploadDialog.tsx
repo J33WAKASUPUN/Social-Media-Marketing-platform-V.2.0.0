@@ -82,15 +82,16 @@ export function UploadDialog({
     }
   };
 
-  const handleAddTag = () => {
-    if (tagInput && !metadata.tags.includes(tagInput)) {
-      setMetadata(prev => ({
-        ...prev,
-        tags: [...prev.tags, tagInput],
-      }));
-      setTagInput('');
-    }
-  };
+const handleAddTag = () => {
+  const trimmedTag = tagInput.trim();
+  if (trimmedTag && !metadata.tags.includes(trimmedTag)) {
+    setMetadata(prev => ({
+      ...prev,
+      tags: [...prev.tags, trimmedTag],
+    }));
+    setTagInput('');
+  }
+};
 
   const handleRemoveTag = (tag: string) => {
     setMetadata(prev => ({

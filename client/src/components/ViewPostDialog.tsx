@@ -26,6 +26,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
+  Play,
 } from 'lucide-react';
 import { PlatformBadge } from './PlatformBadge';
 import { Post } from '@/services/postApi';
@@ -83,8 +84,8 @@ export function ViewPostDialog({
   const StatusIcon = statusStyle.icon;
   const mediaUrls = post.mediaUrls || [];
   const hasMedia = mediaUrls.length > 0;
+  const isVideo = post.mediaType === 'video';
 
-  // Get published platforms with URLs
   const publishedPlatforms = post.schedules
     ?.filter(s => s.status === 'published' && s.platformPostId)
     .map(s => ({
@@ -94,7 +95,6 @@ export function ViewPostDialog({
       publishedAt: s.publishedAt,
     })) || [];
 
-  // Get scheduled platforms
   const scheduledPlatforms = post.schedules
     ?.filter(s => s.status === 'pending' || s.status === 'queued')
     .map(s => ({
@@ -103,7 +103,6 @@ export function ViewPostDialog({
       scheduledFor: s.scheduledFor,
     })) || [];
 
-  // Get failed platforms
   const failedPlatforms = post.schedules
     ?.filter(s => s.status === 'failed')
     .map(s => ({
@@ -162,27 +161,45 @@ export function ViewPostDialog({
                   Media
                 </h3>
                 <div className="relative aspect-video rounded-lg overflow-hidden bg-muted group">
-                  <img
-                    src={mediaUrls[currentImageIndex]}
-                    alt={`Media ${currentImageIndex + 1}`}
-                    className="absolute inset-0 w-full h-full object-contain"
-                    onError={(e) => {
-                      e.currentTarget.src = 'https://via.placeholder.com/800x450?text=Image+Not+Available';
-                    }}
-                  />
+                  {/* ✅ RENDER VIDEO OR IMAGE */}
+                  {isVideo ? (
+                    <video
+                      key={mediaUrls[currentImageIndex]}
+                      src={mediaUrls[currentImageIndex]}
+                      controls
+                      controlsList="nodownload"
+                      className="absolute inset-0 w-full h-full"
+                      preload="metadata"
+                      onError={(e) => {
+                        e.currentTarget.src = 'https://via.placeholder.com/800x450?text=Video+Not+Available';
+                      }}
+                    >
+                      <source src={mediaUrls[currentImageIndex]} type="video/mp4" />
+                      Your browser does not support the video tag.
+                    </video>
+                  ) : (
+                    <img
+                      src={mediaUrls[currentImageIndex]}
+                      alt={`Media ${currentImageIndex + 1}`}
+                      className="absolute inset-0 w-full h-full object-contain"
+                      onError={(e) => {
+                        e.currentTarget.src = 'https://via.placeholder.com/800x450?text=Image+Not+Available';
+                      }}
+                    />
+                  )}
 
-                  {/* Navigation Arrows */}
+                  {/* Navigation Arrows - only for multiple media */}
                   {mediaUrls.length > 1 && (
                     <>
                       <button
                         onClick={prevImage}
-                        className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+                        className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 z-10"
                       >
                         <ChevronLeft className="h-6 w-6" />
                       </button>
                       <button
                         onClick={nextImage}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 z-10"
                       >
                         <ChevronRight className="h-6 w-6" />
                       </button>
@@ -191,7 +208,7 @@ export function ViewPostDialog({
 
                   {/* Image Counter */}
                   {mediaUrls.length > 1 && (
-                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
                       {mediaUrls.map((_, index) => (
                         <button
                           key={index}
@@ -208,8 +225,8 @@ export function ViewPostDialog({
                   )}
 
                   {/* Counter Badge */}
-                  <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-black/60 text-white text-sm font-medium flex items-center gap-2">
-                    {post.mediaType === 'video' ? (
+                  <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-black/60 text-white text-sm font-medium flex items-center gap-2 z-10">
+                    {isVideo ? (
                       <Video className="h-4 w-4" />
                     ) : (
                       <ImageIcon className="h-4 w-4" />
@@ -383,7 +400,6 @@ export function ViewPostDialog({
         {/* Footer Actions */}
         <div className="px-6 py-4 border-t bg-muted/30 flex items-center justify-between">
           <div className="flex gap-2">
-            {/* Edit button - only if handler provided */}
             {onEdit && (post.status === 'draft' || post.status === 'scheduled') && (
               <Button
                 variant="default"
@@ -397,7 +413,6 @@ export function ViewPostDialog({
               </Button>
             )}
 
-            {/* Cancel schedule button - only if handler provided */}
             {onCancel && post.status === 'scheduled' && (
               <Button
                 variant="outline"
@@ -411,7 +426,6 @@ export function ViewPostDialog({
               </Button>
             )}
 
-            {/* Remove from history - only if handler provided */}
             {onRemoveFromHistory && (
               <Button
                 variant="ghost"

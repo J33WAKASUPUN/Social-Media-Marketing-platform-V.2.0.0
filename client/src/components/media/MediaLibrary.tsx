@@ -15,6 +15,9 @@ import {
   Trash2,
   AlertCircle,
   HardDrive,
+  Video, 
+  FileText,
+  Files,
   FolderCog,
   AlertTriangle,
 } from 'lucide-react';
@@ -448,55 +451,77 @@ export function MediaLibrary({
                   </div>
                 }
               />
-              {stats && (
-                <div className="grid gap-4 md:grid-cols-4">
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="rounded-lg bg-primary/10 p-3">
-                          <HardDrive className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Total Storage</p>
-                          <p className="text-2xl font-bold">{stats.totalSizeFormatted}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="rounded-lg bg-blue-500/10 p-3">
-                          <ImageIcon className="h-5 w-5 text-blue-500" />
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Total Files</p>
-                          <p className="text-2xl font-bold">{stats.totalFiles}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  {stats.byType.map((type) => (
-                    <Card key={type.type}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="rounded-lg bg-green-500/10 p-3">
-                            {type.type === 'image' ? (
-                              <ImageIcon className="h-5 w-5 text-green-500" />
-                            ) : (
-                              <ImageIcon className="h-5 w-5 text-purple-500" />
-                            )}
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground capitalize">{type.type}s</p>
-                            <p className="text-2xl font-bold">{type.count}</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
+{stats && (
+  <div className="grid gap-4 md:grid-cols-4">
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3">
+          <div className="rounded-lg bg-primary/10 p-3">
+            <HardDrive className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Total Storage</p>
+            <p className="text-2xl font-bold">{stats.totalSizeFormatted}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3">
+          <div className="rounded-lg bg-blue-500/10 p-3">
+            <Files className="h-5 w-5 text-blue-500" />
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Total Files</p>
+            <p className="text-2xl font-bold">{stats.totalFiles}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+    {stats.byType.map((type) => {
+      // Define icon and color based on type
+      const getIconAndColor = () => {
+        switch(type.type) {
+          case 'image':
+            return {
+              icon: <ImageIcon className="h-5 w-5 text-green-500" />,
+              bgColor: 'bg-green-500/10'
+            };
+          case 'video':
+            return {
+              icon: <Video className="h-5 w-5 text-orange-500" />,
+              bgColor: 'bg-orange-500/10'
+            };
+          case 'file':
+          default:
+            return {
+              icon: <FileText className="h-5 w-5 text-purple-500" />,
+              bgColor: 'bg-purple-500/10'
+            };
+        }
+      };
+
+      const { icon, bgColor } = getIconAndColor();
+
+      return (
+        <Card key={type.type}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className={`rounded-lg p-3 ${bgColor}`}>
+                {icon}
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground capitalize">{type.type}s</p>
+                <p className="text-2xl font-bold">{type.count}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    })}
+  </div>
+)}
             </>
           )}
   

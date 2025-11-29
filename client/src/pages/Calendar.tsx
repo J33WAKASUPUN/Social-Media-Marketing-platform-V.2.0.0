@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronLeft, ChevronRight, Plus, Clock, Calendar as CalendarIcon, Loader2, CheckCircle, AlertTriangle, FileText } from "lucide-react";
 import { PlatformBadge } from "@/components/PlatformBadge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -49,7 +50,7 @@ export default function Calendar() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPostForView, setSelectedPostForView] = useState<Post | null>(null); // ✅ ADD THIS LINE
+  const [selectedPostForView, setSelectedPostForView] = useState<Post | null>(null);
 
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
   const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
@@ -162,8 +163,28 @@ export default function Calendar() {
     };
   };
 
+  // ✅ SKELETON FOR CALENDAR CELLS
+  const CalendarCellSkeleton = () => (
+    <Card className="min-h-[100px] p-2 space-y-2">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-4 w-6" />
+        <Skeleton className="h-5 w-8 rounded-full" />
+      </div>
+      <div className="flex gap-1">
+        <Skeleton className="h-2.5 w-2.5 rounded-full" />
+        <Skeleton className="h-2.5 w-2.5 rounded-full" />
+      </div>
+      <div className="space-y-1">
+        <Skeleton className="h-3 w-20" />
+        <Skeleton className="h-3 w-16" />
+      </div>
+    </Card>
+  );
+
   const renderCalendarDays = () => {
     const days = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time for accurate comparison
     
     // Empty cells for days before month starts
     for (let i = 0; i < firstDayOfMonth; i++) {
@@ -174,9 +195,17 @@ export default function Calendar() {
     for (let date = 1; date <= daysInMonth; date++) {
       const postsForDay = getPostsForDate(date);
       const platforms = getPlatformsForDate(postsForDay);
+      
+      const cellDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), date);
+      cellDate.setHours(0, 0, 0, 0);
+      
       const isToday = date === new Date().getDate() && 
         currentDate.getMonth() === new Date().getMonth() &&
         currentDate.getFullYear() === new Date().getFullYear();
+      
+      const isPast = cellDate < today;
+      const hasNoPosts = postsForDay.length === 0;
+      const isLocked = isPast && hasNoPosts;
       
       // Count by status
       const scheduledCount = postsForDay.filter(p => p.status === 'scheduled').length;
@@ -188,15 +217,19 @@ export default function Calendar() {
           <HoverCardTrigger asChild>
             <Card
               className={cn(
-                "group min-h-[100px] cursor-pointer p-2 transition-all hover:shadow-lg hover:ring-2 hover:ring-primary",
-                isToday && "ring-2 ring-primary bg-primary/5"
+                "group min-h-[100px] p-2 transition-all",
+                isToday && "ring-2 ring-primary bg-primary/5",
+                isLocked 
+                  ? "cursor-not-allowed bg-muted/50 opacity-60" 
+                  : "cursor-pointer hover:shadow-lg hover:ring-2 hover:ring-primary"
               )}
-              onClick={() => handleDateClick(date)}
+              onClick={() => !isLocked && handleDateClick(date)}
             >
               <div className="flex items-center justify-between">
                 <span className={cn(
                   "text-sm font-semibold",
-                  isToday ? "text-primary" : ""
+                  isToday ? "text-primary" : "",
+                  isLocked && "text-muted-foreground"
                 )}>
                   {date}
                 </span>
@@ -247,8 +280,8 @@ export default function Calendar() {
             </Card>
           </HoverCardTrigger>
 
-          {/* ✅ HOVER PREVIEW */}
-          {postsForDay.length > 0 && (
+          {/* ✅ HOVER PREVIEW - Only if not locked */}
+          {postsForDay.length > 0 && !isLocked && (
             <HoverCardContent
               side="right"
               align="start"
@@ -370,6 +403,18 @@ export default function Calendar() {
     return days;
   };
 
+  // ✅ Render skeleton calendar grid
+  const renderSkeletonCalendar = () => {
+    const cells = [];
+    const totalCells = 35; // 5 weeks x 7 days
+    
+    for (let i = 0; i < totalCells; i++) {
+      cells.push(<CalendarCellSkeleton key={i} />);
+    }
+    
+    return cells;
+  };
+
   // ✅ Get posts for selected date (for side sheet)
   const selectedDatePosts = useMemo(() => {
     if (!selectedDate) return [];
@@ -441,9 +486,15 @@ export default function Calendar() {
           </div>
         </div>
 
+        {/* ✅ SKELETON OR CALENDAR */}
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="grid grid-cols-7 gap-2">
+            {dayNames.map((day) => (
+              <div key={day} className="p-2 text-center text-sm font-semibold text-muted-foreground">
+                {day}
+              </div>
+            ))}
+            {renderSkeletonCalendar()}
           </div>
         ) : (
           <div className="grid grid-cols-7 gap-2">
@@ -594,7 +645,7 @@ export default function Calendar() {
         open={!!selectedPostForView}
         onOpenChange={(open) => !open && setSelectedPostForView(null)}
         onEdit={permissions.canCreatePosts ? (id) => navigate(`/posts/edit/${id}`) : undefined}
-        onCancel={permissions.canCreatePosts ? undefined : undefined} // Pass cancel handler if you have one
+        onCancel={permissions.canCreatePosts ? undefined : undefined}
       />
     </div>
   );

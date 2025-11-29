@@ -45,9 +45,11 @@ import {
   Archive,
   Info,
   Image as ImageIcon,
+  Video,
   ChevronLeft,
   ChevronRight,
   Eye,
+  Play,
 } from "lucide-react";
 import { PlatformBadge } from "@/components/PlatformBadge";
 import { Post } from "@/services/postApi";
@@ -104,6 +106,7 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
   const contentPreview = post.content.length > 100 ? post.content.slice(0, 100) + "..." : post.content;
 
   const mediaUrls = post.mediaUrls || [];
+  const isVideo = post.mediaType === 'video';
   
   const platformsWithUrls = post.schedules?.map(s => ({
     platform: s.channel.provider,
@@ -114,10 +117,8 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
     postUrl: s.platformPostId ? getPlatformPostUrl(s.channel.provider, s.platformPostId, s.channel.platformUsername) : null,
   })) || [];
 
-  // Get published platforms
   const publishedPlatforms = platformsWithUrls.filter(p => p.status === 'published' && p.platformPostId);
 
-  // Get platform limitations for info dialog
   const platformLimitations = post.schedules?.map(s => ({
     platform: s.channel.provider,
     displayName: s.channel.displayName,
@@ -128,7 +129,6 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
   const isDraft = post.status === 'draft';
   const isScheduled = post.status === 'scheduled';
 
-  // Get scheduled date
   const scheduledDate = post.schedules?.[0]?.scheduledFor 
     ? format(new Date(post.schedules[0].scheduledFor), 'MMM dd, yyyy HH:mm')
     : null;
@@ -166,7 +166,6 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
     setCurrentImageIndex(index);
   };
 
-  // ✅ Check if ANY actions are available
   const hasEditableActions = !!(onEdit || onCancel || onRemoveFromHistory);
   const hasAnyActions = hasEditableActions || publishedPlatforms.length > 0 || platformsWithUrls.length > 0;
 
@@ -177,16 +176,38 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
         <div className="relative h-48 overflow-hidden bg-gradient-to-br from-muted to-muted/50">
           {mediaUrls.length > 0 ? (
             <>
-              <img
-                src={mediaUrls[currentImageIndex]}
-                alt={`Post media ${currentImageIndex + 1}`}
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                onError={(e) => {
-                  e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Image+Not+Found';
-                }}
-              />
+              {/* ✅ RENDER VIDEO OR IMAGE */}
+              {isVideo ? (
+                <div className="relative h-full w-full bg-black">
+                  <video
+                    src={`${mediaUrls[currentImageIndex]}#t=0.1`}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    muted
+                    playsInline
+                    preload="metadata"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                  {/* Play icon overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/30 transition-opacity group-hover:bg-black/40">
+                    <div className="rounded-full bg-white/90 p-4 transition-transform group-hover:scale-110">
+                      <Play className="h-8 w-8 text-black" fill="black" />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <img
+                  src={mediaUrls[currentImageIndex]}
+                  alt={`Post media ${currentImageIndex + 1}`}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Image+Not+Found';
+                  }}
+                />
+              )}
               
-              {/* Navigation Arrows */}
+              {/* Navigation Arrows - only for multiple media */}
               {mediaUrls.length > 1 && (
                 <>
                   <button
@@ -204,7 +225,7 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
                 </>
               )}
 
-              {/* Dot Indicators */}
+              {/* Dot Indicators - only for multiple media */}
               {mediaUrls.length > 1 && (
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
                   {mediaUrls.map((_, index) => (
@@ -222,11 +243,15 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
                 </div>
               )}
 
-              {/* Image Counter Badge */}
-              {mediaUrls.length > 1 && (
+              {/* Media Counter Badge */}
+              {mediaUrls.length > 0 && (
                 <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-black/60 text-white text-xs font-medium flex items-center gap-1 z-10">
-                  <ImageIcon className="h-3 w-3" />
-                  {currentImageIndex + 1}/{mediaUrls.length}
+                  {isVideo ? (
+                    <Video className="h-3 w-3" />
+                  ) : (
+                    <ImageIcon className="h-3 w-3" />
+                  )}
+                  {mediaUrls.length > 1 && `${currentImageIndex + 1}/${mediaUrls.length}`}
                 </div>
               )}
 
@@ -265,9 +290,7 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
               )}
             </div>
             
-            {/* ✅ VIEW BUTTON + Dropdown menu */}
             <div className="flex items-center gap-2">
-              {/* ✅ VIEW BUTTON - VISIBLE TO ALL USERS */}
               <Button
                 variant="ghost"
                 size="icon"
@@ -278,7 +301,6 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
                 <Eye className="h-4 w-4" />
               </Button>
 
-              {/* ✅ Only show dropdown menu if there are ANY actions available */}
               {hasAnyActions && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -287,7 +309,6 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
-                    {/* ✅ Published posts - Show platform links (visible to all users) */}
                     {publishedPlatforms.length > 0 && (
                       <>
                         {publishedPlatforms.map((platform, i) => (
@@ -303,7 +324,6 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
                       </>
                     )}
 
-                    {/* ✅ Draft posts - Only "Edit Draft" option (hidden from viewers) */}
                     {isDraft && onEdit && (
                       <>
                         <DropdownMenuItem onClick={() => onEdit(post._id)}>
@@ -314,7 +334,6 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
                       </>
                     )}
 
-                    {/* ✅ Scheduled posts - Edit and Cancel options (hidden from viewers) */}
                     {isScheduled && (
                       <>
                         {onEdit && (
@@ -333,7 +352,6 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
                       </>
                     )}
 
-                    {/* Platform info (visible to all users) */}
                     {platformsWithUrls.length > 0 && (
                       <>
                         <DropdownMenuItem onClick={() => setShowLimitationsDialog(true)}>
@@ -344,7 +362,6 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
                       </>
                     )}
 
-                    {/* Remove from history (hidden from viewers) */}
                     {onRemoveFromHistory && (
                       <DropdownMenuItem
                         className="text-muted-foreground"
@@ -402,7 +419,6 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
         </div>
       </Card>
 
-      {/* ✅ View Post Dialog - VISIBLE TO ALL USERS */}
       <ViewPostDialog
         post={post}
         open={showViewDialog}
@@ -412,7 +428,6 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
         onRemoveFromHistory={onRemoveFromHistory}
       />
 
-      {/* Cancel Schedule Dialog */}
       <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
         <AlertDialogContent className="sm:max-w-md">
           <AlertDialogHeader>
@@ -433,7 +448,6 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Remove from History Dialog */}
       <AlertDialog open={showRemoveDialog} onOpenChange={setShowRemoveDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -469,7 +483,6 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Platform Limitations Dialog */}
       <Dialog open={showLimitationsDialog} onOpenChange={setShowLimitationsDialog}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>

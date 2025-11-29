@@ -65,6 +65,7 @@ class PostService {
 
       validatedSchedules.push({
         channel: channel._id,
+        provider: channel.provider,
         scheduledFor: schedule.scheduledFor,
         status: 'pending',
       });
@@ -89,17 +90,17 @@ class PostService {
     const mediaType = this.detectMediaType(resolvedMediaUrls);
 
     // Create post
-    const post = await Post.create({
+    const post = new Post({
       brand: brandId,
       createdBy: userId,
-      title,
-      content,
-      hashtags: hashtags || [],
+      title: data.title,
+      content: data.content,
+      hashtags: data.hashtags,
       mediaUrls: resolvedMediaUrls,
       mediaType,
       mediaLibraryItems,
       schedules: validatedSchedules,
-      status: validatedSchedules.length > 0 ? 'scheduled' : 'draft',
+      status: validatedSchedules.some(s => s.status === 'queued') ? 'publishing' : validatedSchedules.length > 0 ? 'scheduled' : 'draft',
       settings: settings || {},
     });
 
@@ -112,6 +113,7 @@ class PostService {
           new Date(schedule.scheduledFor)
         );
         schedule.status = 'queued';
+        post.status = 'publishing';
       }
     }
 
@@ -243,6 +245,7 @@ class PostService {
 
         validatedSchedules.push({
           channel: channel._id,
+          provider: channel.provider,
           scheduledFor: schedule.scheduledFor,
           status: 'pending',
         });
@@ -251,17 +254,18 @@ class PostService {
       post.schedules = validatedSchedules;
 
       // Queue new schedules
-      for (const schedule of post.schedules) {
-        if (schedule.scheduledFor) {
-          const job = await queueManager.addPublishJob(
-            post._id,
-            schedule._id,
-            new Date(schedule.scheduledFor)
-          );
-          schedule.status = 'queued';
-          schedule.jobId = job.id;
-        }
+    for (const schedule of post.schedules) {
+      if (schedule.scheduledFor) {
+        const job = await queueManager.addPublishJob(
+          post._id,
+          schedule._id,
+          new Date(schedule.scheduledFor)
+        );
+        schedule.status = 'queued';
+        schedule.jobId = job.id;
+        post.status = 'publishing';
       }
+    }
 
       post.status = validatedSchedules.length > 0 ? 'scheduled' : 'draft';
     }
