@@ -5,6 +5,8 @@ import { PostCard } from "@/components/PostCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   Select,
   SelectContent,
@@ -19,16 +21,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Search, FileText, Loader2, HelpCircle, CheckCircle, ExternalLink, Archive } from "lucide-react";
+import { Plus, Search, FileText, Loader2, HelpCircle, CheckCircle, ExternalLink, Archive, Eye } from "lucide-react";
 import { useBrand } from "@/contexts/BrandContext";
 import { postApi } from "@/services/postApi";
 import { Post } from "@/types";
 import { toast } from "sonner";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function Posts() {
   const navigate = useNavigate();
   const { currentBrand } = useBrand();
+  const permissions = usePermissions();
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -52,14 +54,11 @@ export default function Posts() {
     setLoading(true);
     try {
       console.log('📥 Fetching posts for brand:', currentBrand._id);
-      
-      const filters = filterStatus === 'all' ? {} : { status: filterStatus };
-      const response = await postApi.getAll(currentBrand._id, filters);
-      
-      console.log('✅ Posts fetched:', response.data.length);
+      const response = await postApi.getAll(currentBrand._id);
+      console.log('✅ Posts fetched:', response.data);
       setPosts(response.data);
     } catch (error: any) {
-      console.error('❌ Failed to fetch posts:', error);
+      console.error('❌ Fetch posts error:', error);
       toast.error(error.response?.data?.message || 'Failed to load posts');
     } finally {
       setLoading(false);
@@ -69,27 +68,27 @@ export default function Posts() {
   // Filter posts by status AND platform
   const getPostsByStatus = (status?: Post['status']) => {
     let filtered = posts;
-    
+
     // Filter by status
     if (status) {
       filtered = filtered.filter(post => post.status === status);
     }
-    
+
     // Filter by platform
     if (filterPlatform !== 'all') {
       filtered = filtered.filter(post => 
         post.schedules?.some(s => s.channel.provider === filterPlatform)
       );
     }
-    
-    // Apply search filter
+
+    // Filter by search query
     if (searchQuery) {
-      filtered = filtered.filter(post =>
+      filtered = filtered.filter(post => 
         post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
         post.title?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-    
+
     return filtered;
   };
 
@@ -108,52 +107,60 @@ export default function Posts() {
   const draftPosts = getPostsByStatus("draft");
   const failedPosts = getPostsByStatus("failed");
 
-  // ✅ EDIT SCHEDULED POST
+  // ✅ EDIT SCHEDULED POST - Only for Editor+
   const handleEdit = (id: string) => {
+    if (!permissions.canCreatePosts) {
+      toast.error('You do not have permission to edit posts');
+      return;
+    }
     navigate(`/posts/edit/${id}`);
   };
 
-// ✅ CANCEL SCHEDULED POST
-const handleCancel = async (id: string) => {
-  const post = posts.find(p => p._id === id);
-  if (!post) return;
-
-  const scheduleId = post.schedules?.[0]?._id;
-  if (!scheduleId) {
-    toast.error('No schedule found');
-    return;
-  }
-
-  if (!window.confirm('Cancel this scheduled post? It will be moved to drafts.')) return;
-
-  try {
-    await postApi.cancelSchedule(id, scheduleId);
-    toast.success('Schedule cancelled successfully');
-    fetchPosts(); // Refresh list
-  } catch (error: any) {
-    toast.error(error.response?.data?.message || 'Failed to cancel schedule');
-  }
-};
-
-  // ✅ PUBLISH DRAFT POST
-  const handlePublish = async (id: string) => {
-    if (!window.confirm('Publish this draft post now?')) return;
+  // ✅ CANCEL SCHEDULED POST - Only for Editor+
+  const handleCancel = async (id: string) => {
+    if (!permissions.canCreatePosts) {
+      toast.error('You do not have permission to cancel posts');
+      return;
+    }
 
     try {
-      // Navigate to edit page where user can select platform and schedule
-      navigate(`/posts/edit/${id}`);
-      toast.info('Please select platform and publishing options');
+      const post = posts.find(p => p._id === id);
+      if (!post) return;
+
+      const scheduleId = post.schedules?.[0]?._id;
+      if (!scheduleId) {
+        toast.error('No schedule found to cancel');
+        return;
+      }
+
+      await postApi.cancelSchedule(id, scheduleId);
+      toast.success('Schedule cancelled successfully');
+      fetchPosts();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to publish post');
+      toast.error(error.response?.data?.message || 'Failed to cancel schedule');
     }
   };
 
-  // ✅ REMOVE FROM HISTORY (LOCAL DB DELETE ONLY)
+  // ✅ PUBLISH DRAFT POST - Only for Editor+
+  const handlePublish = async (id: string) => {
+    if (!permissions.canPublishPosts) {
+      toast.error('You do not have permission to publish posts');
+      return;
+    }
+    navigate(`/posts/edit/${id}`);
+  };
+
+  // ✅ REMOVE FROM HISTORY (LOCAL DB DELETE ONLY) - Only for Manager+
   const handleRemoveFromHistory = async (id: string) => {
+    if (!permissions.canManageBrand) {
+      toast.error('You do not have permission to remove posts from history');
+      return;
+    }
+
     try {
       await postApi.delete(id);
       toast.success('Post removed from history');
-      fetchPosts(); // Refresh list
+      fetchPosts();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to remove post');
     }
@@ -165,11 +172,17 @@ const handleCancel = async (id: string) => {
         <FileText className="h-12 w-12 text-muted-foreground" />
       </div>
       <h3 className="mt-4 text-lg font-semibold">No posts yet</h3>
-      <p className="mt-2 text-sm text-muted-foreground">Create your first post to get started</p>
-      <Button className="mt-4 bg-purple-600" variant="gradient" onClick={() => navigate("/posts/new")}>
-        <Plus className="mr-2 h-4 w-4" />
-        Create Post
-      </Button>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {permissions.canCreatePosts 
+          ? 'Create your first post to get started'
+          : 'No posts to display'}
+      </p>
+      {permissions.canCreatePosts && (
+        <Button className="mt-4" onClick={() => navigate('/posts/new')}>
+          <Plus className="mr-2 h-4 w-4" />
+          Create Post
+        </Button>
+      )}
     </div>
   );
 
@@ -193,7 +206,9 @@ const handleCancel = async (id: string) => {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold">Submission History</h1>
+            <h1 className="text-3xl font-bold">
+              {permissions.isViewer ? 'Posts History' : 'Submission History'}
+            </h1>
             {/* ✅ HOW IT WORKS BUTTON */}
             <Button
               variant="ghost"
@@ -205,14 +220,31 @@ const handleCancel = async (id: string) => {
             </Button>
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            This is a log of posts sent to platforms. Changes made here do not affect live posts.
+            {permissions.isViewer 
+              ? 'View all posts submitted to social media platforms'
+              : 'This is a log of posts sent to platforms. Changes made here do not affect live posts.'}
           </p>
         </div>
-        <Button variant="gradient" className="bg-purple-600" onClick={() => navigate("/posts/new")}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Post
-        </Button>
+        
+        {/* ✅ Only show Create Post button for users who can create posts */}
+        {permissions.canCreatePosts && (
+          <Button variant="gradient" className="bg-purple-600" onClick={() => navigate("/posts/new")}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Post
+          </Button>
+        )}
       </div>
+
+      {/* ✅ For viewers, show read-only message */}
+      {permissions.isViewer && (
+        <Alert>
+          <Eye className="h-4 w-4" />
+          <AlertTitle>View Only Mode</AlertTitle>
+          <AlertDescription>
+            You have view-only access. Contact your organization owner to request editing permissions.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Tabs defaultValue="all" className="space-y-4" onValueChange={(value) => setFilterStatus(value as any)}>
         <TabsList>
@@ -223,27 +255,26 @@ const handleCancel = async (id: string) => {
           <TabsTrigger value="failed">Failed ({failedPosts.length})</TabsTrigger>
         </TabsList>
 
-        <div className="flex flex-col gap-4 sm:flex-row">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search posts..."
-              className="pl-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
             />
           </div>
-          
-          {/* Platform Filter */}
           <Select value={filterPlatform} onValueChange={setFilterPlatform}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="All Platforms" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Platforms</SelectItem>
-              {availablePlatforms.map(platform => (
-                <SelectItem key={platform} value={platform} className="capitalize">
-                  {platform}
+              {availablePlatforms.map((platform) => (
+                <SelectItem key={platform} value={platform}>
+                  {platform.charAt(0).toUpperCase() + platform.slice(1)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -265,10 +296,11 @@ const handleCancel = async (id: string) => {
                     <PostCard
                       key={post._id}
                       post={post}
-                      onRemoveFromHistory={handleRemoveFromHistory}
-                      onEdit={handleEdit}
-                      onCancel={handleCancel}
-                      onPublish={handlePublish}
+                      // ✅ Only pass handlers if user has permission
+                      onRemoveFromHistory={permissions.canManageBrand ? handleRemoveFromHistory : undefined}
+                      onEdit={permissions.canCreatePosts ? handleEdit : undefined}
+                      onCancel={permissions.canCreatePosts ? handleCancel : undefined}
+                      onPublish={permissions.canPublishPosts ? handlePublish : undefined}
                     />
                   ))}
                 </div>
@@ -284,10 +316,10 @@ const handleCancel = async (id: string) => {
                     <PostCard
                       key={post._id}
                       post={post}
-                      onRemoveFromHistory={handleRemoveFromHistory}
-                      onEdit={handleEdit}
-                      onCancel={handleCancel}
-                      onPublish={handlePublish}
+                      onRemoveFromHistory={permissions.canManageBrand ? handleRemoveFromHistory : undefined}
+                      onEdit={permissions.canCreatePosts ? handleEdit : undefined}
+                      onCancel={permissions.canCreatePosts ? handleCancel : undefined}
+                      onPublish={permissions.canPublishPosts ? handlePublish : undefined}
                     />
                   ))}
                 </div>
@@ -303,8 +335,8 @@ const handleCancel = async (id: string) => {
                     <PostCard
                       key={post._id}
                       post={post}
-                      onRemoveFromHistory={handleRemoveFromHistory}
-                      onPublish={handlePublish}
+                      onRemoveFromHistory={permissions.canManageBrand ? handleRemoveFromHistory : undefined}
+                      onPublish={permissions.canPublishPosts ? handlePublish : undefined}
                     />
                   ))}
                 </div>
@@ -320,9 +352,9 @@ const handleCancel = async (id: string) => {
                     <PostCard
                       key={post._id}
                       post={post}
-                      onRemoveFromHistory={handleRemoveFromHistory}
-                      onEdit={handleEdit}
-                      onPublish={handlePublish}
+                      onRemoveFromHistory={permissions.canManageBrand ? handleRemoveFromHistory : undefined}
+                      onEdit={permissions.canCreatePosts ? handleEdit : undefined}
+                      onPublish={permissions.canPublishPosts ? handlePublish : undefined}
                     />
                   ))}
                 </div>
@@ -338,9 +370,9 @@ const handleCancel = async (id: string) => {
                     <PostCard
                       key={post._id}
                       post={post}
-                      onRemoveFromHistory={handleRemoveFromHistory}
-                      onEdit={handleEdit}
-                      onPublish={handlePublish}
+                      onRemoveFromHistory={permissions.canManageBrand ? handleRemoveFromHistory : undefined}
+                      onEdit={permissions.canCreatePosts ? handleEdit : undefined}
+                      onPublish={permissions.canPublishPosts ? handlePublish : undefined}
                     />
                   ))}
                 </div>

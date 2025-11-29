@@ -17,7 +17,12 @@ class AnalyticsController {
         });
       }
 
-      const metrics = await analyticsService.getDashboardMetrics(brandId, period);
+      // Pass userId for permission check
+      const metrics = await analyticsService.getDashboardMetrics(
+        brandId, 
+        period,
+        req.user._id // Pass current user ID
+      );
 
       res.json({
         success: true,
@@ -29,6 +34,12 @@ class AnalyticsController {
         },
       });
     } catch (error) {
+      if (error.message === 'Permission denied') {
+        return res.status(403).json({
+          success: false,
+          message: 'You do not have access to this brand\'s analytics',
+        });
+      }
       logger.error('Dashboard analytics failed', error);
       next(error);
     }

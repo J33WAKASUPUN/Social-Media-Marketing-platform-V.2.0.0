@@ -6,7 +6,6 @@ const membershipSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
-  // Make brand optional for organization-level memberships
   brand: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Brand',
@@ -30,6 +29,8 @@ const membershipSchema = new mongoose.Schema({
       'create_posts',
       'publish_posts',
       'view_analytics',
+      'view_posts',
+      'view_media',
       'invite_members',
       'manage_members',
       'delete_brand',
@@ -59,7 +60,7 @@ membershipSchema.index({ user: 1, brand: 1 }, { unique: true, sparse: true });
 
 // Set default permissions based on role
 membershipSchema.pre('save', function(next) {
-  if (this.isModified('role') && this.permissions.length === 0) {
+  if (this.isModified('role') || this.permissions.length === 0) {
     switch (this.role) {
       case 'owner':
         this.permissions = [
@@ -68,6 +69,8 @@ membershipSchema.pre('save', function(next) {
           'create_posts',
           'publish_posts',
           'view_analytics',
+          'view_posts',
+          'view_media',
           'invite_members',
           'manage_members',
           'delete_brand',
@@ -79,6 +82,8 @@ membershipSchema.pre('save', function(next) {
           'create_posts',
           'publish_posts',
           'view_analytics',
+          'view_posts',
+          'view_media',
           'invite_members',
         ];
         break;
@@ -87,13 +92,18 @@ membershipSchema.pre('save', function(next) {
           'create_posts',
           'publish_posts',
           'view_analytics',
+          'view_posts',
+          'view_media',
         ];
         break;
       case 'viewer':
         this.permissions = [
           'view_analytics',
+          'view_posts',
         ];
         break;
+      default:
+        this.permissions = ['view_analytics', 'view_posts'];
     }
   }
   next();
@@ -106,7 +116,7 @@ membershipSchema.methods.hasPermission = function(permission) {
 
 // Check if user has any of the specified permissions
 membershipSchema.methods.hasAnyPermission = function(permissions) {
-  return permissions.some(permission => this.permissions.includes(permission));
+  return permissions.some(p => this.permissions.includes(p));
 };
 
 module.exports = mongoose.model('Membership', membershipSchema);

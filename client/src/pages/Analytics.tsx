@@ -57,6 +57,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useBrand } from "@/contexts/BrandContext";
+import { usePermissions } from "@/hooks/usePermissions"; // ✅ ADD THIS IMPORT
 import { analyticsApi, DashboardMetrics, ChannelPerformance } from "@/services/analyticsApi";
 import { mediaApi, MediaStats } from "@/services/mediaApi";
 import { postApi } from "@/services/postApi";
@@ -88,9 +89,9 @@ const CONTENT_TYPE_COLORS: Record<string, string> = {
 
 // ✨ Updated gradient configs - Using main theme purple colors
 const TOP_DAY_GRADIENTS = [
-  { id: 'rank-1', from: '#EF63FFFF', to: '#FF324EFF', label: 'Best Day' },
-  { id: 'rank-2', from: '#00F2FFFF', to: '#34A0FFFF', label: '2nd Place' },
-  { id: 'rank-3', from: '#31FD86FF', to: '#00AE3AFF', label: '3rd Place' },
+  { id: 'rank-1', from: '#B8860B', to: '#C79A28FF', label: 'Best Day' },
+  { id: 'rank-2', from: '#71706E', to: '#A5A5A5FF', label: '2nd Place' },
+  { id: 'rank-3', from: '#8B4513', to: '#C26F30FF', label: '3rd Place' },
 ];
 
 // Status config for recent activity
@@ -107,6 +108,7 @@ const MAX_STORAGE_BYTES = 1024 * 1024 * 1024 * 1024; // 1TB
 
 export default function Analytics() {
   const { currentBrand } = useBrand();
+  const permissions = usePermissions(); // ✅ ADD THIS LINE
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [period, setPeriod] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
@@ -169,29 +171,26 @@ export default function Analytics() {
   // ✨ Calculate posts per channel (client-side) - FIXED
   const postsPerChannel = useMemo(() => {
     const channelCount: Record<string, { count: number; published: number; scheduled: number; failed: number }> = {};
-
+    
     posts.forEach(post => {
       post.schedules?.forEach(schedule => {
-        // Try multiple key formats
-        const channelId = schedule.channel?._id || (schedule.channel as any)?.id || schedule.channel;
+        const channelId = schedule.channel?._id || (schedule.channel as any)?.id;
         if (!channelId) return;
-        
-        // Store with string key
-        const key = String(channelId);
-        
-        if (!channelCount[key]) {
-          channelCount[key] = { count: 0, published: 0, scheduled: 0, failed: 0 };
+
+        const idStr = String(channelId);
+        if (!channelCount[idStr]) {
+          channelCount[idStr] = { count: 0, published: 0, scheduled: 0, failed: 0 };
         }
-        channelCount[key].count++;
-        
-        // Check schedule status OR post status
-        const scheduleStatus = schedule.status || post.status;
-        if (scheduleStatus === 'published') {
-          channelCount[key].published++;
-        } else if (scheduleStatus === 'pending' || scheduleStatus === 'queued' || post.status === 'scheduled') {
-          channelCount[key].scheduled++;
-        } else if (scheduleStatus === 'failed' || post.status === 'failed') {
-          channelCount[key].failed++;
+
+        channelCount[idStr].count++;
+
+        // Count by schedule status
+        if (schedule.status === 'published') {
+          channelCount[idStr].published++;
+        } else if (schedule.status === 'pending' || schedule.status === 'queued') {
+          channelCount[idStr].scheduled++;
+        } else if (schedule.status === 'failed') {
+          channelCount[idStr].failed++;
         }
       });
     });
@@ -410,18 +409,24 @@ export default function Analytics() {
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Overview</span>
             </TabsTrigger>
-            <TabsTrigger value="channels" className="flex items-center gap-2">
-              <Share2 className="h-4 w-4" />
-              <span className="hidden sm:inline">Channels</span>
-            </TabsTrigger>
+            {/* ✅ Only show Channels tab if user can connect channels */}
+            {permissions.canConnectChannels && (
+              <TabsTrigger value="channels" className="flex items-center gap-2">
+                <Share2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Channels</span>
+              </TabsTrigger>
+            )}
             <TabsTrigger value="content" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               <span className="hidden sm:inline">Content</span>
             </TabsTrigger>
-            <TabsTrigger value="media" className="flex items-center gap-2">
-              <Image className="h-4 w-4" />
-              <span className="hidden sm:inline">Media</span>
-            </TabsTrigger>
+            {/* ✅ Only show Media tab if user can view media */}
+            {permissions.canViewMedia && (
+              <TabsTrigger value="media" className="flex items-center gap-2">
+                <Image className="h-4 w-4" />
+                <span className="hidden sm:inline">Media</span>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* OVERVIEW TAB */}
@@ -824,6 +829,7 @@ export default function Analytics() {
           </TabsContent>
 
           {/* ✨ CHANNELS TAB - FIXED: With Posts Count from Client Data */}
+        {permissions.canConnectChannels && (
           <TabsContent value="channels" className="space-y-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <StatCard
@@ -1049,6 +1055,7 @@ export default function Analytics() {
   </Card>
 )}
           </TabsContent>
+          )}
 
           {/* CONTENT TAB */}
           <TabsContent value="content" className="space-y-6">
@@ -1199,6 +1206,7 @@ export default function Analytics() {
           </TabsContent>
 
           {/* ✨ MEDIA TAB - FIXED: Percentage Calculation, Removed Documents */}
+        {permissions.canViewMedia && (
           <TabsContent value="media" className="space-y-6">
             <Card className="overflow-hidden">
               <CardHeader className="border-b bg-muted/30">
@@ -1373,6 +1381,7 @@ export default function Analytics() {
               </CardContent>
             </Card>
           </TabsContent>
+        )}          
         </Tabs>
       )}
     </div>

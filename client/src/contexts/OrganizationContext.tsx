@@ -5,10 +5,16 @@ import { useToast } from '@/hooks/use-toast';
 import { handleApiError } from '@/lib/api';
 import { useAuth } from './AuthContext';
 
+// Extended Organization type with role
+interface OrganizationWithRole extends Organization {
+  role?: 'owner' | 'manager' | 'editor' | 'viewer';
+  permissions?: string[];
+}
+
 interface OrganizationContextType {
-  organizations: Organization[];
-  currentOrganization: Organization | null;
-  setCurrentOrganization: (org: Organization | null) => void;
+  organizations: OrganizationWithRole[];
+  currentOrganization: OrganizationWithRole | null;
+  setCurrentOrganization: (org: OrganizationWithRole | null) => void;
   loading: boolean;
   refreshOrganizations: () => Promise<void>;
   createOrganization: (data: { name: string; description?: string; logo?: string }) => Promise<Organization | null>;
@@ -19,8 +25,8 @@ interface OrganizationContextType {
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
 
 export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [currentOrganization, setCurrentOrganizationState] = useState<Organization | null>(null);
+  const [organizations, setOrganizations] = useState<OrganizationWithRole[]>([]);
+  const [currentOrganization, setCurrentOrganizationState] = useState<OrganizationWithRole | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -34,69 +40,64 @@ export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ childr
       return;
     }
 
-     try {
-    setLoading(true);
-    const response = await organizationApi.getAll();
-    
-    // Filter out any null/undefined organizations
-    const validOrganizations = (response.data || []).filter(
-      (org: Organization) => org && org._id
-    );
-    
-    setOrganizations(validOrganizations);
+    try {
+      setLoading(true);
+      const response = await organizationApi.getAll();
+      const orgs = (response.data || []) as OrganizationWithRole[];
+      setOrganizations(orgs);
 
-    // IF NO ORGANIZATIONS, SHOW TOAST TO CREATE ONE
-    if (validOrganizations.length === 0) {
-      toast({
-        title: 'Welcome!',
-        description: 'Create your first organization to get started.',
+      // Store roles for each organization in localStorage for usePermissions hook
+      orgs.forEach((org) => {
+        if (org.role) {
+          localStorage.setItem(`org_${org._id}_role`, org.role);
+        }
       });
-    }
 
-    // Set current organization from localStorage or first available
-    const savedOrgId = localStorage.getItem('currentOrganizationId');
-    if (savedOrgId) {
-      const savedOrg = validOrganizations.find((org: Organization) => org._id === savedOrgId);
-      if (savedOrg) {
-        setCurrentOrganizationState(savedOrg);
-      } else if (validOrganizations.length > 0) {
-        setCurrentOrganizationState(validOrganizations[0]);
+      // Set current organization from localStorage or first available
+      const savedOrgId = localStorage.getItem('currentOrganizationId');
+      if (savedOrgId) {
+        const savedOrg = orgs.find((o) => o._id === savedOrgId);
+        if (savedOrg) {
+          setCurrentOrganizationState(savedOrg);
+        } else if (orgs.length > 0) {
+          setCurrentOrganizationState(orgs[0]);
+          localStorage.setItem('currentOrganizationId', orgs[0]._id);
+        }
+      } else if (orgs.length > 0) {
+        setCurrentOrganizationState(orgs[0]);
+        localStorage.setItem('currentOrganizationId', orgs[0]._id);
       }
-    } else if (validOrganizations.length > 0) {
-      setCurrentOrganizationState(validOrganizations[0]);
-    }
-  } catch (error: any) {
-    console.error('Failed to fetch organizations:', error);
-    
-    // BETTER ERROR HANDLING
-    if (!error.response || error.response.status !== 401) {
-      // Don't show error if organizations array is just empty
-      if (error.response?.status !== 404) {
+    } catch (error: any) {
+      // Don't show error for 401 (unauthorized) - user might not be logged in yet
+      if (error.response?.status !== 401) {
         toast({
           variant: 'destructive',
           title: 'Error',
           description: handleApiError(error),
         });
       }
+      setOrganizations([]);
+      setCurrentOrganizationState(null);
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   useEffect(() => {
-    // Only fetch when auth is done loading and user is authenticated
-    if (!authLoading && isAuthenticated) {
+    // Wait for auth to finish loading before fetching organizations
+    if (!authLoading) {
       fetchOrganizations();
-    } else if (!authLoading && !isAuthenticated) {
-      setLoading(false);
     }
   }, [isAuthenticated, authLoading]);
 
-  const setCurrentOrganization = (org: Organization | null) => {
+  const setCurrentOrganization = (org: OrganizationWithRole | null) => {
     setCurrentOrganizationState(org);
     if (org) {
       localStorage.setItem('currentOrganizationId', org._id);
+      // Also update the role in localStorage
+      if (org.role) {
+        localStorage.setItem(`org_${org._id}_role`, org.role);
+      }
     } else {
       localStorage.removeItem('currentOrganizationId');
     }
@@ -141,6 +142,8 @@ export const OrganizationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const deleteOrganization = async (id: string) => {
     try {
       await organizationApi.delete(id);
+      // Clear role from localStorage
+      localStorage.removeItem(`org_${id}_role`);
       await fetchOrganizations();
       toast({
         title: 'Success',

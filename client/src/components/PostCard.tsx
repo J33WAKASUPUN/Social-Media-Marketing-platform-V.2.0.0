@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { ViewPostDialog } from "./ViewPostDialog";
 import {
   Card,
   CardContent,
@@ -45,13 +47,13 @@ import {
   Image as ImageIcon,
   ChevronLeft,
   ChevronRight,
+  Eye,
 } from "lucide-react";
 import { PlatformBadge } from "@/components/PlatformBadge";
 import { Post } from "@/services/postApi";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { getPlatformCapability } from "@/lib/platformCapabilities";
-import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface PostCardProps {
@@ -95,6 +97,7 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showLimitationsDialog, setShowLimitationsDialog] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showViewDialog, setShowViewDialog] = useState(false);
   
   const statusStyle = statusConfig[post.status] || statusConfig.draft;
   const StatusIcon = statusStyle.icon;
@@ -110,37 +113,40 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
     status: s.status,
     postUrl: s.platformPostId ? getPlatformPostUrl(s.channel.provider, s.platformPostId, s.channel.platformUsername) : null,
   })) || [];
-  
-  const nextSchedule = post.schedules?.find(s => s.status === 'pending' || s.status === 'queued');
-  const scheduledDate = nextSchedule ? format(new Date(nextSchedule.scheduledFor), 'MMM dd, yyyy HH:mm') : null;
 
-  const publishedPlatforms = platformsWithUrls.filter(p => p.status === 'published' && p.postUrl);
+  // Get published platforms
+  const publishedPlatforms = platformsWithUrls.filter(p => p.status === 'published' && p.platformPostId);
 
-  const isScheduled = post.status === 'scheduled' && !publishedPlatforms.length;
+  // Get platform limitations for info dialog
+  const platformLimitations = post.schedules?.map(s => ({
+    platform: s.channel.provider,
+    displayName: s.channel.displayName,
+    warnings: getPlatformCapability(s.channel.provider).warnings,
+    postUrl: s.platformPostId ? getPlatformPostUrl(s.channel.provider, s.platformPostId) : null,
+  })) || [];
+
   const isDraft = post.status === 'draft';
+  const isScheduled = post.status === 'scheduled';
 
-  const platformLimitations = platformsWithUrls.map(p => {
-    const cap = getPlatformCapability(p.platform as any);
-    return {
-      platform: p.platform,
-      displayName: cap.displayName,
-      warnings: cap.warnings,
-      postUrl: p.postUrl,
-      status: p.status,
-    };
-  });
+  // Get scheduled date
+  const scheduledDate = post.schedules?.[0]?.scheduledFor 
+    ? format(new Date(post.schedules[0].scheduledFor), 'MMM dd, yyyy HH:mm')
+    : null;
 
   const handleRemoveFromHistory = () => {
-    onRemoveFromHistory?.(post._id);
-    setShowRemoveDialog(false);
+    if (onRemoveFromHistory) {
+      onRemoveFromHistory(post._id);
+      setShowRemoveDialog(false);
+    }
   };
 
-  const handleCancelSchedule = () => {
-    onCancel?.(post._id);
-    setShowCancelDialog(false);
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel(post._id);
+      setShowCancelDialog(false);
+    }
   };
 
-  // Image navigation functions
   const nextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (mediaUrls.length > 1) {
@@ -159,6 +165,10 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
     e.stopPropagation();
     setCurrentImageIndex(index);
   };
+
+  // ✅ Check if ANY actions are available
+  const hasEditableActions = !!(onEdit || onCancel || onRemoveFromHistory);
+  const hasAnyActions = hasEditableActions || publishedPlatforms.length > 0 || platformsWithUrls.length > 0;
 
   return (
     <>
@@ -181,13 +191,13 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
                 <>
                   <button
                     onClick={prevImage}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 z-10"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80 z-10"
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </button>
                   <button
                     onClick={nextImage}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70 z-10"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80 z-10"
                   >
                     <ChevronRight className="h-5 w-5" />
                   </button>
@@ -255,82 +265,99 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
               )}
             </div>
             
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-1">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                {/* ✅ Published posts - Show platform links */}
-                {publishedPlatforms.length > 0 && (
-                  <>
-                    {publishedPlatforms.map((platform, i) => (
+            {/* ✅ VIEW BUTTON + Dropdown menu */}
+            <div className="flex items-center gap-2">
+              {/* ✅ VIEW BUTTON - VISIBLE TO ALL USERS */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setShowViewDialog(true)}
+                title="View details"
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+
+              {/* ✅ Only show dropdown menu if there are ANY actions available */}
+              {hasAnyActions && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-1">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    {/* ✅ Published posts - Show platform links (visible to all users) */}
+                    {publishedPlatforms.length > 0 && (
+                      <>
+                        {publishedPlatforms.map((platform, i) => (
+                          <DropdownMenuItem
+                            key={i}
+                            onClick={() => window.open(platform.postUrl!, '_blank')}
+                          >
+                            <ExternalLink className="mr-2 h-4 w-4" />
+                            Open on {platform.displayName}
+                          </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
+
+                    {/* ✅ Draft posts - Only "Edit Draft" option (hidden from viewers) */}
+                    {isDraft && onEdit && (
+                      <>
+                        <DropdownMenuItem onClick={() => onEdit(post._id)}>
+                          <Edit2 className="mr-2 h-4 w-4" />
+                          Edit Draft or Publish Now
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
+
+                    {/* ✅ Scheduled posts - Edit and Cancel options (hidden from viewers) */}
+                    {isScheduled && (
+                      <>
+                        {onEdit && (
+                          <DropdownMenuItem onClick={() => onEdit(post._id)}>
+                            <Edit2 className="mr-2 h-4 w-4" />
+                            Edit Scheduled Post
+                          </DropdownMenuItem>
+                        )}
+                        {onCancel && (
+                          <DropdownMenuItem onClick={() => setShowCancelDialog(true)} className="text-amber-600">
+                            <XCircle className="mr-2 h-4 w-4" />
+                            Cancel Schedule
+                          </DropdownMenuItem>
+                        )}
+                        {(onEdit || onCancel) && <DropdownMenuSeparator />}
+                      </>
+                    )}
+
+                    {/* Platform info (visible to all users) */}
+                    {platformsWithUrls.length > 0 && (
+                      <>
+                        <DropdownMenuItem onClick={() => setShowLimitationsDialog(true)}>
+                          <Info className="mr-2 h-4 w-4" />
+                          Platform Info
+                        </DropdownMenuItem>
+                        {onRemoveFromHistory && <DropdownMenuSeparator />}
+                      </>
+                    )}
+
+                    {/* Remove from history (hidden from viewers) */}
+                    {onRemoveFromHistory && (
                       <DropdownMenuItem
-                        key={i}
-                        onClick={() => window.open(platform.postUrl!, '_blank')}
+                        className="text-muted-foreground"
+                        onClick={() => setShowRemoveDialog(true)}
                       >
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Open on {platform.displayName}
-                      </DropdownMenuItem>
-                    ))}
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-
-                {/* ✅ SIMPLIFIED: Draft posts - Only "Edit Draft" option */}
-                {isDraft && onEdit && (
-                  <>
-                    <DropdownMenuItem onClick={() => onEdit(post._id)}>
-                      <Edit2 className="mr-2 h-4 w-4" />
-                      Edit Draft or Publish Now
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-
-                {/* ✅ Scheduled posts - Edit and Cancel options */}
-                {isScheduled && (
-                  <>
-                    {onEdit && (
-                      <DropdownMenuItem onClick={() => onEdit(post._id)}>
-                        <Edit2 className="mr-2 h-4 w-4" />
-                        Edit Scheduled Post
+                        <Archive className="mr-2 h-4 w-4" />
+                        Remove from History
                       </DropdownMenuItem>
                     )}
-                    {onCancel && (
-                      <DropdownMenuItem onClick={() => setShowCancelDialog(true)} className="text-amber-600">
-                        <XCircle className="mr-2 h-4 w-4" />
-                        Cancel Schedule
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-
-                {/* Platform info */}
-                {platformsWithUrls.length > 0 && (
-                  <>
-                    <DropdownMenuItem onClick={() => setShowLimitationsDialog(true)}>
-                      <Info className="mr-2 h-4 w-4" />
-                      Platform Info
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-
-                {/* Remove from history */}
-                {onRemoveFromHistory && (
-                  <DropdownMenuItem
-                    className="text-muted-foreground"
-                    onClick={() => setShowRemoveDialog(true)}
-                  >
-                    <Archive className="mr-2 h-4 w-4" />
-                    Remove from History
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
           </div>
 
           {/* Content */}
@@ -339,7 +366,7 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
               <div className="flex flex-col items-center justify-center h-full text-center space-y-2 py-4">
                 <Edit2 className="h-8 w-8 text-muted-foreground/50" />
                 <p className="text-sm text-muted-foreground">
-                  Edit this draft to publish or schedule
+                  {onEdit ? "Edit this draft to publish or schedule" : "Draft post"}
                 </p>
               </div>
             ) : (
@@ -375,6 +402,16 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
         </div>
       </Card>
 
+      {/* ✅ View Post Dialog - VISIBLE TO ALL USERS */}
+      <ViewPostDialog
+        post={post}
+        open={showViewDialog}
+        onOpenChange={setShowViewDialog}
+        onEdit={onEdit}
+        onCancel={onCancel}
+        onRemoveFromHistory={onRemoveFromHistory}
+      />
+
       {/* Cancel Schedule Dialog */}
       <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
         <AlertDialogContent className="sm:max-w-md">
@@ -384,25 +421,12 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
               Cancel Scheduled Post?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This will cancel the scheduled post and move it to drafts. You can reschedule it later.
+              Are you sure you want to cancel this scheduled post? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          
-          {scheduledDate && (
-            <Alert>
-              <Calendar className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Scheduled for:</strong> {scheduledDate}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <AlertDialogFooter className="sm:space-x-2">
+          <AlertDialogFooter>
             <AlertDialogCancel>Keep Schedule</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleCancelSchedule}
-              className="bg-amber-500 text-white hover:bg-amber-600"
-            >
+            <AlertDialogAction onClick={handleCancel} className="bg-amber-500 hover:bg-amber-600">
               Cancel Schedule
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -411,9 +435,12 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
 
       {/* Remove from History Dialog */}
       <AlertDialog open={showRemoveDialog} onOpenChange={setShowRemoveDialog}>
-        <AlertDialogContent className="sm:max-w-lg">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove from History?</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Archive className="h-5 w-5 text-amber-500" />
+              Remove Post from History?
+            </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
               <p>
                 This action <strong>ONLY removes the post from your local history log</strong>. 

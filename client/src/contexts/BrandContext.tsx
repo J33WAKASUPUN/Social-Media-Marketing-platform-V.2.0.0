@@ -35,26 +35,36 @@ export const BrandProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       setLoading(true);
       const response = await brandApi.getAll(currentOrganization._id);
-      setBrands(response.data);
+      
+      // Filter valid brands
+      const validBrands = (response.data || []).filter(
+        (brand: Brand) => brand && brand._id
+      );
+      
+      setBrands(validBrands);
 
       // Set current brand from localStorage or first available
       const savedBrandId = localStorage.getItem('currentBrandId');
       if (savedBrandId) {
-        const savedBrand = response.data.find(brand => brand._id === savedBrandId);
+        const savedBrand = validBrands.find((b: Brand) => b._id === savedBrandId);
         if (savedBrand) {
           setCurrentBrandState(savedBrand);
-        } else if (response.data.length > 0) {
-          setCurrentBrandState(response.data[0]);
+        } else if (validBrands.length > 0) {
+          setCurrentBrandState(validBrands[0]);
         }
-      } else if (response.data.length > 0) {
-        setCurrentBrandState(response.data[0]);
+      } else if (validBrands.length > 0) {
+        setCurrentBrandState(validBrands[0]);
       }
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: handleApiError(error),
-      });
+    } catch (error: any) {
+      // Don't show error if user just doesn't have access yet
+      if (error.response?.status !== 403) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Failed to load brands',
+        });
+      }
+      setBrands([]);
     } finally {
       setLoading(false);
     }

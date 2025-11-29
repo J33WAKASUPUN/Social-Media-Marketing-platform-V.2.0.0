@@ -17,6 +17,8 @@ export interface Organization {
   description?: string;
   logo?: string;
   owner: string | User;
+  role?: 'owner' | 'manager' | 'editor' | 'viewer';
+  permissions?: string[]; 
   settings?: {
     timezone?: string;
     features?: {

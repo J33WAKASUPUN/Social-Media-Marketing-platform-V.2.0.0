@@ -31,21 +31,59 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions"; // ✅ ADD THIS
 
+// ✅ Define menu items with permission requirements
 const menuItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Posts", url: "/posts", icon: FileText },
-  { title: "Calendar", url: "/calendar", icon: Calendar },
-  { title: "Analytics", url: "/analytics", icon: BarChart3 },
-  { title: "Channels", url: "/channels", icon: Share2 },
-  { title: "Media Library", url: "/media", icon: Image },
-  { title: "Settings", url: "/settings", icon: Settings },
+  { 
+    title: "Dashboard", 
+    url: "/dashboard", 
+    icon: LayoutDashboard,
+    requiredPermission: null // Everyone can view dashboard
+  },
+  { 
+    title: "Posts", 
+    url: "/posts", 
+    icon: FileText,
+    requiredPermission: 'canViewPosts' // All roles can view posts
+  },
+  { 
+    title: "Calendar", 
+    url: "/calendar", 
+    icon: Calendar,
+    requiredPermission: 'canViewPosts' // All roles can view calendar
+  },
+  { 
+    title: "Analytics", 
+    url: "/analytics", 
+    icon: BarChart3,
+    requiredPermission: 'canViewAnalytics' // All roles can view analytics
+  },
+  { 
+    title: "Channels", 
+    url: "/channels", 
+    icon: Share2,
+    requiredPermission: 'canConnectChannels' // Only owner/manager
+  },
+  { 
+    title: "Media Library", 
+    url: "/media", 
+    icon: Image,
+    requiredPermission: 'canViewMedia' // Owner/Manager/Editor
+  },
+  { 
+    title: "Settings", 
+    url: "/settings", 
+    icon: Settings,
+    requiredPermission: null // Everyone can access settings
+  },
 ];
 
 export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const permissions = usePermissions(); // ✅ ADD THIS
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
 
@@ -62,84 +100,75 @@ export function AppSidebar() {
     return location.pathname.startsWith(url);
   };
 
+  // ✅ Filter menu items based on permissions
+  const visibleMenuItems = menuItems.filter(item => {
+    // If no permission required, show to everyone
+    if (!item.requiredPermission) return true;
+    
+    // Check if user has the required permission
+    return permissions[item.requiredPermission as keyof typeof permissions];
+  });
+
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
           {/* Logo */}
           <SidebarGroupLabel className="px-4 py-6">
-            <div className={cn(
-              "flex items-center gap-0 transition-all duration-200",
-              isCollapsed ? "justify-center" : ""
-            )}>
-              <img 
-                src="/logo.png" 
-                alt="SocialFlow" 
-                className="h-8 w-8 flex-shrink-0"
-              />
+            <NavLink to="/dashboard" className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-purple-600">
+                <span className="text-lg font-bold text-white">S</span>
+              </div>
               {!isCollapsed && (
-                <span className="text-xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+                <span className="text-lg font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
                   SocialFlow
                 </span>
               )}
-            </div>
+            </NavLink>
           </SidebarGroupLabel>
 
-          {/* Navigation */}
+          {/* Menu Items */}
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => {
+              {visibleMenuItems.map((item) => {
                 const active = isActive(item.url);
-                
+                const Icon = item.icon;
+
                 return (
                   <SidebarMenuItem key={item.title}>
-                    {isCollapsed ? (
-                      <Tooltip delayDuration={0}>
-                        <TooltipTrigger asChild>
-                          <SidebarMenuButton
-                            asChild
-                            className={cn(
-                              "transition-all duration-200",
-                              active && "bg-gradient-to-r from-violet-500/10 to-purple-500/10 text-violet-600 border-r-2 border-violet-500"
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={active}
+                          className={cn(
+                            "group relative",
+                            active && "bg-accent text-accent-foreground"
+                          )}
+                        >
+                          <NavLink to={item.url} className="flex items-center gap-3">
+                            <Icon className={cn(
+                              "h-5 w-5 transition-colors",
+                              active ? "text-primary" : "text-muted-foreground group-hover:text-primary"
+                            )} />
+                            <span className={cn(
+                              "transition-colors",
+                              active && "font-medium"
+                            )}>
+                              {item.title}
+                            </span>
+                            {active && (
+                              <ChevronRight className="ml-auto h-4 w-4 text-primary" />
                             )}
-                          >
-                            <NavLink to={item.url}>
-                              <item.icon className={cn(
-                                "h-5 w-5 transition-colors",
-                                active ? "text-violet-600" : "text-muted-foreground"
-                              )} />
-                            </NavLink>
-                          </SidebarMenuButton>
-                        </TooltipTrigger>
-                        <TooltipContent side="right" className="font-medium">
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </TooltipTrigger>
+                      {isCollapsed && (
+                        <TooltipContent side="right">
                           {item.title}
                         </TooltipContent>
-                      </Tooltip>
-                    ) : (
-                      <SidebarMenuButton
-                        asChild
-                        className={cn(
-                          "transition-all duration-200",
-                          active && "bg-gradient-to-r from-violet-500/10 to-purple-500/10 text-violet-600"
-                        )}
-                      >
-                        <NavLink to={item.url} className="flex items-center gap-3">
-                          <item.icon className={cn(
-                            "h-5 w-5 transition-colors",
-                            active ? "text-violet-600" : "text-muted-foreground"
-                          )} />
-                          <span className={cn(
-                            "font-medium transition-colors",
-                            active ? "text-violet-600" : ""
-                          )}>
-                            {item.title}
-                          </span>
-                          {active && (
-                            <ChevronRight className="ml-auto h-4 w-4 text-violet-500" />
-                          )}
-                        </NavLink>
-                      </SidebarMenuButton>
-                    )}
+                      )}
+                    </Tooltip>
                   </SidebarMenuItem>
                 );
               })}
@@ -155,64 +184,55 @@ export function AppSidebar() {
           isCollapsed ? "p-2" : "p-4"
         )}>
           {isCollapsed ? (
-            // Collapsed state - Just avatar with tooltip
-            <div className="flex flex-col items-center gap-2">
-              <Tooltip delayDuration={0}>
-                <TooltipTrigger asChild>
-                  <Avatar className="h-8 w-8 cursor-pointer">
-                    <AvatarImage src={user?.avatarUrl || user?.avatar} alt={user?.name} />
-                    <AvatarFallback className="bg-gradient-to-br from-violet-500 to-purple-600 text-white text-xs">
-                      {user?.name?.charAt(0).toUpperCase() || 'U'}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-full"
+                  onClick={() => navigate("/settings")}
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user?.avatarUrl || user?.avatar} />
+                    <AvatarFallback>
+                      {user?.name.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  <div className="space-y-1">
-                    <p className="font-medium">{user?.name || 'User'}</p>
-                    <p className="text-xs text-muted-foreground">{user?.email}</p>
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-              
-              <Tooltip delayDuration={0}>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p>{user?.name}</p>
+                <p className="text-xs text-muted-foreground">{user?.email}</p>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <div className="flex items-center gap-3">
+              <Avatar className="h-9 w-9 cursor-pointer" onClick={() => navigate("/settings")}>
+                <AvatarImage src={user?.avatarUrl || user?.avatar} />
+                <AvatarFallback>
+                  {user?.name.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{user?.name}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+              </div>
+              <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                    className="h-8 w-8"
                     onClick={handleLogout}
                   >
                     <LogOut className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right">Sign out</TooltipContent>
+                <TooltipContent>
+                  <p>Logout</p>
+                </TooltipContent>
               </Tooltip>
             </div>
-          ) : (
-            // Expanded state - Full user info
-            <>
-              <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10 flex-shrink-0">
-                  <AvatarImage src={user?.avatarUrl || user?.avatar} alt={user?.name} />
-                  <AvatarFallback className="bg-gradient-to-br from-violet-500 to-purple-600 text-white">
-                    {user?.name?.charAt(0).toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{user?.name || 'User'}</p>
-                  <p className="text-xs text-muted-foreground truncate">{user?.email || 'user@example.com'}</p>
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                className="mt-3 w-full justify-start text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                size="sm"
-                onClick={handleLogout}
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Sign out
-              </Button>
-            </>
           )}
         </div>
       </SidebarFooter>

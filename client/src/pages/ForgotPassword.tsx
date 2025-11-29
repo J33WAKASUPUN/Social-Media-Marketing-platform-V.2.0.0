@@ -35,15 +35,6 @@ export default function ForgotPassword() {
       {/* Left Side - Form */}
       <div className="flex w-full flex-col justify-center px-8 py-12 lg:w-1/2 lg:px-16 xl:px-24">
         <div className="mx-auto w-full max-w-md">
-          {/* Back Link */}
-          {/* <Link
-            to="/login"
-            className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors mb-8"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to login
-          </Link> */}
-
           {/* Logo & Header */}
           <div className="mb-10">
             <Link to="/" className="inline-flex items-center gap-0 mb-8">

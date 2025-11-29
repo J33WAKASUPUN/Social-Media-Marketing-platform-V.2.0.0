@@ -2,149 +2,149 @@ const Post = require('../models/Post');
 const Channel = require('../models/Channel');
 const Membership = require('../models/Membership');
 const Media = require('../models/Media');
+const Brand = require('../models/Brand');
 const queueManager = require('../queues/queueManager');
 const logger = require('../utils/logger');
 
 class PostService {
   /**
-   * Create new post
+   * Helper: Check if user has access to brand
    */
-async createPost(userId, data) {
-  const { brandId, title, content, hashtags, mediaUrls, mediaLibraryIds, schedules, settings } = data;
-
-  // Check user access
-  const membership = await Membership.findOne({
-    user: userId,
-    brand: brandId,
-  });
-
-  if (!membership || !membership.hasPermission('create_posts')) {
-    throw new Error('Permission denied');
-  }
-
-  // HANDLE MEDIA FROM LIBRARY
-  let finalMediaUrls = mediaUrls || [];
-  
-  if (mediaLibraryIds && mediaLibraryIds.length > 0) {
-    console.log('📚 Using media from library', { mediaLibraryIds });
-    const mediaItems = await Media.find({ _id: { $in: mediaLibraryIds } });
-    finalMediaUrls = [...finalMediaUrls, ...mediaItems.map(m => m.s3Url)];
-    console.log('✅ Media from library loaded', { count: mediaItems.length });
-  }
-
-  // ✅ VALIDATE SCHEDULES AND DETERMINE STATUS
-  let status = 'draft';
-  
-  if (schedules && schedules.length > 0) {
-    const now = new Date();
-    
-    logger.info('🕐 Timezone info', {
-      serverTime: now.toISOString(),
-      serverLocalTime: now.toLocaleString(),
-      serverTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  async checkBrandAccess(userId, brandId) {
+    // Check direct brand membership
+    let membership = await Membership.findOne({
+      user: userId,
+      brand: brandId,
     });
 
-    for (const schedule of schedules) {
-      const scheduledDate = new Date(schedule.scheduledFor);
-      
-      // ✅ FIX: If scheduled within 30 seconds, treat as "publish now"
-      const thirtySecondsFromNow = new Date(now.getTime() + 30 * 1000);
-      
-      logger.info('📅 Schedule validation', {
-        scheduledFor: scheduledDate.toISOString(),
-        now: now.toISOString(),
-        thirtySecondsFromNow: thirtySecondsFromNow.toISOString(),
-        isImmediate: scheduledDate <= thirtySecondsFromNow,
-      });
+    if (membership) {
+      return membership;
+    }
 
-      // Validate channel exists
-      const channel = await Channel.findById(schedule.channel);
+    // Check organization-level membership
+    const brand = await Brand.findById(brandId);
+    if (!brand) {
+      return null;
+    }
+
+    membership = await Membership.findOne({
+      user: userId,
+      organization: brand.organization,
+    });
+
+    return membership;
+  }
+
+  /**
+   * Create new post
+   */
+  async createPost(userId, data) {
+    const { brandId, title, content, hashtags, mediaUrls, mediaLibraryIds, schedules, settings } = data;
+
+    // Check access
+    const membership = await this.checkBrandAccess(userId, brandId);
+    if (!membership) {
+      throw new Error('Access denied');
+    }
+
+    // Check create permission
+    if (!membership.hasPermission('create_posts')) {
+      throw new Error('Permission denied: Cannot create posts');
+    }
+
+    // Validate schedules have valid channels
+    const validatedSchedules = [];
+    for (const schedule of schedules || []) {
+      const channel = await Channel.findById(schedule.channel || schedule.channelId);
       if (!channel) {
-        throw new Error(`Channel ${schedule.channel} not found`);
+        throw new Error(`Channel not found: ${schedule.channel || schedule.channelId}`);
+      }
+      if (channel.brand.toString() !== brandId) {
+        throw new Error('Channel does not belong to this brand');
       }
 
-      if (channel.connectionStatus !== 'active') {
-        throw new Error(`Channel ${channel.displayName} is not active`);
-      }
-    }
-
-    // ✅ Determine status based on first schedule
-    const firstSchedule = new Date(schedules[0].scheduledFor);
-    const thirtySecondsFromNow = new Date(now.getTime() + 30 * 1000);
-    
-    if (firstSchedule <= thirtySecondsFromNow) {
-      status = 'publishing'; // ✅ Set to "publishing" for immediate posts
-    } else {
-      status = 'scheduled'; // ✅ Set to "scheduled" for future posts
-    }
-  }
-
-  // Create post
-  const post = await Post.create({
-    brand: brandId,
-    createdBy: userId,
-    title,
-    content,
-    hashtags: hashtags || [],
-    mediaUrls: finalMediaUrls,
-    mediaType: this.detectMediaType(finalMediaUrls),
-    schedules: data.schedules || [],
-    status, // ✅ Use calculated status
-    settings: settings || {},
-  });
-
-  // MARK LIBRARY MEDIA AS USED
-  if (mediaLibraryIds && mediaLibraryIds.length > 0) {
-    await Media.updateMany(
-      { _id: { $in: mediaLibraryIds } },
-      {
-        $inc: { usageCount: 1 },
-        $set: { lastUsedAt: new Date() },
-        $addToSet: { usedInPosts: post._id },
-      }
-    );
-  }
-
-  // ✅ QUEUE PUBLISHING JOBS
-  if (schedules && schedules.length > 0) {
-    const queueManager = require('../queues/queueManager');
-    
-    for (const schedule of post.schedules) {
-      const scheduledDate = new Date(schedule.scheduledFor);
-      const delay = Math.max(0, scheduledDate.getTime() - Date.now());
-
-      logger.info('📤 Queueing publish job', {
-        postId: post._id,
-        scheduleId: schedule._id,
+      validatedSchedules.push({
+        channel: channel._id,
         scheduledFor: schedule.scheduledFor,
-        delay: `${Math.round(delay / 1000)}s`,
+        status: 'pending',
+      });
+    }
+
+    // Get media library items if provided
+    let mediaLibraryItems = [];
+    let resolvedMediaUrls = mediaUrls || [];
+
+    if (mediaLibraryIds && mediaLibraryIds.length > 0) {
+      const mediaItems = await Media.find({
+        _id: { $in: mediaLibraryIds },
+        brand: brandId,
+        status: 'active',
       });
 
-      await queueManager.addPublishJob(
-        post._id.toString(),
-        schedule._id.toString(),
-        schedule.scheduledFor,
-        delay === 0 ? 'high' : 'normal' // High priority for immediate posts
-      );
+      mediaLibraryItems = mediaItems.map(m => m._id);
+      resolvedMediaUrls = [...resolvedMediaUrls, ...mediaItems.map(m => m.s3Url)];
     }
+
+    // Determine media type
+    const mediaType = this.detectMediaType(resolvedMediaUrls);
+
+    // Create post
+    const post = await Post.create({
+      brand: brandId,
+      createdBy: userId,
+      title,
+      content,
+      hashtags: hashtags || [],
+      mediaUrls: resolvedMediaUrls,
+      mediaType,
+      mediaLibraryItems,
+      schedules: validatedSchedules,
+      status: validatedSchedules.length > 0 ? 'scheduled' : 'draft',
+      settings: settings || {},
+    });
+
+    // If scheduled, add to queue
+    for (const schedule of post.schedules) {
+      if (schedule.scheduledFor) {
+        await queueManager.addPublishJob(
+          post._id,
+          schedule._id,
+          new Date(schedule.scheduledFor)
+        );
+        schedule.status = 'queued';
+      }
+    }
+
+    await post.save();
+
+    logger.info('Post created', {
+      postId: post._id,
+      brandId,
+      userId,
+      schedules: post.schedules.length,
+    });
+
+    // Return populated post
+    return await Post.findById(post._id)
+      .populate('createdBy', 'name email avatar')
+      .populate('schedules.channel', 'provider displayName avatar')
+      .populate('mediaLibraryItems', 's3Url originalName type');
   }
-
-  return post;
-}
-
 
   /**
    * Get brand posts
    */
- async getBrandPosts(userId, brandId, filters = {}) {
+  async getBrandPosts(userId, brandId, filters = {}) {
     try {
-      // Check user access
-      const membership = await Membership.findOne({
-        user: userId,
-        brand: brandId,
-      });
+      // Check user access - allow any organization member to view posts
+      const membership = await this.checkBrandAccess(userId, brandId);
 
-      if (!membership || !membership.hasPermission('create_posts')) {
+      if (!membership) {
+        throw new Error('Permission denied');
+      }
+
+      // Check if user can view posts
+      if (!membership.hasPermission('view_posts') && !membership.hasPermission('view_analytics')) {
         throw new Error('Permission denied');
       }
 
@@ -171,501 +171,265 @@ async createPost(userId, data) {
           select: 's3Url originalName type size',
         })
         .sort({ createdAt: -1 })
-        .limit(filters.limit || 50);
-
-      logger.info('✅ Posts fetched', {
-        brandId,
-        count: posts.length,
-        filters,
-      });
+        .limit(filters.limit || 100);
 
       return posts;
     } catch (error) {
-      logger.error('❌ Get brand posts failed', {
-        error: error.message,
-        stack: error.stack,
-      });
+      logger.error('Get brand posts failed', { error: error.message, userId, brandId });
       throw error;
     }
   }
 
-/**
- * Update post (only for drafts and scheduled posts)
- */
-async updatePost(userId, postId, data) {
-  const post = await Post.findById(postId);
+  /**
+   * Update post (only for drafts and scheduled posts)
+   */
+  async updatePost(userId, postId, data) {
+    const post = await Post.findById(postId);
 
-  if (!post) {
-    throw new Error('Post not found');
-  }
+    if (!post) {
+      throw new Error('Post not found');
+    }
 
-  // ✅ PREVENT EDITING PUBLISHED POSTS
-  if (post.status === 'published') {
-    throw new Error('Cannot edit published posts. Please manage them on the platform.');
-  }
+    // Check access
+    const membership = await this.checkBrandAccess(userId, post.brand);
+    if (!membership) {
+      throw new Error('Access denied');
+    }
 
-  // Check permission
-  const membership = await Membership.findOne({
-    user: userId,
-    brand: post.brand,
-  });
+    // Check permission
+    if (!membership.hasPermission('create_posts')) {
+      throw new Error('Permission denied');
+    }
 
-  if (!membership || !membership.hasPermission('create_posts')) {
-    throw new Error('Access denied');
-  }
+    // Can only update drafts and scheduled posts
+    if (!['draft', 'scheduled'].includes(post.status)) {
+      throw new Error('Cannot update published or failed posts');
+    }
 
-  // ✅ UPDATE FIELDS
-  if (data.content !== undefined) {
-    post.content = data.content;
-  }
+    // Update fields
+    if (data.title !== undefined) post.title = data.title;
+    if (data.content !== undefined) post.content = data.content;
+    if (data.hashtags !== undefined) post.hashtags = data.hashtags;
 
-  if (data.title !== undefined) {
-    post.title = data.title;
-  }
+    // Handle media updates
+    if (data.mediaLibraryIds !== undefined) {
+      const mediaItems = await Media.find({
+        _id: { $in: data.mediaLibraryIds },
+        brand: post.brand,
+        status: 'active',
+      });
 
-  if (data.hashtags !== undefined) {
-    post.hashtags = data.hashtags;
-  }
+      post.mediaLibraryItems = mediaItems.map(m => m._id);
+      post.mediaUrls = mediaItems.map(m => m.s3Url);
+      post.mediaType = this.detectMediaType(post.mediaUrls);
+    }
 
-  // ✅ SIMPLIFIED MEDIA HANDLING: Just replace with new media
-  if (data.mediaLibraryIds !== undefined) {
-    // Load media URLs from library
-    const libraryMedia = await Media.find({
-      _id: { $in: data.mediaLibraryIds },
-      brand: post.brand,
-      status: 'active',
-    });
-
-    const libraryUrls = libraryMedia.map(m => m.s3Url);
-    
-    // ✅ REPLACE media completely (don't merge with old)
-    post.mediaUrls = libraryUrls;
-    post.mediaLibraryItems = data.mediaLibraryIds;
-    post.mediaType = this.detectMediaType(libraryUrls);
-    
-    logger.info('✅ Replaced post media', {
-      oldMedia: post.mediaUrls?.length || 0,
-      newMedia: libraryUrls.length,
-      mediaType: post.mediaType,
-    });
-  }
-
-  // ✅ HANDLE SCHEDULES - This is the key fix for draft → scheduled
-  if (data.schedules !== undefined) {
-    const now = new Date();
-    
-    // ✅ CASE 1: Empty schedules = save as draft
-    if (data.schedules.length === 0) {
-      // Cancel any existing jobs
+    // Handle schedule updates
+    if (data.schedules !== undefined) {
+      // Cancel existing jobs
       for (const schedule of post.schedules) {
         if (schedule.jobId) {
-          try {
-            await queueManager.cancelJob(schedule.jobId);
-            logger.info('✅ Cancelled job for draft', { jobId: schedule.jobId });
-          } catch (err) {
-            logger.warn('Failed to cancel job', { jobId: schedule.jobId, error: err.message });
-          }
+          await queueManager.cancelJob(schedule.jobId);
         }
       }
-      post.schedules = [];
-      post.status = 'draft';
-      logger.info('✅ Post saved as draft', { postId });
-    }
-    // ✅ CASE 2: New schedules = schedule or publish now
-    else {
-      for (const newSchedule of data.schedules) {
-        // Validate channel
-        const channel = await Channel.findById(newSchedule.channel);
-        if (!channel) {
-          throw new Error(`Channel ${newSchedule.channel} not found`);
-        }
-        if (channel.connectionStatus !== 'active') {
-          throw new Error(`Channel ${channel.displayName} is not active`);
+
+      // Validate and create new schedules
+      const validatedSchedules = [];
+      for (const schedule of data.schedules) {
+        const channel = await Channel.findById(schedule.channel || schedule.channelId);
+        if (!channel || channel.brand.toString() !== post.brand.toString()) {
+          throw new Error('Invalid channel');
         }
 
-        const scheduledFor = new Date(newSchedule.scheduledFor);
-        const thirtySecondsFromNow = new Date(now.getTime() + 30 * 1000);
-        const isImmediate = scheduledFor <= thirtySecondsFromNow;
-
-        logger.info('📅 Processing schedule', {
-          channel: channel.displayName,
-          scheduledFor: scheduledFor.toISOString(),
-          isImmediate,
+        validatedSchedules.push({
+          channel: channel._id,
+          scheduledFor: schedule.scheduledFor,
+          status: 'pending',
         });
+      }
 
-        // Check if we're updating an existing schedule for this channel
-        const existingSchedule = post.schedules.find(
-          s => s.channel.toString() === newSchedule.channel
-        );
+      post.schedules = validatedSchedules;
 
-        if (existingSchedule) {
-          // ✅ CANCEL OLD JOB
-          if (existingSchedule.jobId) {
-            try {
-              await queueManager.cancelJob(existingSchedule.jobId);
-              logger.info('✅ Cancelled old job', { jobId: existingSchedule.jobId });
-            } catch (err) {
-              logger.warn('Failed to cancel old job', { error: err.message });
-            }
-          }
-
-          // Update existing schedule
-          existingSchedule.scheduledFor = scheduledFor;
-          existingSchedule.status = 'pending';
-          existingSchedule.provider = newSchedule.provider || channel.provider;
-
-          // ✅ CREATE NEW JOB - FIX: Extract job.id from returned Job object
+      // Queue new schedules
+      for (const schedule of post.schedules) {
+        if (schedule.scheduledFor) {
           const job = await queueManager.addPublishJob(
-            post._id.toString(),
-            existingSchedule._id.toString(),
-            scheduledFor,
-            isImmediate ? 'high' : 'normal'
+            post._id,
+            schedule._id,
+            new Date(schedule.scheduledFor)
           );
-          existingSchedule.jobId = job.id.toString(); // ✅ FIX: Use job.id, not the whole job object
-
-          logger.info('✅ Updated existing schedule with new job', {
-            scheduleId: existingSchedule._id,
-            jobId: job.id,
-            scheduledFor: scheduledFor.toISOString(),
-          });
-        } else {
-          // ✅ CREATE NEW SCHEDULE
-          const scheduleDoc = {
-            channel: newSchedule.channel,
-            provider: newSchedule.provider || channel.provider,
-            scheduledFor: scheduledFor,
-            status: 'pending',
-          };
-
-          // Add to post schedules first to get the _id
-          post.schedules.push(scheduleDoc);
-          const addedSchedule = post.schedules[post.schedules.length - 1];
-
-          // ✅ CREATE JOB - FIX: Extract job.id from returned Job object
-          const job = await queueManager.addPublishJob(
-            post._id.toString(),
-            addedSchedule._id.toString(),
-            scheduledFor,
-            isImmediate ? 'high' : 'normal'
-          );
-          addedSchedule.jobId = job.id.toString(); // ✅ FIX: Use job.id, not the whole job object
-
-          logger.info('✅ Created new schedule with job', {
-            scheduleId: addedSchedule._id,
-            jobId: job.id,
-            scheduledFor: scheduledFor.toISOString(),
-            isImmediate,
-          });
+          schedule.status = 'queued';
+          schedule.jobId = job.id;
         }
       }
 
-      // ✅ DETERMINE POST STATUS
-      const firstSchedule = new Date(data.schedules[0].scheduledFor);
-      const thirtySecondsFromNow = new Date(now.getTime() + 30 * 1000);
-      
-      if (firstSchedule <= thirtySecondsFromNow) {
-        post.status = 'publishing';
-        logger.info('✅ Post status set to publishing (immediate)');
-      } else {
-        post.status = 'scheduled';
-        logger.info('✅ Post status set to scheduled');
-      }
+      post.status = validatedSchedules.length > 0 ? 'scheduled' : 'draft';
     }
+
+    await post.save();
+
+    return await Post.findById(post._id)
+      .populate('createdBy', 'name email avatar')
+      .populate('schedules.channel', 'provider displayName avatar')
+      .populate('mediaLibraryItems', 's3Url originalName type');
   }
-
-  await post.save();
-
-  logger.info('✅ Post updated successfully', { 
-    postId,
-    status: post.status,
-    schedulesCount: post.schedules?.length || 0,
-  });
-
-  return post;
-}
 
   /**
    * Delete post (from DB AND platform if published)
    */
   async deletePost(userId, postId) {
-    try {
-      // Find post
-      const post = await Post.findById(postId)
-        .populate('brand')
-        .populate('schedules.channel');
+    const post = await Post.findById(postId);
 
-      if (!post) {
-        throw new Error('Post not found');
-      }
-
-      // Check user access
-      const membership = await Membership.findOne({
-        user: userId,
-        brand: post.brand._id,
-      });
-
-      if (!membership || !membership.hasPermission('create_posts')) {
-        throw new Error('Permission denied');
-      }
-
-      const deletionResults = {
-        database: { success: false, message: '' },
-        platforms: [],
-      };
-
-      // ✅ DELETE FROM PLATFORM(S) IF PUBLISHED
-      if (post.status === 'published') {
-        logger.info('🗑️ Deleting published post from platforms', {
-          postId: post._id,
-          schedules: post.schedules.length,
-        });
-
-        for (const schedule of post.schedules) {
-          if (schedule.status === 'published' && schedule.platformPostId) {
-            try {
-              const channel = schedule.channel;
-              if (!channel) {
-                logger.warn('⚠️ Channel not found for schedule', {
-                  scheduleId: schedule._id,
-                });
-                continue;
-              }
-
-              const provider = ProviderFactory.getProvider(schedule.provider, channel);
-              
-              logger.info('🗑️ Deleting from platform', {
-                provider: schedule.provider,
-                platformPostId: schedule.platformPostId,
-              });
-
-              await provider.deletePost(schedule.platformPostId);
-
-              deletionResults.platforms.push({
-                platform: schedule.provider,
-                success: true,
-                message: 'Deleted successfully',
-              });
-
-              logger.info('✅ Deleted from platform', {
-                provider: schedule.provider,
-                platformPostId: schedule.platformPostId,
-              });
-            } catch (error) {
-              logger.error('❌ Failed to delete from platform', {
-                provider: schedule.provider,
-                error: error.message,
-              });
-
-              deletionResults.platforms.push({
-                platform: schedule.provider,
-                success: false,
-                message: error.message,
-              });
-            }
-          }
-        }
-      }
-
-      // ✅ DELETE FROM DATABASE (ALWAYS)
-      await Post.findByIdAndDelete(postId);
-      await PublishedPost.deleteMany({ post: postId });
-
-      deletionResults.database = {
-        success: true,
-        message: 'Post deleted from database',
-      };
-
-      logger.info('✅ Post deleted', {
-        postId,
-        databaseDeleted: true,
-        platformsAttempted: deletionResults.platforms.length,
-      });
-
-      return {
-        success: true,
-        message: this.formatDeletionMessage(deletionResults),
-        details: deletionResults,
-      };
-    } catch (error) {
-      logger.error('❌ Delete post failed', {
-        error: error.message,
-        stack: error.stack,
-      });
-      throw error;
+    if (!post) {
+      throw new Error('Post not found');
     }
+
+    // Check access
+    const membership = await this.checkBrandAccess(userId, post.brand);
+    if (!membership) {
+      throw new Error('Access denied');
+    }
+
+    // Check permission
+    if (!membership.hasPermission('create_posts')) {
+      throw new Error('Permission denied');
+    }
+
+    // Cancel any queued jobs
+    for (const schedule of post.schedules) {
+      if (schedule.jobId) {
+        await queueManager.cancelJob(schedule.jobId);
+      }
+    }
+
+    // Delete from DB
+    await Post.findByIdAndDelete(postId);
+
+    logger.info('Post deleted', { postId, userId });
+
+    return { success: true };
   }
 
   /**
-   * Format deletion result message
+   * Cancel scheduled post
    */
-  formatDeletionMessage(results) {
-    const { database, platforms } = results;
+  async cancelSchedule(userId, postId, scheduleId) {
+    const post = await Post.findById(postId);
 
-    if (platforms.length === 0) {
-      return 'Post deleted successfully';
+    if (!post) {
+      throw new Error('Post not found');
     }
 
-    const successful = platforms.filter(p => p.success);
-    const failed = platforms.filter(p => !p.success);
-
-    if (failed.length === 0) {
-      return `Post deleted from database and ${successful.length} platform(s)`;
+    // Check access
+    const membership = await this.checkBrandAccess(userId, post.brand);
+    if (!membership) {
+      throw new Error('Access denied');
     }
 
-    if (successful.length === 0) {
-      return `Post deleted from database, but failed to delete from platforms: ${failed.map(f => f.platform).join(', ')}`;
+    const schedule = post.schedules.id(scheduleId);
+    if (!schedule) {
+      throw new Error('Schedule not found');
     }
 
-    return `Post deleted from database and ${successful.length} platform(s). Failed on: ${failed.map(f => f.platform).join(', ')}`;
-  }
-
-
-/**
- * Cancel scheduled post
- */
-async cancelSchedule(userId, postId, scheduleId) {
-  const post = await Post.findById(postId);
-
-  if (!post) {
-    throw new Error('Post not found');
-  }
-
-  // Check permission
-  const membership = await Membership.findOne({
-    user: userId,
-    brand: post.brand,
-  });
-
-  if (!membership || !membership.hasPermission('create_posts')) {
-    throw new Error('Access denied');
-  }
-
-  const schedule = post.schedules.id(scheduleId);
-
-  if (!schedule) {
-    throw new Error('Schedule not found');
-  }
-
-  if (schedule.status === 'published') {
-    throw new Error('Cannot cancel published post');
-  }
-
-  // ✅ Cancel queue job if exists
-  if (schedule.jobId) {
-    const queueManager = require('../queues/queueManager');
-    const cancelled = await queueManager.cancelJob(schedule.jobId);
-    
-    if (cancelled) {
-      logger.info('✅ Queue job cancelled', { jobId: schedule.jobId });
+    if (schedule.status !== 'pending' && schedule.status !== 'queued') {
+      throw new Error('Cannot cancel this schedule');
     }
+
+    // Cancel queue job
+    if (schedule.jobId) {
+      await queueManager.cancelJob(schedule.jobId);
+    }
+
+    schedule.status = 'cancelled';
+    await post.save();
+
+    // Update post status if no more pending schedules
+    const hasPendingSchedules = post.schedules.some(
+      s => ['pending', 'queued'].includes(s.status)
+    );
+
+    if (!hasPendingSchedules) {
+      post.status = 'draft';
+      await post.save();
+    }
+
+    return post;
   }
 
-  // ✅ Update schedule status
-  schedule.status = 'cancelled';
-  
-  // ✅ Update post status
-  // If all schedules are cancelled, set post to draft
-  const allCancelled = post.schedules.every(s => 
-    s._id.equals(schedule._id) || s.status === 'cancelled'
-  );
-  
-  if (allCancelled) {
-    post.status = 'draft';
-  }
-  
-  await post.save();
+  /**
+   * Get calendar view
+   */
+  async getCalendar(userId, brandId, startDate, endDate) {
+    // Check access using helper
+    const membership = await this.checkBrandAccess(userId, brandId);
 
-  logger.info('✅ Schedule cancelled', { postId, scheduleId });
+    if (!membership) {
+      throw new Error('Access denied');
+    }
 
-  return post;
-}
+    // Parse dates correctly in UTC
+    const start = new Date(startDate);
+    const end = new Date(endDate);
 
-/**
- * Get calendar view
- */
-async getCalendar(userId, brandId, startDate, endDate) {
-  // Check access
-  const membership = await Membership.findOne({
-    user: userId,
-    brand: brandId,
-  });
-
-  if (!membership) {
-    throw new Error('Access denied');
-  }
-
-  // Parse dates correctly in UTC
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  
-  logger.info('📅 Calendar query', {
-    startDate: start.toISOString(),
-    endDate: end.toISOString(),
-  });
-
-  const posts = await Post.find({
-    brand: brandId,
-    'schedules.scheduledFor': {
-      $gte: start,
-      $lte: end,
-    },
-  })
-    .populate('createdBy', 'name avatar')
-    .populate('schedules.channel', 'provider displayName')
-    .sort({ 'schedules.scheduledFor': 1 });
-
-  // Group by date (using UTC date string)
-  const calendar = {};
-
-  posts.forEach(post => {
-    post.schedules.forEach(schedule => {
-      // Use UTC date for grouping
-      const scheduledDate = new Date(schedule.scheduledFor);
-      const dateKey = scheduledDate.toISOString().split('T')[0]; // YYYY-MM-DD in UTC
-
-      if (!calendar[dateKey]) {
-        calendar[dateKey] = [];
-      }
-
-      // Only show SCHEDULED posts (not published ones)
-      // Published posts should not appear in calendar
-      if (schedule.status === 'pending' || schedule.status === 'queued') {
-        calendar[dateKey].push({
-          postId: post._id,
-          scheduleId: schedule._id,
-          title: post.title,
-          content: post.content,
-          mediaUrls: post.mediaUrls,
-          mediaType: post.mediaType,
-          channel: schedule.channel,
-          scheduledFor: schedule.scheduledFor,
-          status: schedule.status,
-          createdBy: post.createdBy,
-        });
-      }
+    logger.info('📅 Calendar query', {
+      startDate: start.toISOString(),
+      endDate: end.toISOString(),
     });
-  });
 
-  logger.info('📅 Calendar grouped', {
-    totalDates: Object.keys(calendar).length,
-    dates: Object.keys(calendar),
-  });
+    const posts = await Post.find({
+      brand: brandId,
+      'schedules.scheduledFor': {
+        $gte: start,
+        $lte: end,
+      },
+    })
+      .populate('createdBy', 'name avatar')
+      .populate('schedules.channel', 'provider displayName')
+      .sort({ 'schedules.scheduledFor': 1 });
 
-  return calendar;
-}
+    // Group by date
+    const calendar = {};
+
+    posts.forEach(post => {
+      post.schedules.forEach(schedule => {
+        if (schedule.scheduledFor) {
+          const dateKey = schedule.scheduledFor.toISOString().split('T')[0];
+          if (!calendar[dateKey]) {
+            calendar[dateKey] = [];
+          }
+          calendar[dateKey].push({
+            ...post.toObject(),
+            scheduleId: schedule._id,
+            scheduledFor: schedule.scheduledFor,
+            scheduleStatus: schedule.status,
+          });
+        }
+      });
+    });
+
+    return calendar;
+  }
 
   /**
    * Detect media type from URLs
    */
   detectMediaType(mediaUrls) {
-    if (!mediaUrls || mediaUrls.length === 0) return 'none';
+    if (!mediaUrls || mediaUrls.length === 0) {
+      return 'none';
+    }
 
     const hasVideo = mediaUrls.some(url =>
-      /\.(mp4|mov|avi|wmv|webm)$/i.test(url)
+      /\.(mp4|mov|avi|webm|mkv)$/i.test(url)
     );
 
-    if (hasVideo) return 'video';
-    if (mediaUrls.length > 1) return 'multiImage';
+    if (hasVideo) {
+      return 'video';
+    }
+
+    if (mediaUrls.length > 1) {
+      return 'multiImage';
+    }
+
     return 'image';
   }
 }

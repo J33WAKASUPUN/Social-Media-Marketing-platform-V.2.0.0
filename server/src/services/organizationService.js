@@ -44,47 +44,42 @@ class OrganizationService {
   }
 
   /**
-   * Get user's organizations
+   * Get user's organizations with role information
    */
   async getUserOrganizations(userId) {
-    // Find all memberships where user is a member
     const memberships = await Membership.find({ user: userId })
       .populate('organization')
       .populate('brand');
 
-    // Group by organization
-    const organizationsMap = new Map();
+    // Group by organization and include user's role
+    const orgMap = new Map();
 
-    memberships.forEach(membership => {
-      // Skip if organization is null or deleted
-      if (!membership.organization || membership.organization.status === 'deleted') {
-        return;
-      }
+    for (const membership of memberships) {
+      if (!membership.organization) continue;
 
       const orgId = membership.organization._id.toString();
-      
-      if (!organizationsMap.has(orgId)) {
-        organizationsMap.set(orgId, {
+
+      if (!orgMap.has(orgId)) {
+        orgMap.set(orgId, {
           ...membership.organization.toObject(),
+          role: membership.role, // Include user's role in the organization
+          permissions: membership.permissions,
           brands: [],
         });
       }
 
-      // Only add brand if it exists and is active
-      if (membership.brand && membership.brand.status === 'active') {
-        organizationsMap.get(orgId).brands.push({
+      // If membership has brand, add it
+      if (membership.brand) {
+        const org = orgMap.get(orgId);
+        org.brands.push({
           ...membership.brand.toObject(),
           role: membership.role,
           permissions: membership.permissions,
         });
       }
-    });
+    }
 
-    const organizations = Array.from(organizationsMap.values());
-
-    logger.info(`📋 User ${userId} has ${organizations.length} organizations`);
-
-    return organizations;
+    return Array.from(orgMap.values());
   }
 
   /**
@@ -97,19 +92,25 @@ class OrganizationService {
       throw new Error('Organization not found');
     }
 
-    // Check if user is owner
-    if (organization.owner.toString() !== userId.toString()) {
-      throw new Error('Only organization owner can update settings');
-    }
-
-    const allowedUpdates = ['name', 'description', 'settings'];
-    Object.keys(data).forEach(key => {
-      if (allowedUpdates.includes(key)) {
-        organization[key] = data[key];
-      }
+    // Check if user is owner or has permission
+    const membership = await Membership.findOne({
+      user: userId,
+      organization: organizationId,
     });
 
+    if (!membership || !['owner', 'manager'].includes(membership.role)) {
+      throw new Error('Permission denied');
+    }
+
+    // Update organization
+    const { name, description, settings } = data;
+
+    if (name) organization.name = name;
+    if (description !== undefined) organization.description = description;
+    if (settings) organization.settings = { ...organization.settings, ...settings };
+
     await organization.save();
+
     return organization;
   }
 
@@ -123,22 +124,22 @@ class OrganizationService {
       throw new Error('Organization not found');
     }
 
-    // Check if user is owner
+    // Only owner can delete
     if (organization.owner.toString() !== userId.toString()) {
-      throw new Error('Only organization owner can delete organization');
+      throw new Error('Only the owner can delete the organization');
     }
 
-    // Soft delete all brands in organization
-    await Brand.updateMany(
-      { organization: organizationId },
-      { $set: { status: 'deleted', deletedAt: new Date() } }
-    );
-
-    // Update organization status
+    // Soft delete
     organization.status = 'deleted';
     await organization.save();
 
-    return { success: true };
+    // Also soft delete all brands under this organization
+    await Brand.updateMany(
+      { organization: organizationId },
+      { status: 'deleted', deletedAt: new Date() }
+    );
+
+    return organization;
   }
 }
 

@@ -13,6 +13,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { format, isSameMonth, isSameDay, startOfMonth, endOfMonth } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import { Eye, Edit2 } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
+import { ViewPostDialog } from "@/components/ViewPostDialog";
 import {
   HoverCard,
   HoverCardContent,
@@ -20,7 +23,7 @@ import {
 } from "@/components/ui/hover-card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-// ✅ Platform colors for dots
+// Platform colors for dots
 const PLATFORM_COLORS: Record<string, string> = {
   linkedin: '#0077B5',
   facebook: '#1877F2',
@@ -29,7 +32,7 @@ const PLATFORM_COLORS: Record<string, string> = {
   youtube: '#FF0000',
 };
 
-// ✅ Status config (same as PostCard)
+// Status config (same as PostCard)
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
   scheduled: { label: "Scheduled", color: "bg-amber-100 text-amber-800", icon: Clock },
   published: { label: "Published", color: "bg-green-100 text-green-800", icon: CheckCircle },
@@ -41,10 +44,12 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
 export default function Calendar() {
   const navigate = useNavigate();
   const { currentBrand } = useBrand();
+  const permissions = usePermissions();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedPostForView, setSelectedPostForView] = useState<Post | null>(null); // ✅ ADD THIS LINE
 
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
   const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
@@ -271,9 +276,11 @@ export default function Calendar() {
                         className="p-3 hover:bg-accent/50 transition-colors cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation();
-                          // Only allow edit for draft/scheduled
-                          if (post.status === 'draft' || post.status === 'scheduled') {
+                          // Viewers see view dialog, others can edit if post is editable
+                          if (permissions.canCreatePosts && (post.status === 'draft' || post.status === 'scheduled')) {
                             navigate(`/posts/edit/${post._id}`);
+                          } else {
+                            setSelectedPostForView(post);
                           }
                         }}
                       >
@@ -323,9 +330,14 @@ export default function Calendar() {
                           <Badge className={cn("text-xs", statusStyle.color)}>
                             {statusStyle.label}
                           </Badge>
-                          {(post.status === 'draft' || post.status === 'scheduled') && (
+                          {/* Show appropriate text based on permissions */}
+                          {(post.status === 'draft' || post.status === 'scheduled') && permissions.canCreatePosts ? (
                             <span className="text-xs text-primary hover:underline">
                               Edit →
+                            </span>
+                          ) : (
+                            <span className="text-xs text-primary hover:underline">
+                              View →
                             </span>
                           )}
                         </div>
@@ -385,10 +397,13 @@ export default function Calendar() {
         title="Calendar"
         description="View and manage your scheduled posts"
         actions={
-          <Button onClick={() => navigate('/posts/new')}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Post
-          </Button>
+          // ✅ Only show Create Post button if user has permission
+          permissions.canCreatePosts && (
+            <Button onClick={() => navigate('/posts/new')}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Post
+            </Button>
+          )
         }
       />
 
@@ -459,13 +474,16 @@ export default function Calendar() {
               <div className="text-center py-12">
                 <CalendarIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                 <p className="text-sm text-muted-foreground">No posts for this day</p>
-                <Button
-                  className="mt-4"
-                  onClick={() => navigate('/posts/new')}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Post
-                </Button>
+                {/* ✅ Only show Create Post button if user has permission */}
+                {permissions.canCreatePosts && (
+                  <Button
+                    className="mt-4"
+                    onClick={() => navigate('/posts/new')}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Post
+                  </Button>
+                )}
               </div>
             ) : (
               selectedDatePosts.map((post) => {
@@ -522,18 +540,31 @@ export default function Calendar() {
                       )}
 
                       {/* ✅ Actions - Only for editable posts */}
-                      {canEdit && (
-                        <div className="flex gap-2 pt-2">
+                      <div className="flex gap-2 pt-2">
+                        {/* VIEW BUTTON - VISIBLE TO ALL USERS */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => setSelectedPostForView(post)}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
+                        </Button>
+                        
+                        {/* EDIT BUTTON - Only for users with permission and editable posts */}
+                        {canEdit && permissions.canCreatePosts && (
                           <Button
                             variant="outline"
                             size="sm"
                             className="flex-1"
                             onClick={() => navigate(`/posts/edit/${post._id}`)}
                           >
-                            Edit Post
+                            <Edit2 className="h-4 w-4 mr-2" />
+                            Edit
                           </Button>
-                        </div>
-                      )}
+                        )}
+                      </div>
 
                       {/* Show link for published posts */}
                       {post.status === 'published' && post.schedules?.[0]?.platformPostId && (
@@ -556,6 +587,15 @@ export default function Calendar() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* ✅ ADD VIEW POST DIALOG */}
+      <ViewPostDialog
+        post={selectedPostForView}
+        open={!!selectedPostForView}
+        onOpenChange={(open) => !open && setSelectedPostForView(null)}
+        onEdit={permissions.canCreatePosts ? (id) => navigate(`/posts/edit/${id}`) : undefined}
+        onCancel={permissions.canCreatePosts ? undefined : undefined} // Pass cancel handler if you have one
+      />
     </div>
   );
 }

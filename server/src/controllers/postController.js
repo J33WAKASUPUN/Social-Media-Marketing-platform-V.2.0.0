@@ -39,17 +39,24 @@ class PostController {
         });
       }
 
-      const posts = await postService.getBrandPosts(
-        req.user._id,
-        brandId,
-        { status, createdBy, limit: parseInt(limit) }
-      );
+      // The postService.getBrandPosts now handles org-level access
+      const posts = await postService.getBrandPosts(req.user._id, brandId, {
+        status,
+        createdBy,
+        limit: limit ? parseInt(limit) : undefined,
+      });
 
       res.json({
         success: true,
         data: posts,
       });
     } catch (error) {
+      if (error.message === 'Permission denied') {
+        return res.status(403).json({
+          success: false,
+          message: 'You do not have access to this brand\'s posts',
+        });
+      }
       next(error);
     }
   }
