@@ -82,6 +82,40 @@ const userSchema = new mongoose.Schema({
     default: 0,
   },
   lockUntil: Date,
+
+    // 2FA Settings
+  twoFactorAuth: {
+    enabled: {
+      type: Boolean,
+      default: false,
+    },
+    method: {
+      type: String,
+      enum: ['totp', 'email', 'both'],
+      default: 'email',
+    },
+    secret: {
+      type: String, // TOTP secret (encrypted)
+    },
+    backupCodes: [{
+      code: String,
+      used: Boolean,
+      usedAt: Date,
+    }],
+    lastVerifiedAt: {
+      type: Date,
+    },
+    verificationRequired: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  
+  // Session tracking for inactivity
+  lastActivityAt: {
+    type: Date,
+    default: Date.now,
+  },
 }, {
   timestamps: true,
 });
@@ -159,6 +193,29 @@ userSchema.methods.toJSON = function() {
   user.avatarUrl = this.getAvatarUrl();
   
   return user;
+};
+
+// Check if 2FA verification is required (inactive for 3+ days)
+userSchema.methods.requires2FAVerification = function() {
+  if (!this.twoFactorAuth?.enabled) return false;
+  
+  const now = new Date();
+  const lastActivity = this.lastActivityAt || this.lastLogin || this.createdAt;
+  const daysSinceActivity = (now - lastActivity) / (1000 * 60 * 60 * 24);
+  
+  // Require 2FA if inactive for 3+ days
+  return daysSinceActivity >= 3;
+};
+
+// Check if 2FA is recently verified (within session)
+userSchema.methods.is2FARecentlyVerified = function() {
+  if (!this.twoFactorAuth?.lastVerifiedAt) return false;
+  
+  const now = new Date();
+  const hoursSinceVerification = (now - this.twoFactorAuth.lastVerifiedAt) / (1000 * 60 * 60);
+  
+  // Valid for 24 hours
+  return hoursSinceVerification < 24;
 };
 
 module.exports = mongoose.model('User', userSchema);

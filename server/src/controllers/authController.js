@@ -64,7 +64,51 @@ class AuthController {
         });
       }
 
-      const { user, tokens } = await authService.login(email, password);
+      const result = await authService.login(email, password);
+
+      // Check if 2FA is required
+      if (result.requires2FA) {
+        return res.json({
+          success: true,
+          message: "2FA verification required",
+          data: {
+            requires2FA: true,
+            userId: result.user._id,
+            twoFactorMethod: result.twoFactorMethod,
+          },
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Login successful",
+        data: {
+          user: result.user,
+          tokens: result.tokens,
+          requires2FA: false,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/v1/auth/complete-2fa-login
+   * Complete login after 2FA verification
+   */
+  async complete2FALogin(req, res, next) {
+    try {
+      const { userId } = req.body;
+
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: "User ID is required",
+        });
+      }
+
+      const { user, tokens } = await authService.completeLoginAfter2FA(userId);
 
       res.json({
         success: true,

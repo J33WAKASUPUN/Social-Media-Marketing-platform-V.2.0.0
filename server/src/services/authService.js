@@ -176,7 +176,44 @@ async register(email, password, name) {
       await user.save();
     }
 
+    // Check if 2FA is required
+    const requires2FA = user.twoFactorAuth?.enabled && user.requires2FAVerification();
+
+    if (requires2FA) {
+      // Return partial response - user needs to verify 2FA
+      return {
+        user: {
+          _id: user._id,
+          email: user.email,
+          name: user.name,
+        },
+        tokens: null,
+        requires2FA: true,
+        twoFactorMethod: user.twoFactorAuth.method,
+      };
+    }
+
+    // Update last activity
+    user.lastActivityAt = new Date();
+    await user.save();
+
     // Generate tokens
+    const tokens = await generateTokenPair(user._id);
+
+    return { user, tokens, requires2FA: false };
+  }
+
+  /**
+   * Complete login after 2FA verification
+   */
+  async completeLoginAfter2FA(userId) {
+    const user = await User.findById(userId);
+    if (!user) throw new Error('User not found');
+
+    user.lastActivityAt = new Date();
+    user.lastLogin = new Date();
+    await user.save();
+
     const tokens = await generateTokenPair(user._id);
 
     return { user, tokens };

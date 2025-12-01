@@ -280,6 +280,25 @@ class EmailService {
       },
     });
   }
+
+   /**
+   * Send 2FA Verification Code Email
+   */
+  async send2FACodeEmail(email, userName, code, ipAddress = 'Unknown', requestTime = new Date().toLocaleString()) {
+    return await this.sendEmail({
+      to: email,
+      subject: `${code} is your verification code`,
+      template: '2fa-code',
+      data: {
+        userName,
+        code,
+        ipAddress,
+        requestTime,
+        appName: process.env.APP_NAME || 'Social Media Platform',
+        supportEmail: process.env.MAIL_FROM_ADDRESS,
+      },
+    });
+  }
 }
 
 module.exports = new EmailService();
