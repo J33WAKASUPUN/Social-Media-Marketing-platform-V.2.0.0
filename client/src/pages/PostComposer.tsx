@@ -560,6 +560,17 @@ const handlePublish = async () => {
                       {content || <span className="text-gray-300 italic">Write something...</span>}
                     </div>
 
+                    {/* HASHTAGS PREVIEW */}
+                    {hashtags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {hashtags.map((tag, i) => (
+                          <span key={i} className="text-sm text-primary">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
                     {/* IMAGE SLIDER */}
                     {totalMediaCount > 0 && allPreviewMedia.length > 0 && (
                       <div className="relative rounded-lg overflow-hidden bg-gray-100">

@@ -387,9 +387,27 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
                 </p>
               </div>
             ) : (
-              <p className="text-sm leading-relaxed text-foreground/80 line-clamp-3">
-                {contentPreview}
-              </p>
+              <>
+                <p className="text-sm leading-relaxed text-foreground/80 line-clamp-3">
+                  {contentPreview}
+                </p>
+                
+                {/* Hashtags Preview */}
+                {post.hashtags && post.hashtags.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {post.hashtags.slice(0, 3).map((tag, i) => (
+                      <span key={i} className="text-xs text-primary/70">
+                        {tag}
+                      </span>
+                    ))}
+                    {post.hashtags.length > 3 && (
+                      <span className="text-xs text-muted-foreground">
+                        +{post.hashtags.length - 3} more
+                      </span>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
 

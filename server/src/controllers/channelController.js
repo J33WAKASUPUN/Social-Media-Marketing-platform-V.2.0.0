@@ -226,6 +226,7 @@ class ChannelController {
     try {
       const content = req.body.content;
       const title = req.body.title || "Test Post";
+      const hashtags = req.body.hashtags || [];
 
       if (!content) {
         return res.status(400).json({
@@ -281,6 +282,7 @@ class ChannelController {
         content,
         mediaUrls,
         title,
+        hashtags,
       });
 
       // SAVE TO DATABASE

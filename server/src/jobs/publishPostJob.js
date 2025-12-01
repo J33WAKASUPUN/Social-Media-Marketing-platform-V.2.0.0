@@ -51,6 +51,7 @@ async process(job) {
       content: post.content,
       title: post.title,
       mediaUrls: post.mediaUrls || [],
+      hashtags: post.hashtags || [],
     });
 
     logger.info('✅ Platform publish successful', {

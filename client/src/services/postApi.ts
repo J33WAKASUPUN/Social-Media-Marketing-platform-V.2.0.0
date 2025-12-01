@@ -28,6 +28,7 @@ export interface Post {
   };
   title?: string;
   content: string;
+  hashtags?: string[];
   mediaUrls: string[];
   mediaType: 'none' | 'image' | 'video' | 'carousel' | 'multiImage';
   schedules: Array<{

@@ -708,6 +708,17 @@ export default function EditPost() {
                       {content || <span className="text-gray-300 italic">Write something...</span>}
                     </div>
 
+                    {/* HASHTAGS PREVIEW */}
+                    {hashtags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {hashtags.map((tag, i) => (
+                          <span key={i} className="text-sm text-primary">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
                     {totalMediaCount > 0 && allPreviewMedia.length > 0 && (
                       <div className="relative rounded-lg overflow-hidden bg-gray-100">
                         <div className="aspect-video relative">

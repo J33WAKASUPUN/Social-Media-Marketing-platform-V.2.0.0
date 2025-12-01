@@ -259,18 +259,18 @@ export function ViewPostDialog({
             </div>
 
             {/* Hashtags */}
-            {post.schedules?.[0]?.channel && (
+            {post.hashtags && post.hashtags.length > 0 && (
               <div className="space-y-3">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
                   <Hash className="h-4 w-4" />
                   Hashtags
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {post.content.match(/#\w+/g)?.map((tag, i) => (
+                  {post.hashtags.map((tag, i) => (
                     <Badge key={i} variant="secondary" className="text-xs">
                       {tag}
                     </Badge>
-                  )) || <span className="text-sm text-muted-foreground">No hashtags</span>}
+                  ))}
                 </div>
               </div>
             )}
