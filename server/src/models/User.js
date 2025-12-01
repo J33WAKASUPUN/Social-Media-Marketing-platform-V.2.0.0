@@ -143,13 +143,14 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
 
 // Get avatar URL (prefer uploaded avatar, fallback to Google avatar)
 userSchema.methods.getAvatarUrl = function() {
+  // Prioritize user-uploaded avatar over Google avatar
   if (this.avatar) {
-    if (!this.avatar.startsWith('http')) {
-      return `${process.env.APP_URL}/uploads/avatars/${this.avatar}`;
-    }
     return this.avatar;
   }
-  return this.googleAvatar || null;
+  if (this.googleAvatar) {
+    return this.googleAvatar;
+  }
+  return null;
 };
 
 // Check if account is locked
@@ -190,6 +191,7 @@ userSchema.methods.toJSON = function() {
   delete user.loginAttempts;
   delete user.lockUntil;
   
+  // Always recalculate avatarUrl
   user.avatarUrl = this.getAvatarUrl();
   
   return user;

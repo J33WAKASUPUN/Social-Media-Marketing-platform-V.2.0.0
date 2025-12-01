@@ -107,7 +107,7 @@ class CloudinaryService {
 
       const uploadResult = await cloudinary.uploader.upload(filePath, {
         resource_type: 'image',
-        folder: process.env.CLOUDINARY_FOLDER || 'social-media-images',
+        folder: options.folder || process.env.CLOUDINARY_FOLDER || 'social-media-images',
         transformation: [
           {
             width: 1920,
@@ -116,7 +116,7 @@ class CloudinaryService {
             quality: 'auto:good',
           }
         ],
-        public_id: options.publicId || undefined,
+        public_id: options.publicId || options.public_id || undefined,
         overwrite: options.overwrite || false,
         tags: ['social-media', ...(options.tags || [])],
       });
@@ -135,6 +135,7 @@ class CloudinaryService {
 
       return {
         url: uploadResult.secure_url,
+        secure_url: uploadResult.secure_url,
         publicId: uploadResult.public_id,
         format: uploadResult.format,
         width: uploadResult.width,

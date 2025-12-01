@@ -220,10 +220,13 @@ class AuthController {
         overwrite: true,
       });
 
+      // Use 'url' not 'secure_url' - check what cloudinaryService returns
+      const avatarUrl = uploadResult.url || uploadResult.secure_url;
+
       // Update user avatar
       const user = await authService.uploadAvatar(
         req.user._id,
-        uploadResult.secure_url
+        avatarUrl
       );
 
       res.json({
