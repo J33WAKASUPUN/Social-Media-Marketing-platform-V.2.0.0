@@ -13,6 +13,8 @@ class MediaController {
         bodyKeys: Object.keys(req.body),
         brandId: req.body.brandId,
         folder: req.body.folder,
+        tags: req.body.tags, 
+        tagsType: typeof req.body.tags, 
       });
 
       if (!req.files || req.files.length === 0) {
@@ -31,6 +33,20 @@ class MediaController {
         });
       }
 
+      // Parse tags correctly - handle both string and array
+      let parsedTags = [];
+      if (tags) {
+        if (Array.isArray(tags)) {
+          // Already an array
+          parsedTags = tags.map(t => t.trim()).filter(t => t.length > 0);
+        } else if (typeof tags === 'string') {
+          // Comma-separated string
+          parsedTags = tags.split(',').map(t => t.trim()).filter(t => t.length > 0);
+        }
+      }
+
+      console.log('📝 Parsed tags:', parsedTags);      
+
       const uploadedMedia = [];
       
       for (const file of req.files) {
@@ -43,17 +59,16 @@ class MediaController {
             brandId,
             {
               folder: folder || 'Default',
-              tags: tags ? tags.split(',').map(t => t.trim()) : [],
+              tags: parsedTags,
               altText: altText || '',
               caption: caption || '',
             }
           );
 
           uploadedMedia.push(media);
-          console.log('✅ File uploaded:', media._id);
+          console.log('✅ File uploaded:', media._id, 'with tags:', media.tags);
         } catch (fileError) {
           console.error('❌ Failed to upload file:', file.originalname, fileError.message);
-          // Continue with other files
         }
       }
 

@@ -16,6 +16,7 @@ class MediaService {
         originalName: file.originalname,
         size: file.size,
         brandId,
+        tags: options.tags,
       });
 
       const type = this.getMediaType(file.mimetype);
@@ -39,6 +40,7 @@ class MediaService {
         s3Bucket: uploadResult.bucket,
         type,
         metadata,
+        tags: options.tags || [],
         folder: options.folder || "Default",
         altText: options.altText || "",
         caption: options.caption || "",
@@ -48,6 +50,7 @@ class MediaService {
         mediaId: media._id,
         s3Url: media.s3Url,
         folder: media.folder,
+        tags: media.tags,
       });
 
       return media;

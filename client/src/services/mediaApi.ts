@@ -60,13 +60,13 @@ export const mediaApi = {
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());
 
-    // ✅ FIX: Axios response is { data: { success, data: Media[], pagination: {...} } }
+    // Axios response is { data: { success, data: Media[], pagination: {...} } }
     const response = await api.get<ApiResponse<Media[]>>(`/media?${params.toString()}`);
     
     console.log('🔍 Raw axios response:', response);
     console.log('🔍 Response.data:', response.data);
     
-    // ✅ CORRECT EXTRACTION:
+    // CORRECT EXTRACTION:
     // response.data = { success: true, data: [...], pagination: {...} }
     const responseBody = response.data;
     
@@ -115,9 +115,22 @@ export const mediaApi = {
     
     formData.append('brandId', options.brandId);
     if (options.folder) formData.append('folder', options.folder);
-    if (options.tags?.length) formData.append('tags', options.tags.join(','));
+    
+    // Ensure tags are sent as comma-separated string
+    if (options.tags && options.tags.length > 0) {
+      formData.append('tags', options.tags.join(','));
+    }
+    
     if (options.altText) formData.append('altText', options.altText);
     if (options.caption) formData.append('caption', options.caption);
+
+    console.log('📤 Uploading with options:', {
+      brandId: options.brandId,
+      folder: options.folder,
+      tags: options.tags,
+      altText: options.altText,
+      caption: options.caption,
+    });
 
     const response = await api.post<ApiResponse<Media[]>>('/media/upload', formData, {
       headers: {
