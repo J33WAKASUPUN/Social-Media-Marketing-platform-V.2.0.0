@@ -24,6 +24,7 @@ import Channels from "./pages/Channels";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import EditPost from "./pages/EditPost";
+import TwoFactorVerify from "./pages/TwoFactorVerify";
 import ResetPassword from "@/pages/ResetPassword";
 import ForgotPassword from "@/pages/ForgotPassword";
 
@@ -60,6 +61,9 @@ const App = () => (
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/auth/callback" element={<GoogleCallback />} />
+
+                  {/* 2FA Verification Route */}
+                  <Route path="/2fa-verify" element={<TwoFactorVerify />} />
                   
                   {/* Protected Routes */}
                   <Route path="/dashboard" element={

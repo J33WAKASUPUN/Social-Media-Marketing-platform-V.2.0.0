@@ -46,6 +46,9 @@ router.post('/2fa/enable-email', requireAuth, twoFactorController.enableEmail2FA
 // Send email OTP (can be called during login)
 router.post('/2fa/send-code', optionalAuth, authLimiter, twoFactorController.sendCode);
 
+// Verify email OTP and enable 2FA (during setup)
+router.post('/2fa/verify-email-setup', requireAuth, twoFactorController.verifyEmailSetup);
+
 // Verify 2FA code (can be called during login)
 router.post('/2fa/verify', optionalAuth, authLimiter, twoFactorController.verifyCode);
 
@@ -54,6 +57,9 @@ router.post('/2fa/disable', requireAuth, twoFactorController.disable);
 
 // Regenerate backup codes
 router.post('/2fa/regenerate-backup', requireAuth, twoFactorController.regenerateBackupCodes);
+
+// Complete login after 2FA verification
+router.post('/complete-2fa-login', authLimiter, authController.complete2FALogin);
 
 // Google OAuth routes
 router.get('/google', 

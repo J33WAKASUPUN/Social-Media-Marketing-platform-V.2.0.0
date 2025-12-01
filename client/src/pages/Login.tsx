@@ -31,7 +31,21 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await login(email, password);
+      const result = await login(email, password);
+      
+      // Check if 2FA verification is needed
+      if (result.requires2FA) {
+        navigate('/2fa-verify', {
+          state: {
+            userId: result.userId,
+            twoFactorMethod: result.twoFactorMethod,
+          },
+          replace: true,
+        });
+        return;
+      }
+
+      // Normal login success
       const from = (location.state as any)?.from?.pathname || '/dashboard';
       navigate(from, { replace: true });
     } catch (error: any) {

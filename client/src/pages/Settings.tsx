@@ -4,21 +4,26 @@ import { OrganizationSettings } from "@/components/OrganizationSettings";
 import { BrandSettings } from "@/components/BrandSettings";
 import { TeamSettings } from "@/components/TeamSettings";
 import { ProfileSettings } from "@/components/ProfileSettings";
-import { Building2, Tag, Users, UserCircle } from "lucide-react";
+import { TwoFactorSettings } from "@/components/TwoFactorSettings";
+import { Building2, Tag, Users, UserCircle, Shield } from "lucide-react";
 
 const Settings = () => {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <PageHeader
         title="Settings"
-        description="Manage your profile, organizations, brands, and team members"
+        description="Manage your profile, security, organizations, brands, and team members"
       />
 
       <Tabs defaultValue="profile" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <UserCircle className="h-4 w-4" />
             Profile
+          </TabsTrigger>
+          <TabsTrigger value="security" className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            Security
           </TabsTrigger>
           <TabsTrigger value="organization" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
@@ -36,6 +41,10 @@ const Settings = () => {
 
         <TabsContent value="profile">
           <ProfileSettings />
+        </TabsContent>
+
+        <TabsContent value="security">
+          <TwoFactorSettings />
         </TabsContent>
 
         <TabsContent value="organization">

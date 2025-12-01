@@ -14,12 +14,18 @@ interface User {
   updatedAt: string;
 }
 
+interface LoginResult {
+  requires2FA: boolean;
+  userId?: string;
+  twoFactorMethod?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAuthenticated: boolean;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<LoginResult>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
@@ -51,21 +57,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(false);
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<LoginResult> => {
     try {
-      const { data } = await api.post('/auth/login', { email, password });
+      const response = await api.post('/auth/login', { email, password });
+      const { data } = response.data;
 
-      const { user, tokens } = data.data;
+      // Check if 2FA is required
+      if (data.requires2FA) {
+        return {
+          requires2FA: true,
+          userId: data.userId,
+          twoFactorMethod: data.twoFactorMethod,
+        };
+      }
 
-      localStorage.setItem('accessToken', tokens.accessToken);
-      localStorage.setItem('refreshToken', tokens.refreshToken);
-      localStorage.setItem('user', JSON.stringify(user));
+      // Normal login - store tokens and user
+      localStorage.setItem('accessToken', data.tokens.accessToken);
+      localStorage.setItem('refreshToken', data.tokens.refreshToken);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      setUser(data.user);
 
-      setUser(user);
-      toast.success(`Welcome back, ${user.name}!`);
+      return { requires2FA: false };
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Login failed';
-      toast.error(errorMessage);
+      const message = error.response?.data?.message || 'Login failed';
+      toast.error(message);
       throw error;
     }
   };

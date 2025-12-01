@@ -264,6 +264,32 @@ class TwoFactorService {
     };
   }
 
+    /**
+   * Verify email OTP during setup (before 2FA is enabled)
+   */
+  async verifySetupEmailOTP(userId, code) {
+    const user = await User.findById(userId);
+    if (!user) throw new Error('User not found');
+
+    const cacheClient = redisClient.getCache();
+    const storedOTP = await cacheClient.get(`2fa:email:${userId}`);
+    
+    if (!storedOTP) {
+      throw new Error('Verification code expired. Please request a new one.');
+    }
+
+    if (storedOTP !== code) {
+      throw new Error('Invalid verification code');
+    }
+
+    // Clear the OTP after successful verification
+    await cacheClient.del(`2fa:email:${userId}`);
+
+    logger.info(`Email OTP verified during setup for user: ${user.email}`);
+
+    return { success: true };
+  }
+
   /**
    * Regenerate backup codes
    */

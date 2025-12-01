@@ -198,6 +198,40 @@ class TwoFactorController {
       next(error);
     }
   }
+
+    /**
+   * POST /api/v1/auth/2fa/verify-email-setup
+   * Verify email code during 2FA setup (before enabling)
+   */
+  async verifyEmailSetup(req, res, next) {
+    try {
+      const { code } = req.body;
+      
+      if (!code) {
+        return res.status(400).json({
+          success: false,
+          message: 'Verification code is required',
+        });
+      }
+
+      // Verify the setup OTP
+      await twoFactorService.verifySetupEmailOTP(req.user._id, code);
+      
+      // Now enable email 2FA
+      const result = await twoFactorService.enableEmail2FA(req.user._id);
+      
+      res.json({
+        success: true,
+        message: 'Email 2FA has been enabled successfully',
+        data: {
+          backupCodes: result.backupCodes,
+          warning: 'Save these backup codes securely. They will not be shown again.',
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new TwoFactorController();
