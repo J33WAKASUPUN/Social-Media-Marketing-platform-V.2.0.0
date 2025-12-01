@@ -1,6 +1,7 @@
 const authService = require("../services/authService");
 const emailService = require("../services/emailService");
 const cloudinaryService = require("../services/cloudinaryService");
+const logger = require('../utils/logger');
 const {
   verifyToken,
   blacklistToken,

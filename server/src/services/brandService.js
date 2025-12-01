@@ -3,6 +3,7 @@ const Membership = require('../models/Membership');
 const Channel = require('../models/Channel');
 const emailService = require('./emailService');
 const crypto = require('crypto');
+const logger = require('../utils/logger');
 
 class BrandService {
   /**

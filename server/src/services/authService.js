@@ -2,6 +2,7 @@ const User = require("../models/User");
 const { generateTokenPair } = require("../utils/jwt");
 const crypto = require("crypto");
 const emailService = require("./emailService");
+const logger = require('../utils/logger');
 
 class AuthService {
   /**
