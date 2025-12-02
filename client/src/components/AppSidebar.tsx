@@ -28,54 +28,55 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  TooltipProvider,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { usePermissions } from "@/hooks/usePermissions"; // ✅ ADD THIS
+import { usePermissions } from "@/hooks/usePermissions";
 
-// ✅ Define menu items with permission requirements
+// Define menu items with permission requirements
 const menuItems = [
   { 
     title: "Dashboard", 
     url: "/dashboard", 
     icon: LayoutDashboard,
-    requiredPermission: null // Everyone can view dashboard
+    requiredPermission: null
   },
   { 
     title: "Posts", 
     url: "/posts", 
     icon: FileText,
-    requiredPermission: 'canViewPosts' // All roles can view posts
+    requiredPermission: 'canViewPosts'
   },
   { 
     title: "Calendar", 
     url: "/calendar", 
     icon: Calendar,
-    requiredPermission: 'canViewPosts' // All roles can view calendar
+    requiredPermission: 'canViewPosts'
   },
   { 
     title: "Analytics", 
     url: "/analytics", 
     icon: BarChart3,
-    requiredPermission: 'canViewAnalytics' // All roles can view analytics
+    requiredPermission: 'canViewAnalytics'
   },
   { 
     title: "Channels", 
     url: "/channels", 
     icon: Share2,
-    requiredPermission: 'canConnectChannels' // Only owner/manager
+    requiredPermission: 'canConnectChannels'
   },
   { 
     title: "Media Library", 
     url: "/media", 
     icon: Image,
-    requiredPermission: 'canViewMedia' // Owner/Manager/Editor
+    requiredPermission: 'canViewMedia'
   },
   { 
     title: "Settings", 
     url: "/settings", 
     icon: Settings,
-    requiredPermission: null // Everyone can access settings
+    requiredPermission: null
   },
 ];
 
@@ -83,7 +84,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
-  const permissions = usePermissions(); // ✅ ADD THIS
+  const permissions = usePermissions();
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
 
@@ -100,144 +101,143 @@ export function AppSidebar() {
     return location.pathname.startsWith(url);
   };
 
-  // ✅ Filter menu items based on permissions
+  // Filter menu items based on permissions
   const visibleMenuItems = menuItems.filter(item => {
-    // If no permission required, show to everyone
     if (!item.requiredPermission) return true;
-    
-    // Check if user has the required permission
     return permissions[item.requiredPermission as keyof typeof permissions];
   });
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarContent>
-        <SidebarGroup>
-          {/* Logo */}
-          <SidebarGroupLabel className="px-4 py-6">
-            <NavLink to="/dashboard" className="flex items-center gap-0">
-                <img 
-                src="/logo.png" 
-                alt="SocialFlow" 
-                className="h-10 w-10"
-              />
-              {!isCollapsed && (
-                <span className="text-lg font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-                  SocialFlow
-                </span>
-              )}
-            </NavLink>
-          </SidebarGroupLabel>
+    <TooltipProvider delayDuration={300} skipDelayDuration={0}>
+      <Sidebar collapsible="icon">
+        <SidebarContent>
+          <SidebarGroup>
+            {/* Logo */}
+            <SidebarGroupLabel className="px-4 py-6">
+              <NavLink to="/dashboard" className="flex items-center gap-0">
+                  <img 
+                  src="/logo.png" 
+                  alt="SocialFlow" 
+                  className="h-10 w-10"
+                />
+                {!isCollapsed && (
+                  <span className="text-lg font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+                    SocialFlow
+                  </span>
+                )}
+              </NavLink>
+            </SidebarGroupLabel>
 
-          {/* Menu Items */}
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {visibleMenuItems.map((item) => {
-                const active = isActive(item.url);
-                const Icon = item.icon;
+            {/* Menu Items */}
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {visibleMenuItems.map((item) => {
+                  const active = isActive(item.url);
+                  const Icon = item.icon;
 
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <SidebarMenuButton
-                          asChild
-                          isActive={active}
-                          className={cn(
-                            "group relative",
-                            active && "bg-accent text-accent-foreground"
-                          )}
-                        >
-                          <NavLink to={item.url} className="flex items-center gap-3">
-                            <Icon className={cn(
-                              "h-5 w-5 transition-colors",
-                              active ? "text-primary" : "text-muted-foreground group-hover:text-primary"
-                            )} />
-                            <span className={cn(
-                              "transition-colors",
-                              active && "font-medium"
-                            )}>
-                              {item.title}
-                            </span>
-                            {active && (
-                              <ChevronRight className="ml-auto h-4 w-4 text-primary" />
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <SidebarMenuButton
+                            asChild
+                            isActive={active}
+                            className={cn(
+                              "group relative",
+                              active && "bg-accent text-accent-foreground"
                             )}
-                          </NavLink>
-                        </SidebarMenuButton>
-                      </TooltipTrigger>
-                      {isCollapsed && (
-                        <TooltipContent side="right">
-                          {item.title}
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+                          >
+                            <NavLink to={item.url} className="flex items-center gap-3">
+                              <Icon className={cn(
+                                "h-5 w-5 transition-colors",
+                                active ? "text-primary" : "text-muted-foreground group-hover:text-primary"
+                              )} />
+                              <span className={cn(
+                                "transition-colors",
+                                active && "font-medium"
+                              )}>
+                                {item.title}
+                              </span>
+                              {active && (
+                                <ChevronRight className="ml-auto h-4 w-4 text-primary" />
+                              )}
+                            </NavLink>
+                          </SidebarMenuButton>
+                        </TooltipTrigger>
+                        {isCollapsed && (
+                          <TooltipContent side="right" sideOffset={10} className="z-[100]">
+                            {item.title}
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
 
-      {/* Footer with User Info */}
-      <SidebarFooter>
-        <div className={cn(
-          "border-t transition-all duration-200",
-          isCollapsed ? "p-2" : "p-4"
-        )}>
-          {isCollapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-full"
-                  onClick={() => navigate("/settings")}
-                >
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user?.avatarUrl || user?.avatar} />
-                    <AvatarFallback>
-                      {user?.name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p>{user?.name}</p>
-                <p className="text-xs text-muted-foreground">{user?.email}</p>
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <div className="flex items-center gap-3">
-              <Avatar className="h-9 w-9 cursor-pointer" onClick={() => navigate("/settings")}>
-                <AvatarImage src={user?.avatarUrl || user?.avatar} />
-                <AvatarFallback>
-                  {user?.name.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{user?.name}</p>
-                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-              </div>
+        {/* Footer with User Info */}
+        <SidebarFooter>
+          <div className={cn(
+            "border-t transition-all duration-200",
+            isCollapsed ? "p-2" : "p-4"
+          )}>
+            {isCollapsed ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8"
-                    onClick={handleLogout}
+                    className="w-full"
+                    onClick={() => navigate("/settings")}
                   >
-                    <LogOut className="h-4 w-4" />
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user?.avatarUrl || user?.avatar} />
+                      <AvatarFallback>
+                        {user?.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>
-                  <p>Logout</p>
+                <TooltipContent side="right" sideOffset={10} className="z-[100]">
+                  <p>{user?.name}</p>
+                  <p className="text-xs text-muted-foreground">{user?.email}</p>
                 </TooltipContent>
               </Tooltip>
-            </div>
-          )}
-        </div>
-      </SidebarFooter>
-    </Sidebar>
+            ) : (
+              <div className="flex items-center gap-3">
+                <Avatar className="h-9 w-9 cursor-pointer" onClick={() => navigate("/settings")}>
+                  <AvatarImage src={user?.avatarUrl || user?.avatar} />
+                  <AvatarFallback>
+                    {user?.name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{user?.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="z-[100]">
+                    <p>Logout</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            )}
+          </div>
+        </SidebarFooter>
+      </Sidebar>
+    </TooltipProvider>
   );
 }

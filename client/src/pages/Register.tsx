@@ -68,7 +68,7 @@ export default function Register() {
   const PasswordRequirement = ({ met, text }: { met: boolean; text: string }) => (
     <div className={cn(
       "flex items-center gap-2 text-sm transition-colors",
-      met ? "text-green-600" : "text-gray-400"
+      met ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
     )}>
       {met ? (
         <Check className="h-4 w-4" />
@@ -82,7 +82,7 @@ export default function Register() {
   return (
     <div className="flex min-h-screen">
       {/* Left Side - Form */}
-      <div className="flex w-full flex-col justify-center px-8 py-12 lg:w-1/2 lg:px-16 xl:px-24">
+      <div className="flex w-full flex-col justify-center px-8 py-12 lg:w-1/2 lg:px-16 xl:px-24 bg-background">
         <div className="mx-auto w-full max-w-md">
           {/* Logo & Header */}
           <div className="mb-8">
@@ -96,10 +96,10 @@ export default function Register() {
                 SocialFlow
               </span>
             </Link>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
               Create your account
             </h1>
-            <p className="mt-2 text-base text-gray-600">
+            <p className="mt-2 text-base text-muted-foreground">
               Start managing your social media like a pro
             </p>
           </div>
@@ -107,7 +107,7 @@ export default function Register() {
           {/* Google Sign Up */}
           <Button
             variant="outline"
-            className="w-full h-12 text-base font-medium border-2 hover:bg-gray-50 transition-all duration-200"
+            className="w-full h-12 text-base font-medium border-2 hover:bg-muted transition-all duration-200"
             type="button"
             onClick={handleGoogleSignup}
             disabled={loading}
@@ -136,10 +136,10 @@ export default function Register() {
           {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
+              <div className="w-full border-t border-border"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-white px-4 text-gray-500">or continue with email</span>
+              <span className="bg-background px-4 text-muted-foreground">or continue with email</span>
             </div>
           </div>
 
@@ -147,13 +147,13 @@ export default function Register() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name Field */}
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-medium text-gray-700">
+              <Label htmlFor="name" className="text-sm font-medium text-foreground">
                 Full name
               </Label>
               <div className="relative">
                 <User className={cn(
                   "absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors",
-                  focusedField === 'name' ? "text-violet-600" : "text-gray-400"
+                  focusedField === 'name' ? "text-violet-600" : "text-muted-foreground"
                 )} />
                 <Input
                   id="name"
@@ -167,10 +167,10 @@ export default function Register() {
                   disabled={loading}
                   autoComplete="name"
                   className={cn(
-                    "h-12 pl-11 text-base border-2 transition-all duration-200",
+                    "h-12 pl-11 text-base border-2 transition-all duration-200 bg-background",
                     focusedField === 'name' 
-                      ? "border-violet-600 ring-4 ring-violet-100" 
-                      : "border-gray-200 hover:border-gray-300"
+                      ? "border-violet-600 ring-4 ring-violet-100 dark:ring-violet-900/30" 
+                      : "border-input hover:border-muted-foreground/50"
                   )}
                 />
               </div>
@@ -178,13 +178,13 @@ export default function Register() {
 
             {/* Email Field */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+              <Label htmlFor="email" className="text-sm font-medium text-foreground">
                 Email address
               </Label>
               <div className="relative">
                 <Mail className={cn(
                   "absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors",
-                  focusedField === 'email' ? "text-violet-600" : "text-gray-400"
+                  focusedField === 'email' ? "text-violet-600" : "text-muted-foreground"
                 )} />
                 <Input
                   id="email"
@@ -198,10 +198,10 @@ export default function Register() {
                   disabled={loading}
                   autoComplete="email"
                   className={cn(
-                    "h-12 pl-11 text-base border-2 transition-all duration-200",
+                    "h-12 pl-11 text-base border-2 transition-all duration-200 bg-background",
                     focusedField === 'email' 
-                      ? "border-violet-600 ring-4 ring-violet-100" 
-                      : "border-gray-200 hover:border-gray-300"
+                      ? "border-violet-600 ring-4 ring-violet-100 dark:ring-violet-900/30" 
+                      : "border-input hover:border-muted-foreground/50"
                   )}
                 />
               </div>
@@ -209,13 +209,13 @@ export default function Register() {
 
             {/* Password Field */}
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+              <Label htmlFor="password" className="text-sm font-medium text-foreground">
                 Password
               </Label>
               <div className="relative">
                 <Lock className={cn(
                   "absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors",
-                  focusedField === 'password' ? "text-violet-600" : "text-gray-400"
+                  focusedField === 'password' ? "text-violet-600" : "text-muted-foreground"
                 )} />
                 <Input
                   id="password"
@@ -229,16 +229,16 @@ export default function Register() {
                   disabled={loading}
                   autoComplete="new-password"
                   className={cn(
-                    "h-12 pl-11 pr-11 text-base border-2 transition-all duration-200",
+                    "h-12 pl-11 pr-11 text-base border-2 transition-all duration-200 bg-background",
                     focusedField === 'password' 
-                      ? "border-violet-600 ring-4 ring-violet-100" 
-                      : "border-gray-200 hover:border-gray-300"
+                      ? "border-violet-600 ring-4 ring-violet-100 dark:ring-violet-900/30" 
+                      : "border-input hover:border-muted-foreground/50"
                   )}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -246,24 +246,24 @@ export default function Register() {
               
               {/* Password Requirements */}
               {password && (
-                <div className="mt-3 p-3 rounded-lg bg-gray-50 space-y-2">
-                  <PasswordRequirement met={passwordValidation.minLength} text="At least 8 characters" />
-                  <PasswordRequirement met={passwordValidation.hasUpperCase} text="One uppercase letter" />
-                  <PasswordRequirement met={passwordValidation.hasLowerCase} text="One lowercase letter" />
-                  <PasswordRequirement met={passwordValidation.hasNumber} text="One number" />
+                <div className="grid grid-cols-2 gap-2 pt-2">
+                  <PasswordRequirement met={passwordValidation.minLength} text="8+ characters" />
+                  <PasswordRequirement met={passwordValidation.hasUpperCase} text="Uppercase" />
+                  <PasswordRequirement met={passwordValidation.hasLowerCase} text="Lowercase" />
+                  <PasswordRequirement met={passwordValidation.hasNumber} text="Number" />
                 </div>
               )}
             </div>
 
             {/* Confirm Password Field */}
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
+              <Label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
                 Confirm password
               </Label>
               <div className="relative">
                 <Lock className={cn(
                   "absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors",
-                  focusedField === 'confirmPassword' ? "text-violet-600" : "text-gray-400"
+                  focusedField === 'confirmPassword' ? "text-violet-600" : "text-muted-foreground"
                 )} />
                 <Input
                   id="confirmPassword"
@@ -277,40 +277,28 @@ export default function Register() {
                   disabled={loading}
                   autoComplete="new-password"
                   className={cn(
-                    "h-12 pl-11 pr-11 text-base border-2 transition-all duration-200",
+                    "h-12 pl-11 pr-11 text-base border-2 transition-all duration-200 bg-background",
                     focusedField === 'confirmPassword' 
-                      ? "border-violet-600 ring-4 ring-violet-100" 
-                      : "border-gray-200 hover:border-gray-300",
+                      ? "border-violet-600 ring-4 ring-violet-100 dark:ring-violet-900/30" 
+                      : "border-input hover:border-muted-foreground/50",
                     confirmPassword && (passwordsMatch ? "border-green-500" : "border-red-500")
                   )}
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
-              {confirmPassword && !passwordsMatch && (
-                <p className="text-sm text-red-600 flex items-center gap-1">
-                  <X className="h-4 w-4" />
-                  Passwords don't match
-                </p>
-              )}
-              {confirmPassword && passwordsMatch && (
-                <p className="text-sm text-green-600 flex items-center gap-1">
-                  <Check className="h-4 w-4" />
-                  Passwords match
-                </p>
-              )}
             </div>
 
             {/* Submit Button */}
             <Button
               type="submit"
               disabled={loading || !isPasswordValid || !passwordsMatch}
-              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30 transition-all duration-200 hover:shadow-xl hover:shadow-violet-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30 transition-all duration-200 hover:shadow-xl hover:shadow-violet-500/40 disabled:opacity-50"
             >
               {loading ? (
                 <div className="flex items-center gap-2">
@@ -326,8 +314,8 @@ export default function Register() {
             </Button>
 
             {/* Terms */}
-            <p className="text-xs text-center text-gray-500 mt-4">
-              By creating an account, you agree to our{" "}
+            <p className="text-center text-xs text-muted-foreground">
+              By signing up, you agree to our{" "}
               <Link to="/terms" className="text-violet-600 hover:underline">
                 Terms of Service
               </Link>{" "}
@@ -339,7 +327,7 @@ export default function Register() {
           </form>
 
           {/* Sign In Link */}
-          <p className="mt-6 text-center text-base text-gray-600">
+          <p className="mt-6 text-center text-base text-muted-foreground">
             Already have an account?{" "}
             <Link
               to="/login"

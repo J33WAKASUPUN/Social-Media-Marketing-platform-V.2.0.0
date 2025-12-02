@@ -1,12 +1,13 @@
-import { Bell, Search, Command } from "lucide-react";
+import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotification } from "@/contexts/NotificationContext";
@@ -14,16 +15,18 @@ import { useNavigate } from "react-router-dom";
 import { OrganizationSelector } from "./OrganizationSelector";
 import { BrandSelector } from "./BrandSelector";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from "@/lib/utils";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { 
   CheckCircle, 
   XCircle, 
   AlertTriangle, 
   Info, 
-  Send,
   Share2,
   Clock,
+  Settings,
+  LogOut,
 } from "lucide-react";
 
 // Notification type icons
@@ -37,12 +40,12 @@ const notificationIcons: Record<string, React.ElementType> = {
 };
 
 const notificationColors: Record<string, string> = {
-  post_published: 'text-green-500 bg-green-100',
-  post_failed: 'text-red-500 bg-red-100',
-  post_scheduled: 'text-blue-500 bg-blue-100',
-  channel_disconnected: 'text-amber-500 bg-amber-100',
-  channel_connected: 'text-green-500 bg-green-100',
-  system: 'text-gray-500 bg-gray-100',
+  post_published: 'text-green-500 bg-green-100 dark:bg-green-900/30',
+  post_failed: 'text-red-500 bg-red-100 dark:bg-red-900/30',
+  post_scheduled: 'text-blue-500 bg-blue-100 dark:bg-blue-900/30',
+  channel_disconnected: 'text-amber-500 bg-amber-100 dark:bg-amber-900/30',
+  channel_connected: 'text-green-500 bg-green-100 dark:bg-green-900/30',
+  system: 'text-gray-500 bg-gray-100 dark:bg-gray-800',
 };
 
 export function AppHeader() {
@@ -64,102 +67,145 @@ export function AppHeader() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-14 items-center gap-4 px-4">
-        {/* Left side: Trigger */}
-        <SidebarTrigger />
-        
-        {/* Separator */}
-        <div className="h-6 w-px bg-border" />
-
-        {/* Left Side: Selectors */}
-        <div className="flex items-center gap-2">
+      <div className="flex h-14 items-center justify-between px-4">
+        {/* Left side - Sidebar Trigger, Organization & Brand Selector */}
+        <div className="flex items-center gap-4">
+          <SidebarTrigger />
           <OrganizationSelector />
           <BrandSelector />
         </div>
 
-        {/* Spacer - pushes everything below to the right */}
-        <div className="flex-1" />
+        {/* Right side - Actions */}
+        <div className="flex items-center gap-2">
+          {/* Theme Toggle */}
+          <ThemeToggle />
 
-        {/* Right Side: Search (Hidden/Placeholder) */}
-        <div className="hidden md:flex items-center">
-          <div className="relative">
-            {/* Search Input Placeholder */}
-          </div>
-        </div>
-
-        {/* Right Side: Notifications */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 h-5 w-5 rounded-full bg-red-500 text-[10px] font-medium text-white flex items-center justify-center">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          {/* Changed align to "end" so it anchors to the right */}
-          <PopoverContent className="w-80 p-0" align="end">
-            <div className="flex items-center justify-between p-3 border-b">
-              <h4 className="font-semibold text-sm">Notifications</h4>
-              {unreadCount > 0 && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-xs h-7"
-                  onClick={() => markAllAsRead()}
-                >
-                  Mark all read
-                </Button>
-              )}
-            </div>
-            <ScrollArea className="h-[300px]">
-              {notifications.length > 0 ? (
-                <div className="divide-y">
-                  {notifications.slice(0, 10).map((notification) => {
-                    const Icon = notificationIcons[notification.type] || Info;
+          {/* Notifications Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+<Button variant="outline" size="icon" className="relative border">
+  <Bell className="h-5 w-5" />
+  {unreadCount > 0 && (
+    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground flex items-center justify-center">
+      {unreadCount > 9 ? '9+' : unreadCount}
+    </span>
+  )}
+</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80">
+              <div className="flex items-center justify-between px-4 py-2 border-b">
+                <span className="font-semibold">Notifications</span>
+                {unreadCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs h-auto py-1"
+                    onClick={() => markAllAsRead()}
+                  >
+                    Mark all read
+                  </Button>
+                )}
+              </div>
+              <ScrollArea className="h-[300px]">
+                {notifications.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                    <Bell className="h-8 w-8 mb-2 opacity-50" />
+                    <p className="text-sm">No notifications</p>
+                  </div>
+                ) : (
+                  notifications.slice(0, 10).map((notification) => {
+                    const IconComponent = notificationIcons[notification.type] || Info;
                     const colorClass = notificationColors[notification.type] || notificationColors.system;
-                    
+
                     return (
-                      <div
+                      <DropdownMenuItem
                         key={notification._id}
                         className={cn(
-                          "flex gap-3 p-3 cursor-pointer hover:bg-accent/50 transition-colors",
-                          !notification.read && "bg-accent/30"
+                          "flex items-start gap-3 p-3 cursor-pointer",
+                          !notification.read && "bg-muted/50"
                         )}
                         onClick={() => handleNotificationClick(notification)}
                       >
-                        <div className={cn("p-2 rounded-full flex-shrink-0", colorClass)}>
-                          <Icon className="h-6 w-6" /> {/* Adjusted icon size */}
+                        <div className={cn("p-2 rounded-full shrink-0", colorClass)}>
+                          <IconComponent className="h-4 w-4" />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={cn(
-                            "text-sm line-clamp-2",
-                            !notification.read && "font-medium"
-                          )}>
+                        <div className="flex-1 space-y-1">
+                          <p className="text-sm font-medium leading-none">
                             {notification.title}
                           </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
+                          <p className="text-xs text-muted-foreground line-clamp-2">
+                            {notification.message}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
                             {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
                           </p>
                         </div>
                         {!notification.read && (
-                          <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-2" />
+                          <div className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1" />
                         )}
-                      </div>
+                      </DropdownMenuItem>
                     );
-                  })}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <Bell className="h-8 w-8 text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">No notifications yet</p>
+                  })
+                )}
+              </ScrollArea>
+              {notifications.length > 0 && (
+                <div className="border-t p-2">
+                  <Button
+                    variant="ghost"
+                    className="w-full text-sm"
+                    onClick={() => navigate('/notifications')}
+                  >
+                    View all notifications
+                  </Button>
                 </div>
               )}
-            </ScrollArea>
-          </PopoverContent>
-        </Popover>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* User Avatar */}
+          {/* <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user?.avatarUrl || user?.avatar} alt={user?.name} />
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <div className="flex items-center gap-2 p-2">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={user?.avatarUrl || user?.avatar} alt={user?.name} />
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">{user?.name}</span>
+                  <span className="text-xs text-muted-foreground">{user?.email}</span>
+                </div>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => {
+                  localStorage.clear();
+                  window.location.href = '/login';
+                }}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu> */}
+        </div>
       </div>
     </header>
   );

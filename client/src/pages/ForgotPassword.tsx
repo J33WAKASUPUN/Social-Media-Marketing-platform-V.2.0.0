@@ -33,13 +33,22 @@ export default function ForgotPassword() {
   return (
     <div className="flex min-h-screen">
       {/* Left Side - Form */}
-      <div className="flex w-full flex-col justify-center px-8 py-12 lg:w-1/2 lg:px-16 xl:px-24">
+      <div className="flex w-full flex-col justify-center px-8 py-12 lg:w-1/2 lg:px-16 xl:px-24 bg-background">
         <div className="mx-auto w-full max-w-md">
+          {/* Back Link */}
+          <Link
+            to="/login"
+            className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-8"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to login
+          </Link>
+
           {/* Logo & Header */}
-          <div className="mb-10">
+          <div className="mb-8">
             <Link to="/" className="inline-flex items-center gap-0 mb-8">
               <img 
-                src="/logo.png"
+                src="/logo.png" 
                 alt="SocialFlow" 
                 className="h-12 w-12"
               />
@@ -47,43 +56,26 @@ export default function ForgotPassword() {
                 SocialFlow
               </span>
             </Link>
-
-            {!submitted ? (
-              <>
-                <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-                  Forgot your password?
-                </h1>
-                <p className="mt-2 text-base text-gray-600">
-                  No worries! Enter your email and we'll send you instructions to reset your password.
-                </p>
-              </>
-            ) : (
-              <>
-                {/* <div className="flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-6">
-                  <CheckCircle className="h-8 w-8 text-green-600" />
-                </div> */}
-                <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-                  Check your email
-                </h1>
-                <p className="mt-2 text-base text-gray-600">
-                  We've sent a password reset link to <strong>{email}</strong>
-                </p>
-              </>
-            )}
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+              Reset your password
+            </h1>
+            <p className="mt-2 text-base text-muted-foreground">
+              Enter your email and we'll send you a link to reset your password
+            </p>
           </div>
 
           {!submitted ? (
             /* Form */
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {/* Email Field */}
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="email" className="text-sm font-medium text-foreground">
                   Email address
                 </Label>
                 <div className="relative">
                   <Mail className={cn(
                     "absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors",
-                    focusedField === 'email' ? "text-violet-600" : "text-gray-400"
+                    focusedField === 'email' ? "text-violet-600" : "text-muted-foreground"
                   )} />
                   <Input
                     id="email"
@@ -97,10 +89,10 @@ export default function ForgotPassword() {
                     disabled={loading}
                     autoComplete="email"
                     className={cn(
-                      "h-12 pl-11 text-base border-2 transition-all duration-200",
+                      "h-12 pl-11 text-base border-2 transition-all duration-200 bg-background",
                       focusedField === 'email' 
-                        ? "border-violet-600 ring-4 ring-violet-100" 
-                        : "border-gray-200 hover:border-gray-300"
+                        ? "border-violet-600 ring-4 ring-violet-100 dark:ring-violet-900/30" 
+                        : "border-input hover:border-muted-foreground/50"
                     )}
                   />
                 </div>
@@ -109,7 +101,7 @@ export default function ForgotPassword() {
               {/* Submit Button */}
               <Button
                 type="submit"
-                disabled={loading || !email}
+                disabled={loading}
                 className="w-full h-12 text-base font-semibold bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30 transition-all duration-200 hover:shadow-xl hover:shadow-violet-500/40"
               >
                 {loading ? (
@@ -128,38 +120,22 @@ export default function ForgotPassword() {
           ) : (
             /* Success State */
             <div className="space-y-6">
-              <div className="p-4 rounded-lg bg-green-50 border border-green-200">
-                <p className="text-sm text-green-800">
-                  If an account exists with this email, you'll receive a password reset link shortly. 
-                  Check your spam folder if you don't see it.
-                </p>
+              <div className="p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
+                  <div>
+                    <p className="font-medium text-green-800 dark:text-green-200">Check your email</p>
+                    <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                      We've sent a password reset link to <strong>{email}</strong>
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-3">
-                <Button
-                  variant="outline"
-                  className="w-full h-12 text-base font-medium border-2"
-                  onClick={() => setSubmitted(false)}
-                >
-                  Try another email
-                </Button>
-
-                <Link to="/login" className="block">
-                  <Button
-                    variant="ghost"
-                    className="w-full h-12 text-base font-medium border-2"
-                  >
-                    <ArrowLeft className="mr-1 h-6 w-6" />
-                    Back to login
-                  </Button>
-                </Link>
-              </div>
-
-              <p className="text-center text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground text-center">
                 Didn't receive the email?{" "}
                 <button
-                  onClick={handleSubmit}
-                  disabled={loading}
+                  onClick={() => setSubmitted(false)}
                   className="font-medium text-violet-600 hover:text-violet-700 transition-colors"
                 >
                   Click to resend
@@ -169,9 +145,9 @@ export default function ForgotPassword() {
           )}
 
           {/* Help Text */}
-          <div className="mt-8 p-4 rounded-lg bg-gray-50 border border-gray-200">
-            <p className="text-sm text-gray-600">
-              <strong>Need help?</strong> Contact our support team at{" "}
+          <div className="mt-8 p-4 rounded-lg bg-muted/50 border border-border">
+            <p className="text-sm text-muted-foreground">
+              <strong className="text-foreground">Need help?</strong> Contact our support team at{" "}
               <a href="mailto:support@socialflow.com" className="text-violet-600 hover:underline">
                 support@socialflow.com
               </a>

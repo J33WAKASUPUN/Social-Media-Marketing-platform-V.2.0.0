@@ -63,7 +63,7 @@ export default function Login() {
   // Show loading while checking auth
   if (authLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-violet-50 via-white to-purple-50">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-violet-50 via-white to-purple-50 dark:from-background dark:via-background dark:to-background">
         <div className="text-center">
           <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-violet-600 border-t-transparent"></div>
           <p className="mt-4 text-sm text-muted-foreground">Loading...</p>
@@ -75,10 +75,10 @@ export default function Login() {
   return (
     <div className="flex min-h-screen">
       {/* Left Side - Form */}
-      <div className="flex w-full flex-col justify-center px-8 py-12 lg:w-1/2 lg:px-16 xl:px-24">
+      <div className="flex w-full flex-col justify-center px-8 py-12 lg:w-1/2 lg:px-16 xl:px-24 bg-background">
         <div className="mx-auto w-full max-w-md">
           {/* Logo & Header */}
-          <div className="mb-10">
+          <div className="mb-8">
             <Link to="/" className="inline-flex items-center gap-0 mb-8">
               <img 
                 src="/logo.png" 
@@ -89,10 +89,10 @@ export default function Login() {
                 SocialFlow
               </span>
             </Link>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
               Welcome back
             </h1>
-            <p className="mt-2 text-base text-gray-600">
+            <p className="mt-2 text-base text-muted-foreground">
               Sign in to your account to continue managing your social media
             </p>
           </div>
@@ -100,7 +100,7 @@ export default function Login() {
           {/* Google Sign In */}
           <Button
             variant="outline"
-            className="w-full h-12 text-base font-medium border-2 hover:bg-gray-50 transition-all duration-200"
+            className="w-full h-12 text-base font-medium border-2 hover:bg-muted transition-all duration-200"
             type="button"
             onClick={handleGoogleLogin}
             disabled={loading}
@@ -129,10 +129,10 @@ export default function Login() {
           {/* Divider */}
           <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
+              <div className="w-full border-t border-border"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="bg-white px-4 text-gray-500">or continue with email</span>
+              <span className="bg-background px-4 text-muted-foreground">or continue with email</span>
             </div>
           </div>
 
@@ -140,13 +140,13 @@ export default function Login() {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email Field */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+              <Label htmlFor="email" className="text-sm font-medium text-foreground">
                 Email address
               </Label>
               <div className="relative">
                 <Mail className={cn(
                   "absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors",
-                  focusedField === 'email' ? "text-violet-600" : "text-gray-400"
+                  focusedField === 'email' ? "text-violet-600" : "text-muted-foreground"
                 )} />
                 <Input
                   id="email"
@@ -160,10 +160,10 @@ export default function Login() {
                   disabled={loading}
                   autoComplete="email"
                   className={cn(
-                    "h-12 pl-11 text-base border-2 transition-all duration-200",
+                    "h-12 pl-11 text-base border-2 transition-all duration-200 bg-background",
                     focusedField === 'email' 
-                      ? "border-violet-600 ring-4 ring-violet-100" 
-                      : "border-gray-200 hover:border-gray-300"
+                      ? "border-violet-600 ring-4 ring-violet-100 dark:ring-violet-900/30" 
+                      : "border-input hover:border-muted-foreground/50"
                   )}
                 />
               </div>
@@ -172,7 +172,7 @@ export default function Login() {
             {/* Password Field */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="password" className="text-sm font-medium text-foreground">
                   Password
                 </Label>
                 <Link
@@ -185,7 +185,7 @@ export default function Login() {
               <div className="relative">
                 <Lock className={cn(
                   "absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors",
-                  focusedField === 'password' ? "text-violet-600" : "text-gray-400"
+                  focusedField === 'password' ? "text-violet-600" : "text-muted-foreground"
                 )} />
                 <Input
                   id="password"
@@ -199,16 +199,16 @@ export default function Login() {
                   disabled={loading}
                   autoComplete="current-password"
                   className={cn(
-                    "h-12 pl-11 pr-11 text-base border-2 transition-all duration-200",
+                    "h-12 pl-11 pr-11 text-base border-2 transition-all duration-200 bg-background",
                     focusedField === 'password' 
-                      ? "border-violet-600 ring-4 ring-violet-100" 
-                      : "border-gray-200 hover:border-gray-300"
+                      ? "border-violet-600 ring-4 ring-violet-100 dark:ring-violet-900/30" 
+                      : "border-input hover:border-muted-foreground/50"
                   )}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -236,13 +236,13 @@ export default function Login() {
           </form>
 
           {/* Sign Up Link */}
-          <p className="mt-8 text-center text-base text-gray-600">
+          <p className="mt-6 text-center text-base text-muted-foreground">
             Don't have an account?{" "}
             <Link
               to="/register"
               className="font-semibold text-violet-600 hover:text-violet-700 transition-colors"
             >
-              Create an account
+              Create one
             </Link>
           </p>
         </div>

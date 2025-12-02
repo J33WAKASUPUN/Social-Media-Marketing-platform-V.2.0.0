@@ -328,10 +328,10 @@ const handlePublish = async () => {
     }
   };
 
-  if (!currentBrand) return <div>Select a brand</div>;
+  if (!currentBrand) return <div className="p-6 text-foreground">Select a brand</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50/30 p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50/30 dark:bg-background p-4 md:p-6">
       {/* Prevents container from exploding on large screens */}
       <div className="mx-auto max-w-6xl space-y-6">
         
@@ -343,11 +343,11 @@ const handlePublish = async () => {
           {/* LEFT COLUMN: Main Composer (Takes up 8/12 columns on Large screens) */}
           <div className="lg:col-span-8 space-y-6 min-w-0">
             <Card className="border-none shadow-md overflow-hidden">
-              <CardHeader className="border-b bg-white px-6 py-4">
-                <CardTitle className="text-lg text-gray-800">Compose</CardTitle>
+              <CardHeader className="border-b bg-white dark:bg-card px-6 py-4">
+                <CardTitle className="text-lg text-gray-800 dark:text-foreground">Compose</CardTitle>
               </CardHeader>
               
-              <CardContent className="p-6 space-y-6">
+              <CardContent className="p-6 space-y-6 bg-card">
                 
                 {/* 1. PLATFORM SELECTOR (Grid Layout) */}
                 <PlatformSelector
@@ -358,22 +358,22 @@ const handlePublish = async () => {
                   loading={loading}
                 />
 
-                <div className="h-px bg-gray-100" />
+                <div className="h-px bg-gray-100 dark:bg-border" />
 
                 {/* 2. TEXT AREA */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Content</Label>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-foreground">Content</Label>
                   <div className="relative">
                     <Textarea
                       ref={contentTextareaRef}
                       placeholder={selectedPlatform ? `Write for ${selectedPlatform}...` : "What do you want to share?"}
-                      className="min-h-[200px] resize-none text-base p-4 border-gray-200 focus-visible:ring-violet-500"
+                      className="min-h-[200px] resize-none text-base p-4 border-gray-200 dark:border-border focus-visible:ring-violet-500 bg-background"
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
                       maxLength={maxChars}
                       disabled={loading}
                     />
-                    <div className="absolute bottom-3 right-3 flex items-center gap-2 bg-white/90 px-2 py-1 rounded text-xs text-gray-500 border shadow-sm">
+                    <div className="absolute bottom-3 right-3 flex items-center gap-2 bg-white/90 dark:bg-card/90 px-2 py-1 rounded text-xs text-gray-500 dark:text-muted-foreground border shadow-sm">
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full">
@@ -400,12 +400,12 @@ const handlePublish = async () => {
 
                 {/* HASHTAGS */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Hashtags</Label>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-foreground">Hashtags</Label>
                   <div className="flex flex-wrap gap-2">
                     {hashtags.map((tag, index) => (
                       <Badge key={index} variant="secondary" className="flex items-center gap-1">
                         {tag}
-                        <button onClick={() => removeHashtag(tag)} className="rounded-full hover:bg-gray-300">
+                        <button onClick={() => removeHashtag(tag)} className="rounded-full hover:bg-gray-300 dark:hover:bg-muted">
                           <X className="h-3 w-3" />
                         </button>
                       </Badge>
@@ -417,12 +417,13 @@ const handlePublish = async () => {
                     onChange={(e) => setHashtagInput(e.target.value)}
                     onKeyDown={handleHashtagKeyDown}
                     disabled={loading}
+                    className="bg-background"
                   />
                 </div>
 
                 {/* 3. MEDIA */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700">Media</Label>
+                  <Label className="text-sm font-medium text-gray-700 dark:text-foreground">Media</Label>
                   <MediaSelector
                     canAddMedia={canAddMedia}
                     allowedMediaTypes={allowedMediaTypes}
@@ -455,10 +456,10 @@ const handlePublish = async () => {
             
             {/* PUBLISH SETTINGS */}
             <Card className="border-none shadow-md">
-              <CardHeader className="border-b px-5 py-4 bg-white">
-                <CardTitle className="text-base font-semibold">Publish Settings</CardTitle>
+              <CardHeader className="border-b px-5 py-4 bg-white dark:bg-card">
+                <CardTitle className="text-base font-semibold text-foreground">Publish Settings</CardTitle>
               </CardHeader>
-              <CardContent className="p-5 space-y-5">
+              <CardContent className="p-5 space-y-5 bg-card">
                 <RadioGroup 
                   value={publishType} 
                   onValueChange={(v) => setPublishType(v as typeof publishType)}
@@ -468,7 +469,7 @@ const handlePublish = async () => {
                     <RadioGroupItem value="now" id="now" className="peer sr-only" />
                     <Label
                       htmlFor="now"
-                      className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-muted bg-transparent p-3 hover:bg-gray-50 peer-data-[state=checked]:border-violet-600 peer-data-[state=checked]:bg-violet-50 peer-data-[state=checked]:text-violet-900 cursor-pointer transition-all"
+                      className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-muted bg-transparent p-3 hover:bg-gray-50 dark:hover:bg-muted peer-data-[state=checked]:border-violet-600 peer-data-[state=checked]:bg-violet-50 dark:peer-data-[state=checked]:bg-violet-950 peer-data-[state=checked]:text-violet-900 dark:peer-data-[state=checked]:text-violet-100 cursor-pointer transition-all"
                     >
                       <Send className="h-5 w-5" />
                       <span className="text-xs font-semibold">Publish Now</span>
@@ -478,7 +479,7 @@ const handlePublish = async () => {
                     <RadioGroupItem value="schedule" id="schedule" className="peer sr-only" />
                     <Label
                       htmlFor="schedule"
-                      className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-muted bg-transparent p-3 hover:bg-gray-50 peer-data-[state=checked]:border-violet-600 peer-data-[state=checked]:bg-violet-50 peer-data-[state=checked]:text-violet-900 cursor-pointer transition-all"
+                      className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-muted bg-transparent p-3 hover:bg-gray-50 dark:hover:bg-muted peer-data-[state=checked]:border-violet-600 peer-data-[state=checked]:bg-violet-50 dark:peer-data-[state=checked]:bg-violet-950 peer-data-[state=checked]:text-violet-900 dark:peer-data-[state=checked]:text-violet-100 cursor-pointer transition-all"
                     >
                       <CalendarClock className="h-5 w-5" />
                       <span className="text-xs font-semibold">Schedule</span>
@@ -488,13 +489,13 @@ const handlePublish = async () => {
 
                 {publishType === 'schedule' && (
                   <div className="pt-2 animate-in fade-in">
-                    <Label className="mb-1.5 block text-xs font-medium text-gray-600">Select Date & Time</Label>
+                    <Label className="mb-1.5 block text-xs font-medium text-gray-600 dark:text-muted-foreground">Select Date & Time</Label>
                     <input
                       type="datetime-local"
                       value={scheduledDate}
                       onChange={(e) => setScheduledDate(e.target.value)}
                       min={new Date().toISOString().slice(0, 16)}
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+                      className="w-full rounded-lg border border-gray-200 dark:border-border bg-background px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
                     />
                   </div>
                 )}
@@ -532,23 +533,22 @@ const handlePublish = async () => {
             </Card>
 
             {/* ENHANCED PREVIEW CARD */}
-            <Card className="border shadow-sm overflow-hidden bg-gray-50/50">
-              <div className="p-2 border-b bg-white/80 backdrop-blur text-center">
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Live Preview</span>
+            <Card className="border shadow-sm overflow-hidden bg-gray-50/50 dark:bg-card">
+              <div className="p-2 border-b bg-white/80 dark:bg-card/80 backdrop-blur text-center">
+                <span className="text-xs font-medium text-gray-500 dark:text-muted-foreground uppercase tracking-wide">Live Preview</span>
               </div>
               <CardContent className="p-4">
                 {!selectedPlatform ? (
-                  <div className="h-48 flex flex-col items-center justify-center text-center text-gray-400 border-2 border-dashed border-gray-200 rounded-lg bg-white">
+                  <div className="h-48 flex flex-col items-center justify-center text-center text-gray-400 dark:text-muted-foreground border-2 border-dashed border-gray-200 dark:border-border rounded-lg bg-white dark:bg-muted/20">
                     <Send className="h-8 w-8 mb-2 opacity-20" />
                     <p className="text-sm">Select a platform<br/>to see preview</p>
                   </div>
                 ) : (
-                  <div className="bg-white rounded-xl border shadow-sm p-4 space-y-3">
+                  <div className="bg-white dark:bg-card rounded-xl border shadow-sm p-4 space-y-3">
                     <div className="flex items-center gap-3">
-                      {/* Gray circle avatar */}
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-gray-900 truncate">Your Brand</p>
-                        <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                        <p className="text-sm font-bold text-gray-900 dark:text-foreground truncate">Your Brand</p>
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-muted-foreground">
                           <PlatformBadge platform={selectedPlatform} size="sm" />
                           <span>• Just now</span>
                         </div>
@@ -556,8 +556,8 @@ const handlePublish = async () => {
                     </div>
 
                     {/* POST CONTENT */}
-                    <div className="text-sm text-gray-800 whitespace-pre-wrap break-words">
-                      {content || <span className="text-gray-300 italic">Write something...</span>}
+                    <div className="text-sm text-gray-800 dark:text-foreground whitespace-pre-wrap break-words">
+                      {content || <span className="text-gray-300 dark:text-muted-foreground italic">Write something...</span>}
                     </div>
 
                     {/* HASHTAGS PREVIEW */}
@@ -637,23 +637,23 @@ const handlePublish = async () => {
         </div>
       </div>
 
-      {/* CAPABILITIES DIALOG */}
+{/* CAPABILITIES DIALOG */}
       <Dialog open={showWarnings} onOpenChange={setShowWarnings}>
         <DialogContent className="max-w-2xl h-[600px] flex flex-col p-0 gap-0 overflow-hidden">
-          <DialogHeader className="px-6 py-4 border-b bg-gray-50/50">
+          <DialogHeader className="px-6 py-4 border-b bg-gray-50/50 dark:bg-card/50">
             <DialogTitle>Platform Limitations</DialogTitle>
           </DialogHeader>
           
           <div className="flex-1 overflow-hidden">
             <Tabs defaultValue={selectedChannel || (channels[0]?._id || (channels[0] as any)?.id)} className="h-full flex">
-              <TabsList className="w-48 h-full flex-col justify-start rounded-none border-r bg-gray-50/30 p-0 space-y-0">
+              <TabsList className="w-48 h-full flex-col justify-start rounded-none border-r bg-gray-50/30 dark:bg-muted/30 p-0 space-y-0">
                  {channels.map((ch) => {
                     const id = ch._id || (ch as any).id;
                     return (
                       <TabsTrigger 
                         key={id} 
                         value={id} 
-                        className="w-full justify-start px-4 py-3 rounded-none data-[state=active]:bg-white data-[state=active]:border-r-2 data-[state=active]:border-violet-600 data-[state=active]:text-violet-700 border-r-2 border-transparent"
+                        className="w-full justify-start px-4 py-3 rounded-none data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:border-r-2 data-[state=active]:border-violet-600 data-[state=active]:text-violet-700 dark:data-[state=active]:text-violet-400 border-r-2 border-transparent"
                       >
                         <div className="flex items-center gap-2 overflow-hidden">
                            <PlatformBadge platform={ch.provider as Platform} size="sm" />
@@ -673,12 +673,12 @@ const handlePublish = async () => {
                      <TabsContent key={id} value={id} className="m-0 p-6 space-y-6 animate-in fade-in slide-in-from-left-2 duration-200">
                         <div className="flex items-center gap-3">
                            <PlatformBadge platform={ch.provider as Platform} size="lg" />
-                           <h3 className="text-lg font-bold text-gray-900">{ch.displayName}</h3>
+                           <h3 className="text-lg font-bold text-gray-900 dark:text-foreground">{ch.displayName}</h3>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                            <div className="space-y-2">
-                              <h4 className="text-xs font-bold text-gray-500 uppercase">Media Support</h4>
+                              <h4 className="text-xs font-bold text-gray-400 dark:text-gray-300 uppercase">Media Support</h4>
                               <div className="space-y-1">
                                  <SupportItem supported={cap.supports.text} label="Text Posts" />
                                  <SupportItem supported={cap.supports.images} label="Images" />
@@ -686,7 +686,7 @@ const handlePublish = async () => {
                               </div>
                            </div>
                            <div className="space-y-2">
-                              <h4 className="text-xs font-bold text-gray-500 uppercase">Actions</h4>
+                              <h4 className="text-xs font-bold text-gray-400 dark:text-gray-300 uppercase">Actions</h4>
                               <div className="space-y-1">
                                  <SupportItem supported={cap.supports.update} label="Edit Post" />
                                  <SupportItem supported={cap.supports.delete} label="Delete Post" />
@@ -694,34 +694,34 @@ const handlePublish = async () => {
                            </div>
                         </div>
 
-                        <div className="bg-gray-50 rounded-lg p-4 border space-y-3">
-                           <h4 className="text-sm font-semibold text-gray-900">Hard Limits</h4>
+                        <div className="bg-gray-50 dark:bg-muted/30 rounded-lg p-4 border dark:border-border space-y-3">
+                           <h4 className="text-sm font-semibold text-gray-900 dark:text-foreground">Hard Limits</h4>
                            <div className="grid grid-cols-2 gap-y-4 text-sm">
                               <div>
-                                <span className="block text-xs text-gray-500">Max Text</span>
-                                <span className="font-medium">{cap.limits.maxTextLength.toLocaleString()} chars</span>
+                                <span className="block text-xs text-gray-500 dark:text-gray-400">Max Text</span>
+                                <span className="font-medium text-gray-900 dark:text-white">{cap.limits.maxTextLength.toLocaleString()} chars</span>
                               </div>
                               <div>
-                                <span className="block text-xs text-gray-500">Max Images</span>
-                                <span className="font-medium">{cap.limits.maxImages || 'N/A'}</span>
+                                <span className="block text-xs text-gray-500 dark:text-gray-400">Max Images</span>
+                                <span className="font-medium text-gray-900 dark:text-white">{cap.limits.maxImages || 'N/A'}</span>
                               </div>
                               <div>
-                                <span className="block text-xs text-gray-500">Max Video Size</span>
-                                <span className="font-medium">{cap.limits.maxVideoSize || 'N/A'}</span>
+                                <span className="block text-xs text-gray-500 dark:text-gray-400">Max Video Size</span>
+                                <span className="font-medium text-gray-900 dark:text-white">{cap.limits.maxVideoSize || 'N/A'}</span>
                               </div>
                               <div>
-                                <span className="block text-xs text-gray-500">Video Duration</span>
-                                <span className="font-medium">{cap.limits.videoDuration || 'N/A'}</span>
+                                <span className="block text-xs text-gray-500 dark:text-gray-400">Video Duration</span>
+                                <span className="font-medium text-gray-900 dark:text-white">{cap.limits.videoDuration || 'N/A'}</span>
                               </div>
                            </div>
                         </div>
 
                         <div>
-                           <h4 className="text-sm font-semibold text-gray-900 mb-2">Platform Notes</h4>
+                           <h4 className="text-sm font-semibold text-gray-900 dark:text-foreground mb-2">Platform Notes</h4>
                            <ul className="space-y-2">
                               {cap.warnings.map((w, i) => (
-                                 <li key={i} className="flex items-start gap-2 text-sm text-gray-600 bg-amber-50 p-2 rounded border border-amber-100">
-                                    <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                                 <li key={i} className="flex items-start gap-2 text-sm text-gray-600 dark:text-muted-foreground bg-amber-50 dark:bg-amber-950/30 p-2 rounded border border-amber-100 dark:border-amber-900/50">
+                                    <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500 mt-0.5 shrink-0" />
                                     <span>{w.replace('⚠️', '').replace('❌', '').replace('✅', '')}</span>
                                  </li>
                               ))}
@@ -733,7 +733,7 @@ const handlePublish = async () => {
               </div>
             </Tabs>
           </div>
-          <DialogFooter className="p-4 border-t bg-white">
+          <DialogFooter className="p-4 border-t bg-white dark:bg-card">
              <Button onClick={() => setShowWarnings(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
@@ -782,10 +782,12 @@ function SupportItem({ supported, label }: { supported: boolean, label: string }
    return (
       <div className="flex items-center gap-2 text-sm">
          {supported 
-            ? <CheckCircle2 className="h-4 w-4 text-green-600" />
-            : <XCircle className="h-4 w-4 text-gray-300" />
+            ? <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-500" />
+            : <XCircle className="h-4 w-4 text-gray-300 dark:text-gray-600" />
          }
-         <span className={supported ? 'text-gray-900' : 'text-gray-400'}>{label}</span>
+         <span className={supported ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'}>
+            {label}
+         </span>
       </div>
    )
 }
