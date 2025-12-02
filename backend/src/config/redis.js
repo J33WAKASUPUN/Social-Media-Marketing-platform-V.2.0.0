@@ -16,17 +16,19 @@ class RedisClient {
    * Create Redis client with specific DB
    */
   createClient(db, name) {
-    // Determine connection config
-    const redisUrl = process.env.REDIS_URL;
+    // ✅ FIX: Prefer explicit variables over URL to avoid password parsing issues
     const host = process.env.REDIS_HOST || '127.0.0.1';
     const port = parseInt(process.env.REDIS_PORT || 6379, 10);
-    
+    const password = process.env.REDIS_PASSWORD;
+
     // Azure requires TLS for port 6380
-    const isTls = port === 6380 || (redisUrl && redisUrl.startsWith('rediss://'));
+    const isTls = port === 6380;
 
     const config = {
       database: db,
       socket: {
+        host: host,
+        port: port,
         reconnectStrategy: (retries) => {
           if (retries > 10) {
             logger.error(`Redis ${name} max retries reached`);
@@ -38,22 +40,13 @@ class RedisClient {
         },
         connectTimeout: 10000,
         keepAlive: 30000,
-        // ✅ CRITICAL FIX: Enable TLS for Azure Redis
+        // ✅ Enable TLS for Azure
         tls: isTls,
-        // For self-signed certs (optional, but good for some dev environments)
-        rejectUnauthorized: process.env.NODE_ENV === 'production'
+        // ✅ Disable strict cert check for Azure (fixes common handshake hangs)
+        rejectUnauthorized: false 
       },
-      password: process.env.REDIS_PASSWORD || undefined,
+      password: password,
     };
-
-    // Prefer URL if available (It handles rediss:// automatically)
-    if (redisUrl) {
-      config.url = redisUrl;
-      // When using URL, host/port in socket are ignored, but we still need the socket options above
-    } else {
-      config.socket.host = host;
-      config.socket.port = port;
-    }
 
     const client = redis.createClient(config);
 
@@ -103,11 +96,15 @@ class RedisClient {
         'Queue'
       );
 
-      await Promise.all([
-        this.cacheClient.connect(),
-        this.sessionClient.connect(),
-        this.queueClient.connect(),
-      ]);
+      // Connect sequentially to avoid resource contention during startup
+      logger.info('Connecting to Redis Cache...');
+      await this.cacheClient.connect();
+      
+      logger.info('Connecting to Redis Session...');
+      await this.sessionClient.connect();
+      
+      logger.info('Connecting to Redis Queue...');
+      await this.queueClient.connect();
 
       logger.info('✅ All Redis clients connected');
 
@@ -125,8 +122,6 @@ class RedisClient {
       return true;
     } catch (error) {
       logger.error('❌ Redis connection failed:', error.message);
-      // Don't throw here to allow app to start without Redis if needed (optional)
-      // But for your app structure, throwing is likely correct.
       throw error;
     }
   }
