@@ -16,10 +16,17 @@ class RedisClient {
    * Create Redis client with specific DB
    */
   createClient(db, name) {
-    const client = redis.createClient({
+    // Determine connection config
+    const redisUrl = process.env.REDIS_URL;
+    const host = process.env.REDIS_HOST || '127.0.0.1';
+    const port = parseInt(process.env.REDIS_PORT || 6379, 10);
+    
+    // Azure requires TLS for port 6380
+    const isTls = port === 6380 || (redisUrl && redisUrl.startsWith('rediss://'));
+
+    const config = {
+      database: db,
       socket: {
-        host: process.env.REDIS_HOST || '127.0.0.1',
-        port: process.env.REDIS_PORT || 6379,
         reconnectStrategy: (retries) => {
           if (retries > 10) {
             logger.error(`Redis ${name} max retries reached`);
@@ -31,10 +38,24 @@ class RedisClient {
         },
         connectTimeout: 10000,
         keepAlive: 30000,
+        // ✅ CRITICAL FIX: Enable TLS for Azure Redis
+        tls: isTls,
+        // For self-signed certs (optional, but good for some dev environments)
+        rejectUnauthorized: process.env.NODE_ENV === 'production'
       },
       password: process.env.REDIS_PASSWORD || undefined,
-      database: db,
-    });
+    };
+
+    // Prefer URL if available (It handles rediss:// automatically)
+    if (redisUrl) {
+      config.url = redisUrl;
+      // When using URL, host/port in socket are ignored, but we still need the socket options above
+    } else {
+      config.socket.host = host;
+      config.socket.port = port;
+    }
+
+    const client = redis.createClient(config);
 
     client.on('connect', () => {
       logger.info(`✅ Redis ${name} connected (DB: ${db})`);
@@ -104,6 +125,8 @@ class RedisClient {
       return true;
     } catch (error) {
       logger.error('❌ Redis connection failed:', error.message);
+      // Don't throw here to allow app to start without Redis if needed (optional)
+      // But for your app structure, throwing is likely correct.
       throw error;
     }
   }
