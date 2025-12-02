@@ -1,0 +1,13 @@
+#Terraform State
+
+*.tfstate
+*.tfstate.backup
+
+#Terraform Providers (The huge files causing your error)
+
+.terraform/
+.terraform.lock.hcl
+
+#Crash logs
+
+crash.log

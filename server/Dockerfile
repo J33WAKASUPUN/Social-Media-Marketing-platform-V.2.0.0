@@ -1,0 +1,33 @@
+# Use Node 20 Alpine
+FROM node:20-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies required for sharp, bcrypt, ffmpeg, etc.
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    ffmpeg \
+    ffprobe
+
+# Copy package files
+COPY package*.json ./
+
+# Install production dependencies
+RUN npm ci --only=production
+
+# Copy the rest of the application code
+COPY . .
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV APP_PORT=5000
+ENV PORT=5000
+
+# Expose port 5000
+EXPOSE 5000
+
+# Start the application
+CMD ["npm", "start"]
