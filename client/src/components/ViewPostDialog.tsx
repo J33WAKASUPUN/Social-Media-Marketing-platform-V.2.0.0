@@ -43,12 +43,33 @@ interface ViewPostDialogProps {
   onRemoveFromHistory?: (postId: string) => void;
 }
 
+// Updated status config with dark mode support
 const statusConfig = {
-  scheduled: { label: 'Scheduled', color: 'bg-amber-100 text-amber-800', icon: Clock },
-  published: { label: 'Published', color: 'bg-green-100 text-green-800', icon: CheckCircle },
-  draft: { label: 'Draft', color: 'bg-gray-100 text-gray-800', icon: FileText },
-  failed: { label: 'Failed', color: 'bg-red-100 text-red-800', icon: AlertTriangle },
-  publishing: { label: 'Publishing', color: 'bg-blue-100 text-blue-800', icon: Clock },
+  scheduled: { 
+    label: 'Scheduled', 
+    color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400', 
+    icon: Clock 
+  },
+  published: { 
+    label: 'Published', 
+    color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', 
+    icon: CheckCircle 
+  },
+  draft: { 
+    label: 'Draft', 
+    color: 'bg-gray-100 text-gray-800 dark:bg-secondary dark:text-secondary-foreground', 
+    icon: FileText 
+  },
+  failed: { 
+    label: 'Failed', 
+    color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', 
+    icon: AlertTriangle 
+  },
+  publishing: { 
+    label: 'Publishing', 
+    color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', 
+    icon: Clock 
+  },
 };
 
 const getPlatformPostUrl = (platform: string, platformPostId: string): string => {
@@ -130,12 +151,12 @@ export function ViewPostDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+      <DialogContent className="max-w-4xl max-h-[90vh] p-0 bg-background text-foreground">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <DialogTitle className="text-2xl flex items-center gap-3">
-                <Badge className={cn('flex items-center gap-1.5', statusStyle.color)}>
+                <Badge className={cn('flex items-center gap-1.5 border-0', statusStyle.color)}>
                   <StatusIcon className="h-4 w-4" />
                   {statusStyle.label}
                 </Badge>
@@ -160,8 +181,8 @@ export function ViewPostDialog({
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                   Media
                 </h3>
-                <div className="relative aspect-video rounded-lg overflow-hidden bg-muted group">
-                  {/* ✅ RENDER VIDEO OR IMAGE */}
+                <div className="relative aspect-video rounded-lg overflow-hidden bg-muted group border dark:border-border">
+                  {/* VIDEO OR IMAGE */}
                   {isVideo ? (
                     <video
                       key={mediaUrls[currentImageIndex]}
@@ -188,7 +209,7 @@ export function ViewPostDialog({
                     />
                   )}
 
-                  {/* Navigation Arrows - only for multiple media */}
+                  {/* Navigation Arrows */}
                   {mediaUrls.length > 1 && (
                     <>
                       <button
@@ -206,7 +227,7 @@ export function ViewPostDialog({
                     </>
                   )}
 
-                  {/* Image Counter */}
+                  {/* Image Counter Dots */}
                   {mediaUrls.length > 1 && (
                     <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
                       {mediaUrls.map((_, index) => (
@@ -253,8 +274,8 @@ export function ViewPostDialog({
                   Copy
                 </Button>
               </div>
-              <div className="p-4 rounded-lg bg-muted/50 border">
-                <p className="whitespace-pre-wrap text-sm leading-relaxed">{post.content}</p>
+              <div className="p-4 rounded-lg bg-muted/50 border dark:border-border">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{post.content}</p>
               </div>
             </div>
 
@@ -275,7 +296,7 @@ export function ViewPostDialog({
               </div>
             )}
 
-            <Separator />
+            <Separator className="bg-border" />
 
             {/* Published Platforms */}
             {publishedPlatforms.length > 0 && (
@@ -287,12 +308,12 @@ export function ViewPostDialog({
                   {publishedPlatforms.map((platform, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-green-50/50 border-green-200"
+                      className="flex items-center justify-between p-3 rounded-lg border bg-green-50/50 border-green-200 dark:bg-green-900/20 dark:border-green-800"
                     >
                       <div className="flex items-center gap-3">
                         <PlatformBadge platform={platform.platform as any} size="sm" />
                         <div>
-                          <p className="text-sm font-medium">{platform.displayName}</p>
+                          <p className="text-sm font-medium text-foreground">{platform.displayName}</p>
                           {platform.publishedAt && (
                             <p className="text-xs text-muted-foreground">
                               {format(new Date(platform.publishedAt), 'MMM dd, yyyy HH:mm')}
@@ -303,6 +324,7 @@ export function ViewPostDialog({
                       <Button
                         variant="outline"
                         size="sm"
+                        className="bg-background hover:bg-accent border-border"
                         onClick={() => window.open(platform.postUrl, '_blank')}
                       >
                         <ExternalLink className="h-4 w-4 mr-2" />
@@ -324,12 +346,12 @@ export function ViewPostDialog({
                   {scheduledPlatforms.map((platform, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-amber-50/50 border-amber-200"
+                      className="flex items-center justify-between p-3 rounded-lg border bg-amber-50/50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800"
                     >
                       <div className="flex items-center gap-3">
                         <PlatformBadge platform={platform.platform as any} size="sm" />
                         <div>
-                          <p className="text-sm font-medium">{platform.displayName}</p>
+                          <p className="text-sm font-medium text-foreground">{platform.displayName}</p>
                           <p className="text-xs text-muted-foreground flex items-center gap-1">
                             <Clock className="h-3 w-3" />
                             {format(new Date(platform.scheduledFor), 'MMM dd, yyyy HH:mm')}
@@ -352,13 +374,13 @@ export function ViewPostDialog({
                   {failedPlatforms.map((platform, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-red-50/50 border-red-200"
+                      className="flex items-center justify-between p-3 rounded-lg border bg-red-50/50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
                     >
                       <div className="flex items-center gap-3">
                         <PlatformBadge platform={platform.platform as any} size="sm" />
                         <div>
-                          <p className="text-sm font-medium">{platform.displayName}</p>
-                          <p className="text-xs text-red-600 flex items-center gap-1">
+                          <p className="text-sm font-medium text-foreground">{platform.displayName}</p>
+                          <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
                             <AlertTriangle className="h-3 w-3" />
                             {platform.error}
                           </p>
@@ -371,34 +393,34 @@ export function ViewPostDialog({
             )}
 
             {/* Post Metadata */}
-            <Separator />
+            <Separator className="bg-border" />
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Created By</p>
-                <p className="font-medium">{post.createdBy.name}</p>
+                <p className="font-medium text-foreground">{post.createdBy.name}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Created At</p>
-                <p className="font-medium">
+                <p className="font-medium text-foreground">
                   {format(new Date(post.createdAt), 'MMM dd, yyyy HH:mm')}
                 </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Last Updated</p>
-                <p className="font-medium">
+                <p className="font-medium text-foreground">
                   {format(new Date(post.updatedAt), 'MMM dd, yyyy HH:mm')}
                 </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Media Type</p>
-                <p className="font-medium capitalize">{post.mediaType || 'None'}</p>
+                <p className="font-medium capitalize text-foreground">{post.mediaType || 'None'}</p>
               </div>
             </div>
           </div>
         </ScrollArea>
 
         {/* Footer Actions */}
-        <div className="px-6 py-4 border-t bg-muted/30 flex items-center justify-between">
+        <div className="px-6 py-4 border-t border-border bg-muted/30 flex items-center justify-between">
           <div className="flex gap-2">
             {onEdit && (post.status === 'draft' || post.status === 'scheduled') && (
               <Button
@@ -416,6 +438,7 @@ export function ViewPostDialog({
             {onCancel && post.status === 'scheduled' && (
               <Button
                 variant="outline"
+                className="bg-background hover:bg-accent"
                 onClick={() => {
                   onCancel(post._id);
                   onOpenChange(false);
@@ -433,14 +456,14 @@ export function ViewPostDialog({
                   onRemoveFromHistory(post._id);
                   onOpenChange(false);
                 }}
-                className="text-muted-foreground"
+                className="text-muted-foreground hover:text-foreground"
               >
                 Remove from History
               </Button>
             )}
           </div>
 
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" className="bg-background hover:bg-accent" onClick={() => onOpenChange(false)}>
             Close
           </Button>
         </div>

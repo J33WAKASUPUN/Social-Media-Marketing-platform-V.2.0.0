@@ -19,14 +19,15 @@ All colors MUST be HSL.
 
     --primary: 271 81% 56%;
     --primary-foreground: 0 0% 100%;
-    --primary: 271 81% 56%;
+    --primary-light: 271 81% 66%;
     --primary-dark: 263 55% 55%;
 
     --secondary: 263 70% 58%;
     --secondary-foreground: 0 0% 100%;
 
-    --accent: 300 75% 78%;
-    --accent-foreground: 240 10% 15%;
+    /* Changed from Pink (300) to Soft Violet (260) for hover states */
+    --accent: 260 50% 96%;
+    --accent-foreground: 271 81% 56%;
 
     --success: 158 64% 52%;
     --success-foreground: 0 0% 100%;
@@ -57,7 +58,8 @@ All colors MUST be HSL.
 
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(246 65% 65%), hsl(263 55% 55%));
-    --gradient-accent: linear-gradient(135deg, hsl(263 55% 55%), hsl(316 75% 78%));
+    /* Changed gradient to Violet -> Purple */
+    --gradient-accent: linear-gradient(135deg, hsl(263 55% 55%), hsl(280 60% 60%));
     --gradient-soft: linear-gradient(180deg, hsl(0 0% 100%), hsl(246 65% 98%));
 
     /* Shadows */
@@ -86,8 +88,9 @@ All colors MUST be HSL.
     --secondary: 263 55% 55%;
     --secondary-foreground: 0 0% 100%;
 
-    --accent: 316 75% 78%;
-    --accent-foreground: 240 10% 8%;
+    /* Changed from Pink (316) to Deep Violet (263) for dark mode hover */
+    --accent: 263 40% 20%;
+    --accent-foreground: 246 65% 85%;
 
     --success: 158 64% 52%;
     --warning: 38 92% 50%;
@@ -106,8 +109,8 @@ All colors MUST be HSL.
     --sidebar-foreground: 0 0% 95%;
     --sidebar-primary: 246 65% 65%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 10% 18%;
-    --sidebar-accent-foreground: 246 65% 65%;
+    --sidebar-accent: 263 40% 20%;
+    --sidebar-accent-foreground: 246 65% 85%;
     --sidebar-border: 240 10% 18%;
     --sidebar-ring: 246 65% 65%;
   }

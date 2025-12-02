@@ -197,8 +197,8 @@ export const TwoFactorSettings: React.FC = () => {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-full bg-violet-100">
-              <Shield className="h-6 w-6 text-violet-600" />
+            <div className="p-2 rounded-full bg-violet-100 dark:bg-violet-900/30">
+              <Shield className="h-6 w-6 text-violet-600 dark:text-violet-400" />
             </div>
             <div>
               <CardTitle>Two-Factor Authentication</CardTitle>
@@ -221,47 +221,48 @@ export const TwoFactorSettings: React.FC = () => {
 
               <div className="grid gap-4 md:grid-cols-2">
                 {/* Authenticator App Card */}
-<Card 
-  className={cn(
-    "cursor-pointer transition-all hover:shadow-md hover:border-blue-300",
-    settingUp && "opacity-50 cursor-not-allowed"
-  )}
-  onClick={() => !settingUp && handleStartSetup('totp')}
->
-  <CardContent className="p-6">
-    <div className="flex items-start gap-4">
-      <div className="p-3 rounded-full bg-blue-100">
-        {settingUp && setupMethod === 'totp' ? (
-          <Loader2 className="h-6 w-6 text-blue-600 animate-spin" />
-        ) : (
-          <Smartphone className="h-6 w-6 text-blue-600" />
-        )}
-      </div>
-      <div className="flex-1">
-        <h3 className="font-semibold">Authenticator App</h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          Use Google Authenticator, Authy, or similar apps for secure codes
-        </p>
-<Badge className="mt-2 bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200 hover:text-blue-800 hover:border-blue-400 transition-colors">Recommended</Badge>      </div>
-    </div>
-  </CardContent>
-</Card>
+                <Card 
+                  className={cn(
+                    "cursor-pointer transition-all hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700",
+                    settingUp && "opacity-50 cursor-not-allowed"
+                  )}
+                  onClick={() => !settingUp && handleStartSetup('totp')}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30">
+                        {settingUp && setupMethod === 'totp' ? (
+                          <Loader2 className="h-6 w-6 text-blue-600 dark:text-blue-400 animate-spin" />
+                        ) : (
+                          <Smartphone className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold">Authenticator App</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Use Google Authenticator, Authy, or similar apps for secure codes
+                        </p>
+                        <Badge className="mt-2 bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200 hover:text-blue-800 hover:border-blue-400 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-900/50 transition-colors">Recommended</Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
                 {/* Email Verification Card */}
                 <Card 
                   className={cn(
-                    "cursor-pointer transition-all hover:shadow-md hover:border-green-300",
+                    "cursor-pointer transition-all hover:shadow-md hover:border-green-300 dark:hover:border-green-700",
                     settingUp && "opacity-50 cursor-not-allowed"
                   )}
                   onClick={() => !settingUp && handleStartSetup('email')}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-start gap-4">
-                      <div className="p-3 rounded-full bg-blue-100">
+                      <div className="p-3 rounded-full bg-green-100 dark:bg-green-900/30">
                         {settingUp && setupMethod === 'email' ? (
-                          <Loader2 className="h-6 w-6 text-green-600 animate-spin" />
+                          <Loader2 className="h-6 w-6 text-green-600 dark:text-green-400 animate-spin" />
                         ) : (
-                          <Mail className="h-6 w-6 text-green-600" />
+                          <Mail className="h-6 w-6 text-green-600 dark:text-green-400" />
                         )}
                       </div>
                       <div className="flex-1">
@@ -278,19 +279,19 @@ export const TwoFactorSettings: React.FC = () => {
             </>
           ) : (
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 rounded-lg bg-green-50 border border-green-200">
+              <div className="flex items-center justify-between p-4 rounded-lg bg-green-50 border border-green-200 dark:bg-green-900/20 dark:border-green-800">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-full bg-green-100">
-                    <Check className="h-5 w-5 text-green-600" />
+                  <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/30">
+                    <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
-                    <p className="font-medium text-green-800">2FA is enabled</p>
-                    <p className="text-sm text-green-600">
+                    <p className="font-medium text-green-800 dark:text-green-300">2FA is enabled</p>
+                    <p className="text-sm text-green-600 dark:text-green-400">
                       Method: {status.method === 'totp' ? 'Authenticator App' : 'Email'}
                     </p>
                   </div>
                 </div>
-                <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
+                <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">
                   Active
                 </Badge>
               </div>
@@ -307,7 +308,7 @@ export const TwoFactorSettings: React.FC = () => {
                 </div>
                 <Button 
                   variant="outline" 
-                  size="sm"
+                  size="sm" 
                   onClick={() => setShowBackupCodesDialog(true)}
                 >
                   Regenerate
@@ -356,7 +357,7 @@ export const TwoFactorSettings: React.FC = () => {
               {!totpSetup ? (
                 // Loading state for TOTP
                 <div className="flex flex-col items-center justify-center py-8">
-                  <Loader2 className="h-8 w-8 text-violet-600 animate-spin" />
+                  <Loader2 className="h-8 w-8 text-violet-600 dark:text-violet-400 animate-spin" />
                   <p className="mt-4 text-sm text-muted-foreground">Generating QR code...</p>
                 </div>
               ) : (
@@ -375,7 +376,7 @@ export const TwoFactorSettings: React.FC = () => {
                       />
                       <Button 
                         variant="outline" 
-                        size="icon"
+                        size="icon" 
                         onClick={() => {
                           navigator.clipboard.writeText(totpSetup.manualEntry);
                           toast.success('Copied!');
@@ -401,71 +402,71 @@ export const TwoFactorSettings: React.FC = () => {
             </>
           )}
 
-{/* Email Setup - Updated with better loading state */}
-{setupMethod === 'email' && (
-  <>
-    {sendingEmail ? (
-      // Better loading state while sending email
-      <div className="flex flex-col items-center justify-center py-12">
-        <div className="relative">
-          <div className="absolute inset-0 bg-violet-500/20 rounded-full blur-xl animate-pulse"></div>
-          <div className="relative p-4 rounded-full bg-violet-100">
-            <Mail className="h-8 w-8 text-violet-600 animate-pulse" />
-          </div>
-        </div>
-        <p className="mt-6 text-base font-medium">Sending verification code...</p>
-        <p className="mt-2 text-sm text-muted-foreground">Please check your email inbox</p>
-        <div className="flex gap-1 mt-4">
-          <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-          <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-          <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-        </div>
-      </div>
-    ) : (
-      <div className="space-y-4">
-        <Alert>
-          <Mail className="h-4 w-4" />
-          <AlertDescription>
-            We've sent a 6-digit verification code to your email. Please enter it below to enable 2FA.
-          </AlertDescription>
-        </Alert>
+          {/* Email Setup - Updated with better loading state */}
+          {setupMethod === 'email' && (
+            <>
+              {sendingEmail ? (
+                // Better loading state while sending email
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-violet-500/20 rounded-full blur-xl animate-pulse"></div>
+                    <div className="relative p-4 rounded-full bg-violet-100 dark:bg-violet-900/30">
+                      <Mail className="h-8 w-8 text-violet-600 dark:text-violet-400 animate-pulse" />
+                    </div>
+                  </div>
+                  <p className="mt-6 text-base font-medium">Sending verification code...</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Please check your email inbox</p>
+                  <div className="flex gap-1 mt-4">
+                    <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-2 h-2 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <Alert>
+                    <Mail className="h-4 w-4" />
+                    <AlertDescription>
+                      We've sent a 6-digit verification code to your email. Please enter it below to enable 2FA.
+                    </AlertDescription>
+                  </Alert>
 
-        <div className="space-y-2">
-          <Label>Verification Code</Label>
-          <Input
-            placeholder="000000"
-            value={verificationCode}
-            onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-            className="text-center text-2xl tracking-widest"
-            maxLength={6}
-            autoFocus
-          />
-        </div>
+                  <div className="space-y-2">
+                    <Label>Verification Code</Label>
+                    <Input
+                      placeholder="000000"
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      className="text-center text-2xl tracking-widest"
+                      maxLength={6}
+                      autoFocus
+                    />
+                  </div>
 
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="w-full"
-          disabled={sendingEmail}
-          onClick={async () => {
-            try {
-              setSendingEmail(true);
-              await twoFactorApi.sendCode();
-              toast.success('Verification code resent!');
-            } catch (error: any) {
-              toast.error(error.response?.data?.message || 'Failed to resend code');
-            } finally {
-              setSendingEmail(false);
-            }
-          }}
-        >
-          <RefreshCw className={cn("mr-2 h-4 w-4", sendingEmail && "animate-spin")} />
-          {sendingEmail ? 'Sending...' : 'Resend Code'}
-        </Button>
-      </div>
-    )}
-  </>
-)}
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="w-full"
+                    disabled={sendingEmail}
+                    onClick={async () => {
+                      try {
+                        setSendingEmail(true);
+                        await twoFactorApi.sendCode();
+                        toast.success('Verification code resent!');
+                      } catch (error: any) {
+                        toast.error(error.response?.data?.message || 'Failed to resend code');
+                      } finally {
+                        setSendingEmail(false);
+                      }
+                    }}
+                  >
+                    <RefreshCw className={cn("mr-2 h-4 w-4", sendingEmail && "animate-spin")} />
+                    {sendingEmail ? 'Sending...' : 'Resend Code'}
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
 
           <DialogFooter>
             <Button 

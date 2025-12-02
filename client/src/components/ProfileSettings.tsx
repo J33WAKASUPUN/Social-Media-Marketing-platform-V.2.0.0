@@ -172,7 +172,7 @@ export const ProfileSettings: React.FC = () => {
           <div className="flex items-center gap-6">
             <Avatar className="h-24 w-24">
               <AvatarImage src={user.avatarUrl || user.avatar} alt={user.name} />
-              <AvatarFallback className="bg-gradient-primary text-2xl text-white">
+              <AvatarFallback className="bg-primary text-2xl text-primary-foreground">
                 {user.name.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -225,12 +225,12 @@ export const ProfileSettings: React.FC = () => {
                     className="flex-1"
                   />
                   {user.emailVerified ? (
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">
                       <CheckCircle2 className="mr-1 h-3 w-3" />
                       Verified
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                    <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800">
                       <XCircle className="mr-1 h-3 w-3" />
                       Unverified
                     </Badge>
@@ -324,105 +324,6 @@ export const ProfileSettings: React.FC = () => {
           </CardContent>
         </Card>
       )}
-
-      {/* Notification Preferences (Future Feature) */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Notification Preferences</CardTitle>
-          <CardDescription>Manage how you receive notifications</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Post Published</p>
-              <p className="text-sm text-muted-foreground">
-                Notify when a post is successfully published
-              </p>
-            </div>
-            <Switch
-              checked={notifications.postPublished}
-              onCheckedChange={(checked) =>
-                setNotifications({ ...notifications, postPublished: checked })
-              }
-            />
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Post Failed</p>
-              <p className="text-sm text-muted-foreground">
-                Alert when a post fails to publish
-              </p>
-            </div>
-            <Switch
-              checked={notifications.postFailed}
-              onCheckedChange={(checked) =>
-                setNotifications({ ...notifications, postFailed: checked })
-              }
-            />
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Channel Disconnected</p>
-              <p className="text-sm text-muted-foreground">
-                Notify when a social media channel loses connection
-              </p>
-            </div>
-            <Switch
-              checked={notifications.channelDisconnected}
-              onCheckedChange={(checked) =>
-                setNotifications({ ...notifications, channelDisconnected: checked })
-              }
-            />
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Team Invitation</p>
-              <p className="text-sm text-muted-foreground">
-                Alert when you're invited to join a team
-              </p>
-            </div>
-            <Switch
-              checked={notifications.teamInvitation}
-              onCheckedChange={(checked) =>
-                setNotifications({ ...notifications, teamInvitation: checked })
-              }
-            />
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Weekly Summary</p>
-              <p className="text-sm text-muted-foreground">
-                Receive weekly performance reports
-              </p>
-            </div>
-            <Switch
-              checked={notifications.weeklySummary}
-              onCheckedChange={(checked) =>
-                setNotifications({ ...notifications, weeklySummary: checked })
-              }
-            />
-          </div>
-
-          <Button
-            onClick={() => toast.success('Notification preferences saved')}
-            variant="outline"
-          >
-            Save Preferences
-          </Button>
-        </CardContent>
-      </Card>
 
       {/* Danger Zone */}
       <Card className="border-destructive">

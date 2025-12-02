@@ -33,13 +33,33 @@ const PLATFORM_COLORS: Record<string, string> = {
   youtube: '#FF0000',
 };
 
-// Status config (same as PostCard)
+// Status config with dark mode support
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
-  scheduled: { label: "Scheduled", color: "bg-amber-100 text-amber-800", icon: Clock },
-  published: { label: "Published", color: "bg-green-100 text-green-800", icon: CheckCircle },
-  draft: { label: "Draft", color: "bg-gray-100 text-gray-800", icon: FileText },
-  failed: { label: "Failed", color: "bg-red-100 text-red-800", icon: AlertTriangle },
-  publishing: { label: "Publishing", color: "bg-blue-100 text-blue-800", icon: Clock },
+  scheduled: { 
+    label: "Scheduled", 
+    color: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400", 
+    icon: Clock 
+  },
+  published: { 
+    label: "Published", 
+    color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400", 
+    icon: CheckCircle 
+  },
+  draft: { 
+    label: "Draft", 
+    color: "bg-gray-100 text-gray-800 dark:bg-secondary dark:text-secondary-foreground", 
+    icon: FileText 
+  },
+  failed: { 
+    label: "Failed", 
+    color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400", 
+    icon: AlertTriangle 
+  },
+  publishing: { 
+    label: "Publishing", 
+    color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400", 
+    icon: Clock 
+  },
 };
 
 export default function Calendar() {
@@ -60,7 +80,7 @@ export default function Calendar() {
   
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-  // ✅ Fetch ALL posts (same as Posts.tsx)
+  // Fetch ALL posts
   useEffect(() => {
     if (currentBrand) {
       fetchPosts();
@@ -72,7 +92,6 @@ export default function Calendar() {
 
     setLoading(true);
     try {
-      // ✅ Fetch ALL posts (no status filter) - same as Posts.tsx
       const response = await postApi.getAll(currentBrand._id);
       console.log('📅 Calendar posts loaded:', response.data.length);
       setPosts(response.data);
@@ -84,18 +103,16 @@ export default function Calendar() {
     }
   };
 
-  // ✅ Group posts by date (based on schedule's scheduledFor)
+  // Group posts by date
   const postsByDate = useMemo(() => {
     const grouped: Record<string, Post[]> = {};
 
     posts.forEach(post => {
-      // Skip drafts without schedules
       if (!post.schedules || post.schedules.length === 0) return;
 
       post.schedules.forEach(schedule => {
         if (!schedule.scheduledFor) return;
 
-        // ✅ Use LOCAL date for grouping (user's timezone)
         const scheduledDate = new Date(schedule.scheduledFor);
         const dateKey = format(scheduledDate, 'yyyy-MM-dd');
 
@@ -103,7 +120,6 @@ export default function Calendar() {
           grouped[dateKey] = [];
         }
 
-        // Avoid duplicates (same post might have multiple schedules on same day)
         if (!grouped[dateKey].find(p => p._id === post._id)) {
           grouped[dateKey].push(post);
         }
@@ -137,7 +153,6 @@ export default function Calendar() {
     setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), date));
   };
 
-  // ✅ Get unique platforms for a date
   const getPlatformsForDate = (posts: Post[]): string[] => {
     const platforms = new Set<string>();
     posts.forEach(post => {
@@ -150,7 +165,6 @@ export default function Calendar() {
     return Array.from(platforms);
   };
 
-  // ✅ Get schedule info for a post
   const getScheduleInfo = (post: Post) => {
     const schedule = post.schedules?.[0];
     if (!schedule) return null;
@@ -163,7 +177,6 @@ export default function Calendar() {
     };
   };
 
-  // ✅ SKELETON FOR CALENDAR CELLS
   const CalendarCellSkeleton = () => (
     <Card className="min-h-[100px] p-2 space-y-2">
       <div className="flex items-center justify-between">
@@ -184,9 +197,9 @@ export default function Calendar() {
   const renderCalendarDays = () => {
     const days = [];
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset time for accurate comparison
+    today.setHours(0, 0, 0, 0);
     
-    // Empty cells for days before month starts
+    // Empty cells
     for (let i = 0; i < firstDayOfMonth; i++) {
       days.push(<div key={`empty-${i}`} className="min-h-[100px] border bg-muted/30" />);
     }
@@ -207,7 +220,6 @@ export default function Calendar() {
       const hasNoPosts = postsForDay.length === 0;
       const isLocked = isPast && hasNoPosts;
       
-      // Count by status
       const scheduledCount = postsForDay.filter(p => p.status === 'scheduled').length;
       const publishedCount = postsForDay.filter(p => p.status === 'published').length;
       const failedCount = postsForDay.filter(p => p.status === 'failed').length;
@@ -240,7 +252,7 @@ export default function Calendar() {
                 )}
               </div>
 
-              {/* ✅ Platform dots */}
+              {/* Platform dots */}
               {platforms.length > 0 && (
                 <div className="mt-2 flex gap-1">
                   {platforms.map((platform) => (
@@ -254,23 +266,23 @@ export default function Calendar() {
                 </div>
               )}
 
-              {/* ✅ Status indicators */}
+              {/* Status indicators - UPDATED WITH DARK MODE TEXT COLORS */}
               {postsForDay.length > 0 && (
                 <div className="mt-2 space-y-1">
                   {scheduledCount > 0 && (
-                    <div className="flex items-center gap-1 text-xs text-amber-600">
+                    <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
                       <Clock className="h-3 w-3" />
                       <span>{scheduledCount} scheduled</span>
                     </div>
                   )}
                   {publishedCount > 0 && (
-                    <div className="flex items-center gap-1 text-xs text-green-600">
+                    <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                       <CheckCircle className="h-3 w-3" />
                       <span>{publishedCount} published</span>
                     </div>
                   )}
                   {failedCount > 0 && (
-                    <div className="flex items-center gap-1 text-xs text-red-600">
+                    <div className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
                       <AlertTriangle className="h-3 w-3" />
                       <span>{failedCount} failed</span>
                     </div>
@@ -280,7 +292,7 @@ export default function Calendar() {
             </Card>
           </HoverCardTrigger>
 
-          {/* ✅ HOVER PREVIEW - Only if not locked */}
+          {/* Hover Preview */}
           {postsForDay.length > 0 && !isLocked && (
             <HoverCardContent
               side="right"
@@ -309,7 +321,6 @@ export default function Calendar() {
                         className="p-3 hover:bg-accent/50 transition-colors cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation();
-                          // Viewers see view dialog, others can edit if post is editable
                           if (permissions.canCreatePosts && (post.status === 'draft' || post.status === 'scheduled')) {
                             navigate(`/posts/edit/${post._id}`);
                           } else {
@@ -336,34 +347,11 @@ export default function Calendar() {
                           {post.content || <span className="italic text-muted-foreground">No content</span>}
                         </p>
 
-                        {/* Media Indicator */}
-                        {post.mediaUrls && post.mediaUrls.length > 0 && (
-                          <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-                            <div className="flex -space-x-1">
-                              {post.mediaUrls.slice(0, 3).map((url, idx) => (
-                                <img
-                                  key={idx}
-                                  src={url}
-                                  alt=""
-                                  className="h-6 w-6 rounded border-2 border-background object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                  }}
-                                />
-                              ))}
-                            </div>
-                            {post.mediaUrls.length > 3 && (
-                              <span>+{post.mediaUrls.length - 3}</span>
-                            )}
-                          </div>
-                        )}
-
                         {/* Status Badge */}
                         <div className="mt-2 flex items-center justify-between">
-                          <Badge className={cn("text-xs", statusStyle.color)}>
+                          <Badge className={cn("text-xs border-0", statusStyle.color)}>
                             {statusStyle.label}
                           </Badge>
-                          {/* Show appropriate text based on permissions */}
                           {(post.status === 'draft' || post.status === 'scheduled') && permissions.canCreatePosts ? (
                             <span className="text-xs text-primary hover:underline">
                               Edit →
@@ -380,7 +368,6 @@ export default function Calendar() {
                 </div>
               </ScrollArea>
 
-              {/* Quick Action */}
               <div className="border-t p-2">
                 <Button
                   variant="ghost"
@@ -403,19 +390,15 @@ export default function Calendar() {
     return days;
   };
 
-  // ✅ Render skeleton calendar grid
   const renderSkeletonCalendar = () => {
     const cells = [];
-    const totalCells = 35; // 5 weeks x 7 days
-    
+    const totalCells = 35;
     for (let i = 0; i < totalCells; i++) {
       cells.push(<CalendarCellSkeleton key={i} />);
     }
-    
     return cells;
   };
 
-  // ✅ Get posts for selected date (for side sheet)
   const selectedDatePosts = useMemo(() => {
     if (!selectedDate) return [];
     const dateKey = format(selectedDate, 'yyyy-MM-dd');
@@ -442,7 +425,6 @@ export default function Calendar() {
         title="Calendar"
         description="View and manage your scheduled posts"
         actions={
-          // ✅ Only show Create Post button if user has permission
           permissions.canCreatePosts && (
             <Button onClick={() => navigate('/posts/new')}>
               <Plus className="mr-2 h-4 w-4" />
@@ -486,7 +468,6 @@ export default function Calendar() {
           </div>
         </div>
 
-        {/* ✅ SKELETON OR CALENDAR */}
         {loading ? (
           <div className="grid grid-cols-7 gap-2">
             {dayNames.map((day) => (
@@ -508,7 +489,7 @@ export default function Calendar() {
         )}
       </Card>
 
-      {/* ✅ Side Sheet for Selected Date Details */}
+      {/* Side Sheet for Selected Date Details */}
       <Sheet open={!!selectedDate} onOpenChange={(open) => !open && setSelectedDate(null)}>
         <SheetContent className="w-[400px] sm:w-[540px]">
           <SheetHeader>
@@ -525,7 +506,6 @@ export default function Calendar() {
               <div className="text-center py-12">
                 <CalendarIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                 <p className="text-sm text-muted-foreground">No posts for this day</p>
-                {/* ✅ Only show Create Post button if user has permission */}
                 {permissions.canCreatePosts && (
                   <Button
                     className="mt-4"
@@ -541,7 +521,6 @@ export default function Calendar() {
                 const scheduleInfo = getScheduleInfo(post);
                 const statusStyle = statusConfig[post.status] || statusConfig.draft;
                 const StatusIcon = statusStyle.icon;
-                const canEdit = post.status === 'draft' || post.status === 'scheduled';
 
                 return (
                   <Card key={post._id} className="p-4 hover:shadow-md transition-shadow">
@@ -553,7 +532,7 @@ export default function Calendar() {
                           <span className="text-sm font-medium">
                             {scheduleInfo?.time || '--:--'}
                           </span>
-                          <Badge className={cn("text-xs", statusStyle.color)}>
+                          <Badge className={cn("text-xs border-0", statusStyle.color)}>
                             <StatusIcon className="h-3 w-3 mr-1" />
                             {statusStyle.label}
                           </Badge>
@@ -590,9 +569,8 @@ export default function Calendar() {
                         </div>
                       )}
 
-                      {/* ✅ Actions - Only for editable posts */}
+                      {/* Actions */}
                       <div className="flex gap-2 pt-2">
-                        {/* VIEW BUTTON - VISIBLE TO ALL USERS */}
                         <Button
                           variant="outline"
                           size="sm"
@@ -603,8 +581,7 @@ export default function Calendar() {
                           View Details
                         </Button>
                         
-                        {/* EDIT BUTTON - Only for users with permission and editable posts */}
-                        {canEdit && permissions.canCreatePosts && (
+                        {(post.status === 'draft' || post.status === 'scheduled') && permissions.canCreatePosts && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -617,16 +594,15 @@ export default function Calendar() {
                         )}
                       </div>
 
-                      {/* Show link for published posts */}
+                      {/* Footer Info - UPDATED TEXT COLOR */}
                       {post.status === 'published' && post.schedules?.[0]?.platformPostId && (
                         <div className="pt-2 text-xs text-muted-foreground">
                           <span>Published to {scheduleInfo?.displayName}</span>
                         </div>
                       )}
 
-                      {/* Show error for failed posts */}
                       {post.status === 'failed' && post.schedules?.[0]?.error && (
-                        <div className="pt-2 text-xs text-red-500">
+                        <div className="pt-2 text-xs text-red-500 dark:text-red-400">
                           Error: {post.schedules[0].error}
                         </div>
                       )}
@@ -639,13 +615,11 @@ export default function Calendar() {
         </SheetContent>
       </Sheet>
 
-      {/* ✅ ADD VIEW POST DIALOG */}
       <ViewPostDialog
         post={selectedPostForView}
         open={!!selectedPostForView}
         onOpenChange={(open) => !open && setSelectedPostForView(null)}
         onEdit={permissions.canCreatePosts ? (id) => navigate(`/posts/edit/${id}`) : undefined}
-        onCancel={permissions.canCreatePosts ? undefined : undefined}
       />
     </div>
   );

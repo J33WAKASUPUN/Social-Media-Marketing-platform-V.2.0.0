@@ -43,7 +43,7 @@ const menuItems = [
     requiredPermission: null
   },
   { 
-    title: "Posts", 
+    title: "Submission History", 
     url: "/posts", 
     icon: FileText,
     requiredPermission: 'canViewPosts'
@@ -108,7 +108,7 @@ export function AppSidebar() {
   });
 
   return (
-    <TooltipProvider delayDuration={300} skipDelayDuration={0}>
+    <TooltipProvider delayDuration={100} skipDelayDuration={0}>
       <Sidebar collapsible="icon">
         <SidebarContent>
           <SidebarGroup>
@@ -165,7 +165,12 @@ export function AppSidebar() {
                           </SidebarMenuButton>
                         </TooltipTrigger>
                         {isCollapsed && (
-                          <TooltipContent side="right" sideOffset={10} className="z-[100]">
+                          <TooltipContent 
+                            side="right" 
+                            sideOffset={10} 
+                            collisionPadding={10}
+                            className="z-[100] bg-popover text-popover-foreground border shadow-md font-medium"
+                          >
                             {item.title}
                           </TooltipContent>
                         )}
@@ -201,8 +206,12 @@ export function AppSidebar() {
                     </Avatar>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={10} className="z-[100]">
-                  <p>{user?.name}</p>
+                <TooltipContent 
+                  side="right" 
+                  sideOffset={10} 
+                  className="z-[100] bg-popover text-popover-foreground border shadow-md"
+                >
+                  <p className="font-medium">{user?.name}</p>
                   <p className="text-xs text-muted-foreground">{user?.email}</p>
                 </TooltipContent>
               </Tooltip>

@@ -942,6 +942,30 @@ const Dashboard = () => {
               </CardContent>
             </Card>
           )}
+
+          {/* FAILED POSTS ALERT - MOVED HERE */}
+          {stats.failed > 0 && (
+            <Alert 
+              variant="destructive" 
+              className="shadow-lg border-red-200 bg-red-50 text-red-800 dark:bg-red-900/20 dark:border-red-900 dark:text-red-300"
+            >
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Attention Required</AlertTitle>
+              <AlertDescription className="flex items-center justify-between mt-2 sm:mt-0">
+                <span>
+                  You have <strong>{stats.failed}</strong> failed post{stats.failed > 1 ? 's' : ''} that need attention.
+                </span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => navigate('/posts')} 
+                  className="ml-4 border-red-200 bg-white hover:bg-red-50 text-red-700 dark:bg-red-950 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-900/50"
+                >
+                  View Posts
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
 
         {/* Right Column - 1/3 width */}
@@ -1079,7 +1103,7 @@ const Dashboard = () => {
       </div>
 
       {/* Failed Posts Alert */}
-      {stats.failed > 0 && (
+      {/* {stats.failed > 0 && (
         <Alert variant="destructive" className="shadow-lg">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Attention Required</AlertTitle>
@@ -1092,7 +1116,7 @@ const Dashboard = () => {
             </Button>
           </AlertDescription>
         </Alert>
-      )}
+      )} */}
     </div>
   );
 };
