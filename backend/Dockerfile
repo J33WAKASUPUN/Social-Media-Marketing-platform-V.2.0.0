@@ -4,13 +4,12 @@ FROM node:20-alpine
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies required for sharp, bcrypt, ffmpeg, etc.
+# Install system dependencies
 RUN apk add --no-cache \
     python3 \
     make \
     g++ \
-    ffmpeg \
-    ffprobe
+    ffmpeg
 
 # Copy package files
 COPY package*.json ./
