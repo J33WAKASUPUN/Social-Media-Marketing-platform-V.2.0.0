@@ -40,14 +40,14 @@ jobs:
       with:
         context: ./server    # ✅ CHANGED: This fixes the "path not found" error
         push: true
-        tags: ${{ env.ACR_NAME }}.azurecr.io/backend:${{ github.sha }}
+        tags: ${{ env.ACR_NAME }}.azurecr.io/server:${{ github.sha }}
 
     # 4. Deploy
     - name: Deploy to Web App
       uses: azure/webapps-deploy@v2
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
-        images: ${{ env.ACR_NAME }}.azurecr.io/backend:${{ github.sha }}
+        images: ${{ env.ACR_NAME }}.azurecr.io/server:${{ github.sha }}
     
     # 5. Restart
     - name: Restart Web App
