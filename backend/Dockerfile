@@ -14,11 +14,19 @@ RUN apk add --no-cache \
 # Copy package files
 COPY package*.json ./
 
-# Install ALL dependencies (including devDependencies that might be needed)
-RUN npm install --omit=dev
+# Install ALL dependencies
+RUN npm install
 
 # Copy the rest of the application code
 COPY . .
+
+# Debug: Verify all files are present
+RUN echo "=== Verifying file structure ===" && \
+    test -f src/server.js && echo "✓ src/server.js exists" || echo "✗ src/server.js MISSING" && \
+    test -f src/workers.js && echo "✓ src/workers.js exists" || echo "✗ src/workers.js MISSING" && \
+    test -f src/jobs/publishPostJob.js && echo "✓ src/jobs/publishPostJob.js exists" || echo "✗ src/jobs/publishPostJob.js MISSING" && \
+    test -f src/jobs/checkDueSchedules.js && echo "✓ src/jobs/checkDueSchedules.js exists" || echo "✗ src/jobs/checkDueSchedules.js MISSING" && \
+    test -f src/queues/queueManager.js && echo "✓ src/queues/queueManager.js exists" || echo "✗ src/queues/queueManager.js MISSING"
 
 # Set environment variables
 ENV NODE_ENV=production
@@ -28,9 +36,5 @@ ENV PORT=5000
 # Expose port 5000
 EXPOSE 5000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
-  CMD node -e "require('http').get('http://localhost:5000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
-
-# Start the application
-CMD ["npm", "start"]
+# Run with better error messages
+CMD ["node", "--trace-warnings", "--enable-source-maps", "src/server.js"]
