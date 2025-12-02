@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 env:
-  # ✅ Keep your existing Terraform values here
+  # ✅ Your Real Terraform Outputs (No need to edit)
   AZURE_WEBAPP_NAME: "socialflow-jii2if-api" 
   ACR_NAME: "acrjii2if"
   RESOURCE_GROUP: "socialflow-jii2if-rg"
@@ -38,7 +38,7 @@ jobs:
     - name: Build and Push Image
       uses: docker/build-push-action@v4
       with:
-        context: ./server    # ✅ CHANGED: Point to your actual folder
+        context: ./server    # ✅ CHANGED: This fixes the "path not found" error
         push: true
         tags: ${{ env.ACR_NAME }}.azurecr.io/backend:${{ github.sha }}
 
