@@ -84,8 +84,38 @@ class ServerBootstrap {
     `);
   }
 
+  /**
+   * Setup graceful shutdown handlers
+   */
   setupGracefulShutdown() {
-    // ... (Keep your existing shutdown logic here) ...
+    const gracefulShutdown = async (signal) => {
+      if (this.isShuttingDown) return;
+
+      logger.info(`\n📴 ${signal} received. Starting graceful shutdown...`);
+      this.isShuttingDown = true;
+
+      try {
+        if (this.server) {
+          logger.info("🔌 Closing HTTP server...");
+          await new Promise((resolve) => this.server.close(resolve));
+          logger.info("✅ HTTP server closed");
+        }
+
+        logger.info("🔌 Closing connections...");
+        await workerManager.stop();
+        await redisClient.disconnect();
+        await database.disconnect();
+        
+        logger.info("✅ Graceful shutdown completed");
+        process.exit(0);
+      } catch (error) {
+        logger.error("❌ Error during shutdown:", error);
+        process.exit(1);
+      }
+    };
+
+    process.once("SIGTERM", () => gracefulShutdown("SIGTERM"));
+    process.once("SIGINT", () => gracefulShutdown("SIGINT"));
   }
 }
 
