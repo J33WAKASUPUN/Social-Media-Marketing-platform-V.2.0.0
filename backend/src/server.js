@@ -1,102 +1,179 @@
 require("dotenv").config();
-const express = require("express");
-const mongoose = require("mongoose");
-const redis = require("redis");
+const { validateEnv } = require("./config/env");
+const database = require("./config/database");
+const redisClient = require("./config/redis");
+const createApp = require("./app");
+const logger = require("./utils/logger");
+const workerManager = require('./workers');
 
-// Create basic app to satisfy Azure immediately
-const app = express();
-const PORT = process.env.PORT || 5000;
+/**
+ * Application Bootstrap and Startup
+ */
+class ServerBootstrap {
+  constructor() {
+    this.server = null;
+    this.isShuttingDown = false;
+  }
 
-// Diagnostic State
-let dbStatus = "Pending...";
-let redisStatus = "Pending...";
-let envCheck = {};
+  /**
+   * Initialize and start server
+   */
+  async start() {
+    try {
+      logger.info("🚀 Starting Social Media Marketing Platform API...");
+      logger.info("================================================");
 
-// 1. START SERVER IMMEDIATELY (Fixes 504 Timeout)
-const server = app.listen(PORT, () => {
-  console.log(`✅ DIAGNOSTIC SERVER RUNNING ON PORT ${PORT}`);
-  console.log(`🔍 View debug info at: ${process.env.APP_URL || 'http://localhost:5000'}/debug`);
-  
-  // Start tests after server is up
-  runDiagnostics();
-});
+      // Step 1: Validate environment
+      logger.info("⚙️  Step 1: Validating environment variables...");
+      validateEnv();
+      logger.info("✅ Environment validated");
 
-// 2. DEBUG ENDPOINT
-app.get("/", (req, res) => res.send("SocialFlow API is Starting... Check /debug for status."));
+      // Step 2: Connect to MongoDB with timeout
+      logger.info("⚙️  Step 2: Connecting to database...");
+      const dbStartTime = Date.now();
+      await this.connectWithTimeout(
+        database.connect(),
+        "Database",
+        30000
+      );
+      logger.info(`✅ Database connected in ${Date.now() - dbStartTime}ms`);
 
-app.get("/debug", (req, res) => {
-  res.json({
-    status: "Diagnostic Mode",
-    mongo: dbStatus,
-    redis: redisStatus,
-    env: {
-      NODE_ENV: process.env.NODE_ENV,
-      PORT: process.env.PORT,
-      // Masking secrets for security
-      MONGO_URI_SET: !!process.env.MONGODB_URI,
-      REDIS_HOST: process.env.REDIS_HOST,
-      REDIS_PORT: process.env.REDIS_PORT,
-      REDIS_PASS_SET: !!process.env.REDIS_PASSWORD,
-      REDIS_URL_SET: !!process.env.REDIS_URL,
+      // Step 3: Connect to Redis with timeout
+      logger.info("⚙️  Step 3: Connecting to Redis...");
+      const redisStartTime = Date.now();
+      await this.connectWithTimeout(
+        redisClient.connect(),
+        "Redis",
+        30000
+      );
+      logger.info(`✅ Redis connected in ${Date.now() - redisStartTime}ms`);
+
+      // Step 4: Start background workers
+      logger.info("⚙️  Step 4: Starting background workers...");
+      workerManager.start();
+      logger.info("✅ Workers started");
+
+      // Step 5: Create Express app
+      logger.info("⚙️  Step 5: Initializing Express application...");
+      const app = createApp();
+      logger.info("✅ Express app initialized");
+
+      // Step 6: Start HTTP server
+      logger.info("⚙️  Step 6: Starting HTTP server...");
+      await this.startHttpServer(app);
+      
+      // Setup graceful shutdown
+      this.setupGracefulShutdown();
+
+      // Log success info
+      this.logStartupInfo();
+
+      logger.info("✅ Application started successfully!");
+      logger.info("================================================\n");
+
+    } catch (error) {
+      logger.error("❌ Failed to start server:", {
+        message: error.message,
+        stack: error.stack
+      });
+      // Don't kill the process immediately, try to stay alive for logs
+      logger.error("⚠️ Critical Failure. Server NOT started.");
     }
-  });
-});
-
-app.get("/health", (req, res) => res.json({ status: "alive" }));
-
-// 3. DIAGNOSTIC TESTS
-async function runDiagnostics() {
-  console.log("--- STARTING CONNECTIVITY TESTS ---");
-
-  // --- TEST MONGODB ---
-  try {
-    console.log("1. Testing MongoDB Connection...");
-    console.log(`   URI present: ${!!process.env.MONGODB_URI}`);
-    
-    // Enforce 5 second timeout so it doesn't hang forever
-    await mongoose.connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 5000
-    });
-    console.log("   ✅ MongoDB Connected Successfully!");
-    dbStatus = "Connected";
-  } catch (error) {
-    console.error("   ❌ MongoDB Failed:", error.message);
-    dbStatus = `Failed: ${error.message}`;
   }
 
-  // --- TEST REDIS ---
-  try {
-    console.log("2. Testing Redis Connection...");
-    const host = process.env.REDIS_HOST;
-    const port = process.env.REDIS_PORT;
-    const password = process.env.REDIS_PASSWORD;
-    
-    console.log(`   Host: ${host}`);
-    console.log(`   Port: ${port}`);
-    console.log(`   Password Length: ${password ? password.length : 0}`);
-
-    const client = redis.createClient({
-      socket: {
-        host: host,
-        port: parseInt(port),
-        tls: parseInt(port) === 6380, // Azure requires TLS on 6380
-        rejectUnauthorized: false,    // Allow self-signed certs in Azure
-        connectTimeout: 5000
-      },
-      password: password
-    });
-
-    client.on('error', (err) => console.log("   Redis Client Error:", err.message));
-
-    await client.connect();
-    console.log("   ✅ Redis Connected Successfully!");
-    redisStatus = "Connected";
-    await client.quit();
-  } catch (error) {
-    console.error("   ❌ Redis Failed:", error.message);
-    redisStatus = `Failed: ${error.message}`;
+  /**
+   * Connect with timeout protection
+   */
+  async connectWithTimeout(promise, name, timeout) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error(`${name} connection timeout after ${timeout}ms`)),
+          timeout
+        )
+      )
+    ]);
   }
 
-  console.log("--- DIAGNOSTICS COMPLETE ---");
+  /**
+   * Start HTTP server
+   */
+  async startHttpServer(app) {
+    return new Promise((resolve, reject) => {
+      const PORT = process.env.PORT || 5000;
+      
+      this.server = app.listen(PORT, '0.0.0.0', (err) => {
+        if (err) {
+          logger.error("❌ Failed to start HTTP server:", err);
+          reject(err);
+        } else {
+          logger.info(`✅ Server running on port ${PORT}`);
+          resolve();
+        }
+      });
+
+      // Handle server errors
+      this.server.on('error', (error) => {
+        if (error.code === 'EADDRINUSE') {
+          logger.error(`❌ Port ${PORT} is already in use`);
+        } else {
+          logger.error("❌ Server error:", error);
+        }
+        reject(error);
+      });
+    });
+  }
+
+  /**
+   * Setup graceful shutdown handlers
+   */
+  setupGracefulShutdown() {
+    const gracefulShutdown = async (signal) => {
+      if (this.isShuttingDown) return;
+
+      logger.info(`\n📴 ${signal} received. Starting graceful shutdown...`);
+      this.isShuttingDown = true;
+
+      try {
+        if (this.server) {
+          logger.info("🔌 Closing HTTP server...");
+          await new Promise((resolve) => this.server.close(resolve));
+          logger.info("✅ HTTP server closed");
+        }
+
+        logger.info("🔌 Closing connections...");
+        await workerManager.stop();
+        await redisClient.disconnect();
+        await database.disconnect();
+        
+        logger.info("✅ Graceful shutdown completed");
+        process.exit(0);
+      } catch (error) {
+        logger.error("❌ Error during shutdown:", error);
+        process.exit(1);
+      }
+    };
+
+    process.once("SIGTERM", () => gracefulShutdown("SIGTERM"));
+    process.once("SIGINT", () => gracefulShutdown("SIGINT"));
+  }
+
+  /**
+   * Log startup information
+   */
+  logStartupInfo() {
+    const PORT = process.env.PORT || 5000;
+    logger.info("\n" + "=".repeat(60));
+    logger.info("🎉 APPLICATION READY");
+    logger.info(`🚀 Server: ${process.env.APP_URL || `http://localhost:${PORT}`}`);
+    logger.info(`🗄️  Database: ${database.isConnected() ? "✅ Connected" : "❌ Disconnected"}`);
+    logger.info(`⚡ Redis: ${redisClient.getCache()?.isOpen ? "✅ Connected" : "❌ Disconnected"}`);
+    logger.info(`📝 Health: ${process.env.APP_URL || `http://localhost:${PORT}`}/health`);
+    logger.info("=".repeat(60) + "\n");
+  }
 }
+
+// Create and start server
+const bootstrap = new ServerBootstrap();
+bootstrap.start(); // Start immediately
