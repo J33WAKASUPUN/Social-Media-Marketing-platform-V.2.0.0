@@ -6,7 +6,7 @@ const createApp = require("./app");
 const logger = require("./utils/logger");
 const workerManager = require('./workers');
 
-// DEPLOYMENT FIX V5.0.1
+// DEPLOYMENT FIX - FORCE UPDATE V6
 class ServerBootstrap {
   constructor() {
     this.server = null;
