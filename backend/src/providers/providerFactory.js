@@ -1,8 +1,8 @@
-const LinkedInProvider = require('../providers/linkedInProvider');
-const TwitterProvider = require('../providers/twitterProvider');
-const FacebookProvider = require('../providers/facebookProvider');
-const InstagramProvider = require('../providers/instagramProvider');
-const YouTubeProvider = require('../providers/youtubeProvider');
+const LinkedInProvider = require('./linkedInProvider');
+const TwitterProvider = require('./twitterProvider');
+const FacebookProvider = require('./facebookProvider');
+const InstagramProvider = require('./instagramProvider');
+const YouTubeProvider = require('./youtubeProvider');
 
 class ProviderFactory {
   static getProvider(providerName, channel = null) {
