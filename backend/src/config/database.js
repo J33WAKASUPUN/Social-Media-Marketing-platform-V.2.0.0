@@ -30,24 +30,20 @@ class Database {
         uri: this.maskUri(process.env.MONGODB_URI)
       });
 
-      const options = {
-        // Connection pool
-        maxPoolSize: isCosmosDB ? 50 : 10,
-        minPoolSize: isCosmosDB ? 5 : 2,
-        
-        // Timeouts
-        serverSelectionTimeoutMS: 30000, // Increased for Azure
-        socketTimeoutMS: 45000,
-        connectTimeoutMS: 30000,
-        
-        // Azure Cosmos DB specific
-        ssl: isCosmosDB ? true : undefined,
-        retryWrites: isCosmosDB ? false : true, // Cosmos DB doesn't support retryWrites
-        
-        // General settings
-        family: 4, // Use IPv4
-        heartbeatFrequencyMS: 10000,
-      };
+const options = {
+  maxPoolSize: isCosmosDB ? 50 : 10,
+  minPoolSize: isCosmosDB ? 5 : 2,
+  
+  // CRITICAL: Reduce these timeouts for faster failure
+  serverSelectionTimeoutMS: 10000,  // Was 30000 - reduce to 10s
+  socketTimeoutMS: 20000,            // Was 45000 - reduce to 20s
+  connectTimeoutMS: 10000,           // Was 30000 - reduce to 10s
+  
+  ssl: isCosmosDB ? true : undefined,
+  retryWrites: isCosmosDB ? false : true,
+  family: 4,
+  heartbeatFrequencyMS: 10000,
+};
 
       // Connect with timeout
       this.connection = await Promise.race([

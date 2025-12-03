@@ -1,7 +1,5 @@
-# Use Node 20 Alpine
 FROM node:20-alpine
 
-# Set working directory
 WORKDIR /app
 
 # Install system dependencies
@@ -17,20 +15,18 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci --only=production
 
-# Copy the rest of the application code
+# Copy application code
 COPY . .
 
-# ✅ CRITICAL FIX: Create the logs directory explicitly
-# Without this, the logger crashes the app on startup
+# Create logs directory
 RUN mkdir -p logs
-
-# Set environment variables
-ENV NODE_ENV=production
-ENV APP_PORT=5000
-ENV PORT=5000
 
 # Expose port
 EXPOSE 5000
 
-# Start command
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
+  CMD node -e "require('http').get('http://localhost:5000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Start application
 CMD ["node", "src/server.js"]

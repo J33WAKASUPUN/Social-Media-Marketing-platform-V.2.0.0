@@ -38,15 +38,15 @@ class RedisClient {
         host: host,
         port: port,
         reconnectStrategy: (retries) => {
-          if (retries > 10) {
+          if (retries > 5) {
             logger.error(`Redis ${name} max retries reached`);
             return new Error('Max retries reached');
           }
-          const delay = Math.min(retries * 100, 3000);
+          const delay = Math.min(retries * 100, 2000);
           logger.warn(`Redis ${name} reconnecting... attempt ${retries}, delay: ${delay}ms`);
           return delay;
         },
-        connectTimeout: 30000, // Increased for Azure
+        connectTimeout: 10000, // Increased for Azure
         keepAlive: 30000,
         tls: isTls,
         rejectUnauthorized: false, // Required for Azure Redis
