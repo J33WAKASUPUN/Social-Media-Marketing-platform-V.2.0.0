@@ -1,7 +1,7 @@
 # Use Node 20 Alpine
 FROM node:20-alpine
 
-# Set working directory
+# Set working directoryy
 WORKDIR /app
 
 # Install system dependencies required for sharp, bcrypt, and ffmpeg
