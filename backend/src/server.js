@@ -1,4 +1,16 @@
-require("dotenv").config();
+// ---------------------------------------------------------
+// 🚨 DEBUG LOGS - START
+// ---------------------------------------------------------
+console.log("🔵 [1] Node.js process started.");
+console.log("🔵 [2] Loading modules...");
+
+try {
+  require("dotenv").config();
+  console.log("✅ [3] dotenv loaded.");
+} catch (e) {
+  console.error("🔴 Error loading dotenv:", e.message);
+}
+
 const { validateEnv } = require("./config/env");
 const database = require("./config/database");
 const redisClient = require("./config/redis");
@@ -13,61 +25,62 @@ class ServerBootstrap {
   }
 
   async start() {
+    console.log("🔵 [4] ServerBootstrap.start() called.");
     try {
       logger.info("🚀 Initializing Social Media Platform...");
 
       // 1. CREATE APP & START HTTP SERVER IMMEDIATELY
-      // This ensures Azure sees the app as "Healthy" instantly
       const app = createApp();
       await this.startHttpServer(app);
 
-      // 2. Validate Env
+      // 2. Validate Env (Non-blocking)
       try {
         validateEnv();
       } catch (e) {
-        logger.error("❌ Environment Validation Failed:", e.message);
+        logger.error("❌ Env Validation Error:", e.message);
       }
 
       // 3. Connect Databases (Background)
       this.connectServices();
 
     } catch (error) {
-      logger.error("❌ Fatal Error during startup:", error);
-      process.exit(1);
+      console.error("🔴 Fatal Error during startup:", error);
+      logger.error("❌ Fatal Error:", error);
     }
   }
 
   async connectServices() {
     try {
+      console.log("🔵 [5] Connecting to Services...");
       // MongoDB
-      logger.info("🔌 Connecting to MongoDB...");
-      await database.connect();
-      logger.info("✅ MongoDB Connected");
+      if (process.env.MONGODB_URI) {
+        await database.connect();
+        logger.info("✅ MongoDB Connected");
+      }
 
       // Redis
-      logger.info("🔌 Connecting to Redis...");
-      await redisClient.connect();
-      logger.info("✅ Redis Connected");
+      if (process.env.REDIS_HOST) {
+        await redisClient.connect();
+        logger.info("✅ Redis Connected");
+      }
 
       // Workers
-      logger.info("👷 Starting Workers...");
       workerManager.start();
       logger.info("✅ Workers Running");
       
       this.logStartupInfo();
 
     } catch (error) {
-      logger.error("❌ Service Connection Failed:", error.message);
-      // We do NOT exit here. This allows the server to stay alive for debugging.
+      logger.error("❌ Service Connection Failed (Non-fatal):", error.message);
     }
   }
 
   async startHttpServer(app) {
     return new Promise((resolve, reject) => {
       const PORT = process.env.PORT || 5000;
-      // 0.0.0.0 is critical for Docker containers
       this.server = app.listen(PORT, '0.0.0.0', (err) => {
         if (err) return reject(err);
+        console.log(`✅ [SUCCESS] HTTP Server listening on port ${PORT}`);
         logger.info(`✅ HTTP Server listening on port ${PORT}`);
         resolve();
       });
@@ -82,7 +95,6 @@ class ServerBootstrap {
     ================================================
     `);
   }
-
   setupGracefulShutdown() {
     const shutdown = async (signal) => {
       if (this.isShuttingDown) return;

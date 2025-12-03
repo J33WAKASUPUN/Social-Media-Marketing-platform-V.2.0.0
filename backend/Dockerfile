@@ -1,19 +1,17 @@
+# Use Node 20 Alpine
 FROM node:20-alpine
 
+# Set working directory
 WORKDIR /app
 
 # Install system dependencies
-RUN apk add --no-cache \
-    python3 \
-    make \
-    g++ \
-    ffmpeg
+RUN apk add --no-cache python3 make g++ ffmpeg
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# ✅ SAFETY FIX: Use standard install to ensure no modules are missing
+RUN npm install
 
 # Copy application code
 COPY . .
@@ -21,12 +19,13 @@ COPY . .
 # Create logs directory
 RUN mkdir -p logs
 
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=5000
+
 # Expose port
 EXPOSE 5000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
-  CMD node -e "require('http').get('http://localhost:5000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
-
-# Start application
+# 🚀 FORCE NODE EXECUTION
+# We use the "exec" form (brackets) to prevent shell wrapping issues
 CMD ["node", "src/server.js"]
