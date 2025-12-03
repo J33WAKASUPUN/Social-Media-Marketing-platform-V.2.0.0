@@ -2,7 +2,7 @@ const Channel = require("../models/Channel");
 const Brand = require("../models/Brand");
 const Membership = require("../models/Membership");
 const encryptionService = require("./encryptionService");
-const oauthService = require("./oauthService");
+const oauthService = require("./oAuthService");
 const ProviderFactory = require("../providers/ProviderFactory");
 const logger = require("../utils/logger");
 
