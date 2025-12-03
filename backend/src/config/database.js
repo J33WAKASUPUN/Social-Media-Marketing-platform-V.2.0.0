@@ -3,57 +3,126 @@ const logger = require('../utils/logger');
 
 /**
  * MongoDB Connection Configuration
- * Connects to MongoDB Atlas with retry logic
+ * Supports both MongoDB Atlas and Azure Cosmos DB
  */
 class Database {
   constructor() {
     this.connection = null;
+    this.isConnecting = false;
   }
 
   /**
-   * Connect to MongoDB
+   * Connect to MongoDB/Cosmos DB
    */
   async connect() {
+    if (this.isConnecting) {
+      logger.warn('Database connection already in progress');
+      return this.connection;
+    }
+
+    this.isConnecting = true;
+
     try {
+      const isCosmosDB = process.env.MONGODB_URI?.includes('cosmos.azure.com');
+      
+      logger.info('🔌 Connecting to database...', {
+        type: isCosmosDB ? 'Azure Cosmos DB' : 'MongoDB',
+        uri: this.maskUri(process.env.MONGODB_URI)
+      });
+
       const options = {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        maxPoolSize: 10,
-        serverSelectionTimeoutMS: 5000,
+        // Connection pool
+        maxPoolSize: isCosmosDB ? 50 : 10,
+        minPoolSize: isCosmosDB ? 5 : 2,
+        
+        // Timeouts
+        serverSelectionTimeoutMS: 30000, // Increased for Azure
         socketTimeoutMS: 45000,
+        connectTimeoutMS: 30000,
+        
+        // Azure Cosmos DB specific
+        ssl: isCosmosDB ? true : undefined,
+        retryWrites: isCosmosDB ? false : true, // Cosmos DB doesn't support retryWrites
+        
+        // General settings
         family: 4, // Use IPv4
+        heartbeatFrequencyMS: 10000,
       };
 
-      this.connection = await mongoose.connect(process.env.MONGODB_URI, options);
+      // Connect with timeout
+      this.connection = await Promise.race([
+        mongoose.connect(process.env.MONGODB_URI, options),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Database connection timeout after 30s')), 30000)
+        )
+      ]);
 
-      logger.info('✅ MongoDB Connected Successfully');
+      logger.info('✅ Database Connected Successfully');
       logger.info(`📊 Database: ${this.connection.connection.name}`);
       logger.info(`🌐 Host: ${this.connection.connection.host}`);
+      logger.info(`🔗 Ready State: ${this.getReadyStateText()}`);
 
-      // Handle connection events
-      mongoose.connection.on('error', (err) => {
-        logger.error('❌ MongoDB connection error:', err);
-      });
+      // Setup event handlers
+      this.setupEventHandlers();
 
-      mongoose.connection.on('disconnected', () => {
-        logger.warn('⚠️  MongoDB disconnected');
-      });
+      // Setup graceful shutdown
+      this.setupGracefulShutdown();
 
-      mongoose.connection.on('reconnected', () => {
-        logger.info('✅ MongoDB reconnected');
-      });
-
-      // Graceful shutdown
-      process.on('SIGINT', async () => {
-        await this.disconnect();
-        process.exit(0);
-      });
-
+      this.isConnecting = false;
       return this.connection;
     } catch (error) {
-      logger.error('❌ MongoDB connection failed:', error.message);
-      process.exit(1);
+      this.isConnecting = false;
+      logger.error('❌ Database connection failed:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      });
+      
+      // Don't exit in production - let health checks handle it
+      if (process.env.NODE_ENV !== 'production') {
+        process.exit(1);
+      }
+      
+      throw error;
     }
+  }
+
+  /**
+   * Setup database event handlers
+   */
+  setupEventHandlers() {
+    mongoose.connection.on('error', (err) => {
+      logger.error('❌ Database error:', {
+        message: err.message,
+        code: err.code
+      });
+    });
+
+    mongoose.connection.on('disconnected', () => {
+      logger.warn('⚠️ Database disconnected');
+    });
+
+    mongoose.connection.on('reconnected', () => {
+      logger.info('✅ Database reconnected');
+    });
+
+    mongoose.connection.on('connected', () => {
+      logger.info('🔗 Database connected');
+    });
+  }
+
+  /**
+   * Setup graceful shutdown
+   */
+  setupGracefulShutdown() {
+    const shutdown = async (signal) => {
+      logger.info(`📴 Received ${signal}, closing database connection...`);
+      await this.disconnect();
+      process.exit(0);
+    };
+
+    process.once('SIGINT', () => shutdown('SIGINT'));
+    process.once('SIGTERM', () => shutdown('SIGTERM'));
   }
 
   /**
@@ -61,10 +130,12 @@ class Database {
    */
   async disconnect() {
     try {
-      await mongoose.connection.close();
-      logger.info('🔌 MongoDB connection closed');
+      if (mongoose.connection.readyState !== 0) {
+        await mongoose.connection.close();
+        logger.info('🔌 Database connection closed');
+      }
     } catch (error) {
-      logger.error('Error closing MongoDB connection:', error.message);
+      logger.error('Error closing database connection:', error.message);
     }
   }
 
@@ -76,10 +147,62 @@ class Database {
   }
 
   /**
+   * Get ready state as text
+   */
+  getReadyStateText() {
+    const states = {
+      0: 'disconnected',
+      1: 'connected',
+      2: 'connecting',
+      3: 'disconnecting'
+    };
+    return states[mongoose.connection.readyState] || 'unknown';
+  }
+
+  /**
    * Get database instance
    */
   getDb() {
+    if (!this.isConnected()) {
+      logger.warn('Database not connected');
+      return null;
+    }
     return mongoose.connection.db;
+  }
+
+  /**
+   * Health check
+   */
+  async healthCheck() {
+    try {
+      if (!this.isConnected()) {
+        return { healthy: false, message: 'Not connected' };
+      }
+
+      // Ping the database
+      await mongoose.connection.db.admin().ping();
+      
+      return {
+        healthy: true,
+        state: this.getReadyStateText(),
+        host: mongoose.connection.host,
+        name: mongoose.connection.name
+      };
+    } catch (error) {
+      logger.error('Database health check failed:', error.message);
+      return {
+        healthy: false,
+        message: error.message
+      };
+    }
+  }
+
+  /**
+   * Mask sensitive data in URI
+   */
+  maskUri(uri) {
+    if (!uri) return 'N/A';
+    return uri.replace(/\/\/([^:]+):([^@]+)@/, '//$1:****@');
   }
 }
 

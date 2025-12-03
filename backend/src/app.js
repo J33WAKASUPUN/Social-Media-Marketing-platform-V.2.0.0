@@ -136,49 +136,117 @@ function createApp() {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // ============================================
-  // HEALTH CHECK ENDPOINT
-  // ============================================
-  app.get("/health", async (req, res) => {
+// ============================================
+// HEALTH CHECK ENDPOINTS
+// ============================================
+
+// Main health check
+app.get("/health", async (req, res) => {
+  try {
+    // Check MongoDB
+    const mongoStatus = database.isConnected() ? "connected" : "disconnected";
+    
+    // Check Redis with detailed status
+    let redisStatus = "disconnected";
+    let redisDetails = {
+      cache: false,
+      session: false,
+      queue: false
+    };
+    
     try {
-      const mongoStatus = database.isConnected() ? "connected" : "disconnected";
-      
-      let redisStatus = "disconnected";
-      try {
-        redisStatus = (await redisClient.healthCheck()) ? "connected" : "disconnected";
-      } catch (error) {
-        logger.error('Redis health check failed:', error.message);
-      }
-
-      const health = {
-        status:
-          mongoStatus === "connected" && redisStatus === "connected"
-            ? "ok"
-            : "degraded",
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        environment: process.env.NODE_ENV,
-        services: {
-          mongodb: mongoStatus,
-          redis: redisStatus,
-        },
-        memory: {
-          used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
-          total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
-          unit: "MB",
-        },
+      const healthCheck = await redisClient.healthCheck();
+      redisStatus = healthCheck ? "connected" : "disconnected";
+      redisDetails = {
+        cache: redisClient.getCache()?.isOpen || false,
+        session: redisClient.getSession()?.isOpen || false,
+        queue: redisClient.getQueue()?.isOpen || false
       };
-
-      const statusCode = health.status === "ok" ? 200 : 503;
-      res.status(statusCode).json(health);
     } catch (error) {
-      logger.error('Health check error:', error);
-      res.status(500).json({
-        status: "error",
-        message: error.message,
+      logger.error('Redis health check failed:', error.message);
+    }
+
+    const isHealthy = mongoStatus === "connected" && redisStatus === "connected";
+
+    const health = {
+      status: isHealthy ? "healthy" : "unhealthy",
+      timestamp: new Date().toISOString(),
+      uptime: Math.floor(process.uptime()),
+      environment: process.env.NODE_ENV,
+      version: "2.0.0",
+      services: {
+        mongodb: {
+          status: mongoStatus,
+          host: database.connection?.connection?.host || "N/A",
+          database: database.connection?.connection?.name || "N/A"
+        },
+        redis: {
+          status: redisStatus,
+          ...redisDetails
+        }
+      },
+      memory: {
+        used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+        external: Math.round(process.memoryUsage().external / 1024 / 1024),
+        unit: "MB"
+      },
+      cpu: {
+        user: process.cpuUsage().user,
+        system: process.cpuUsage().system
+      }
+    };
+
+    const statusCode = isHealthy ? 200 : 503;
+    res.status(statusCode).json(health);
+  } catch (error) {
+    logger.error('Health check error:', error);
+    res.status(500).json({
+      status: "error",
+      timestamp: new Date().toISOString(),
+      message: error.message,
+    });
+  }
+});
+
+// Readiness check (for Kubernetes/Azure)
+app.get("/ready", async (req, res) => {
+  try {
+    const isDbReady = database.isConnected();
+    const isRedisReady = redisClient.getCache()?.isOpen || false;
+
+    if (isDbReady && isRedisReady) {
+      res.status(200).json({
+        status: "ready",
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      res.status(503).json({
+        status: "not ready",
+        services: {
+          database: isDbReady,
+          redis: isRedisReady
+        },
+        timestamp: new Date().toISOString()
       });
     }
+  } catch (error) {
+    res.status(503).json({
+      status: "not ready",
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Liveness check (simple ping)
+app.get("/ping", (req, res) => {
+  res.status(200).json({
+    status: "alive",
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime())
   });
+});
 
   // ============================================
   // API DOCUMENTATION (SWAGGER)

@@ -10,19 +10,27 @@ class RedisClient {
     this.cacheClient = null;
     this.sessionClient = null;
     this.queueClient = null;
+    this.isConnecting = false;
   }
 
   /**
    * Create Redis client with specific DB
    */
   createClient(db, name) {
-    // ✅ FIX: Prefer explicit variables over URL to avoid password parsing issues
     const host = process.env.REDIS_HOST || '127.0.0.1';
     const port = parseInt(process.env.REDIS_PORT || 6379, 10);
     const password = process.env.REDIS_PASSWORD;
 
-    // Azure requires TLS for port 6380
-    const isTls = port === 6380;
+    // Azure Redis uses port 6380 with TLS
+    const isTls = port === 6380 || process.env.NODE_ENV === 'production';
+
+    logger.info(`Creating Redis ${name} client:`, {
+      host,
+      port,
+      db,
+      tls: isTls,
+      hasPassword: !!password
+    });
 
     const config = {
       database: db,
@@ -38,15 +46,17 @@ class RedisClient {
           logger.warn(`Redis ${name} reconnecting... attempt ${retries}, delay: ${delay}ms`);
           return delay;
         },
-        connectTimeout: 10000,
+        connectTimeout: 30000, // Increased for Azure
         keepAlive: 30000,
-        // ✅ Enable TLS for Azure
         tls: isTls,
-        // ✅ Disable strict cert check for Azure (fixes common handshake hangs)
-        rejectUnauthorized: false 
+        rejectUnauthorized: false, // Required for Azure Redis
       },
-      password: password,
     };
+
+    // Only add password if it exists and is not empty
+    if (password && password.trim() !== '') {
+      config.password = password;
+    }
 
     const client = redis.createClient(config);
 
@@ -55,7 +65,11 @@ class RedisClient {
     });
 
     client.on('error', (err) => {
-      logger.error(`❌ Redis ${name} error:`, err.message);
+      logger.error(`❌ Redis ${name} error:`, {
+        message: err.message,
+        code: err.code,
+        stack: err.stack
+      });
     });
 
     client.on('ready', () => {
@@ -77,53 +91,87 @@ class RedisClient {
    * Initialize all Redis connections
    */
   async connect() {
+    if (this.isConnecting) {
+      logger.warn('Redis connection already in progress');
+      return false;
+    }
+
+    this.isConnecting = true;
+
     try {
-      // Cache database (DB 0)
+      logger.info('🔌 Initializing Redis connections...');
+
+      // Create clients
       this.cacheClient = this.createClient(
         parseInt(process.env.REDIS_DB_CACHE || 0, 10),
         'Cache'
       );
 
-      // Session database (DB 1)
       this.sessionClient = this.createClient(
         parseInt(process.env.REDIS_DB_SESSION || 1, 10),
         'Session'
       );
 
-      // Queue database (DB 2)
       this.queueClient = this.createClient(
         parseInt(process.env.REDIS_DB_QUEUE || 2, 10),
         'Queue'
       );
 
-      // Connect sequentially to avoid resource contention during startup
+      // Connect with timeout protection
       logger.info('Connecting to Redis Cache...');
-      await this.cacheClient.connect();
+      await this.connectWithTimeout(this.cacheClient, 'Cache', 30000);
       
       logger.info('Connecting to Redis Session...');
-      await this.sessionClient.connect();
+      await this.connectWithTimeout(this.sessionClient, 'Session', 30000);
       
       logger.info('Connecting to Redis Queue...');
-      await this.queueClient.connect();
+      await this.connectWithTimeout(this.queueClient, 'Queue', 30000);
 
-      logger.info('✅ All Redis clients connected');
+      logger.info('✅ All Redis clients connected successfully');
 
-      // Graceful shutdown
-      process.on('SIGINT', async () => {
-        await this.disconnect();
-        process.exit(0);
-      });
+      // Setup graceful shutdown
+      this.setupGracefulShutdown();
 
-      process.on('SIGTERM', async () => {
-        await this.disconnect();
-        process.exit(0);
-      });
-
+      this.isConnecting = false;
       return true;
     } catch (error) {
-      logger.error('❌ Redis connection failed:', error.message);
+      this.isConnecting = false;
+      logger.error('❌ Redis connection failed:', {
+        message: error.message,
+        stack: error.stack
+      });
+      
+      // Clean up any partial connections
+      await this.disconnect();
+      
       throw error;
     }
+  }
+
+  /**
+   * Connect with timeout
+   */
+  async connectWithTimeout(client, name, timeout = 30000) {
+    return Promise.race([
+      client.connect(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`${name} connection timeout after ${timeout}ms`)), timeout)
+      )
+    ]);
+  }
+
+  /**
+   * Setup graceful shutdown handlers
+   */
+  setupGracefulShutdown() {
+    const shutdown = async (signal) => {
+      logger.info(`📴 Received ${signal}, closing Redis connections...`);
+      await this.disconnect();
+      process.exit(0);
+    };
+
+    process.once('SIGINT', () => shutdown('SIGINT'));
+    process.once('SIGTERM', () => shutdown('SIGTERM'));
   }
 
   /**
@@ -134,19 +182,36 @@ class RedisClient {
       const promises = [];
 
       if (this.cacheClient?.isOpen) {
-        promises.push(this.cacheClient.quit());
+        logger.info('Disconnecting Redis Cache...');
+        promises.push(
+          this.cacheClient.quit().catch(err => {
+            logger.error('Error disconnecting cache client:', err.message);
+          })
+        );
       }
+
       if (this.sessionClient?.isOpen) {
-        promises.push(this.sessionClient.quit());
+        logger.info('Disconnecting Redis Session...');
+        promises.push(
+          this.sessionClient.quit().catch(err => {
+            logger.error('Error disconnecting session client:', err.message);
+          })
+        );
       }
+
       if (this.queueClient?.isOpen) {
-        promises.push(this.queueClient.quit());
+        logger.info('Disconnecting Redis Queue...');
+        promises.push(
+          this.queueClient.quit().catch(err => {
+            logger.error('Error disconnecting queue client:', err.message);
+          })
+        );
       }
 
       await Promise.all(promises);
       logger.info('🔌 All Redis clients disconnected');
     } catch (error) {
-      logger.error('Error disconnecting Redis:', error.message);
+      logger.error('Error during Redis disconnect:', error.message);
     }
   }
 
@@ -154,6 +219,9 @@ class RedisClient {
    * Get cache client
    */
   getCache() {
+    if (!this.cacheClient?.isOpen) {
+      logger.warn('Cache client not connected');
+    }
     return this.cacheClient;
   }
 
@@ -161,6 +229,9 @@ class RedisClient {
    * Get session client
    */
   getSession() {
+    if (!this.sessionClient?.isOpen) {
+      logger.warn('Session client not connected');
+    }
     return this.sessionClient;
   }
 
@@ -168,6 +239,9 @@ class RedisClient {
    * Get queue client
    */
   getQueue() {
+    if (!this.queueClient?.isOpen) {
+      logger.warn('Queue client not connected');
+    }
     return this.queueClient;
   }
 
@@ -176,14 +250,23 @@ class RedisClient {
    */
   async healthCheck() {
     try {
-      const results = await Promise.all([
+      const results = await Promise.allSettled([
         this.cacheClient?.ping(),
         this.sessionClient?.ping(),
         this.queueClient?.ping(),
       ]);
-      return results.every(result => result === 'PONG');
+
+      const allHealthy = results.every(
+        result => result.status === 'fulfilled' && result.value === 'PONG'
+      );
+
+      if (!allHealthy) {
+        logger.warn('Redis health check failed:', results);
+      }
+
+      return allHealthy;
     } catch (error) {
-      logger.error('Redis health check failed:', error.message);
+      logger.error('Redis health check error:', error.message);
       return false;
     }
   }
