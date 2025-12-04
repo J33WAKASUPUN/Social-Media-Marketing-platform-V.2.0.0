@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Mail, ArrowLeft, Sparkles, Send, CheckCircle } from "lucide-react";
+import { Mail, ArrowLeft, Sparkles, Send, CheckCircle, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 
@@ -38,28 +38,16 @@ export default function ForgotPassword() {
           {/* Back Link */}
           <Link
             to="/login"
-            className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-8"
+            className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-8 transition-colors"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to login
           </Link>
 
-          {/* Logo & Header */}
+          {/* Header */}
           <div className="mb-8">
-            <Link to="/" className="inline-flex items-center gap-0 mb-8">
-              <img 
-                src="/logo.png" 
-                alt="SocialFlow" 
-                className="h-12 w-12"
-              />
-              <span className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-                SocialFlow
-              </span>
-            </Link>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">
-              Reset your password
-            </h1>
-            <p className="mt-2 text-base text-muted-foreground">
+            <h1 className="text-3xl font-bold tracking-tight">Reset password</h1>
+            <p className="mt-2 text-muted-foreground">
               Enter your email and we'll send you a link to reset your password
             </p>
           </div>
@@ -87,26 +75,19 @@ export default function ForgotPassword() {
                     onBlur={() => setFocusedField(null)}
                     required
                     disabled={loading}
-                    autoComplete="email"
-                    className={cn(
-                      "h-12 pl-11 text-base border-2 transition-all duration-200 bg-background",
-                      focusedField === 'email' 
-                        ? "border-violet-600 ring-4 ring-violet-100 dark:ring-violet-900/30" 
-                        : "border-input hover:border-muted-foreground/50"
-                    )}
+                    className="pl-10 h-12 border-2 focus:border-violet-600 transition-all"
                   />
                 </div>
               </div>
 
-              {/* Submit Button */}
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 text-base font-semibold bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30 transition-all duration-200 hover:shadow-xl hover:shadow-violet-500/40"
+                className="w-full h-12 text-base font-semibold bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 transition-all"
               >
                 {loading ? (
                   <div className="flex items-center gap-2">
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
                     Sending...
                   </div>
                 ) : (
@@ -127,6 +108,22 @@ export default function ForgotPassword() {
                     <p className="font-medium text-green-800 dark:text-green-200">Check your email</p>
                     <p className="text-sm text-green-700 dark:text-green-300 mt-1">
                       We've sent a password reset link to <strong>{email}</strong>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Spam Notice */}
+              <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-amber-800 dark:text-amber-200">
+                      Can't find the email?
+                    </p>
+                    <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                      Please check your <strong>Spam</strong> or <strong>Junk</strong> folder. 
+                      If you find it there, mark it as "Not Spam" to receive future emails in your inbox.
                     </p>
                   </div>
                 </div>
@@ -157,36 +154,28 @@ export default function ForgotPassword() {
       </div>
 
       {/* Right Side - Image */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 left-0 w-96 h-96 bg-white rounded-full -translate-x-1/2 -translate-y-1/2"></div>
-          <div className="absolute bottom-0 right-0 w-80 h-80 bg-white rounded-full translate-x-1/3 translate-y-1/3"></div>
-          <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-white rounded-full -translate-x-1/2 -translate-y-1/2"></div>
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700">
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-300/10 rounded-full blur-3xl animate-pulse delay-1000" />
         </div>
 
         {/* Content */}
-        <div className="relative z-10 flex flex-col items-center justify-center w-full p-12">
-          {/* Image Container */}
-          <div className="relative w-full max-w-md aspect-square rounded-3xl overflow-hidden shadow-2xl shadow-black/30 ring-1 ring-white/20">
-            <img
-              src="https://raw.githubusercontent.com/J33WAKASUPUN/Social-Media-Marketing-platform-V.2.0.0/main/social%20flow.png"
-              alt="SocialFlow Platform"
-              className="w-full h-full object-cover"
-            />
-            {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-violet-900/40 via-transparent to-transparent"></div>
+        <div className="relative z-10 flex flex-col items-center justify-center w-full px-12 text-white">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
+              <Sparkles className="h-10 w-10" />
+            </div>
+            <span className="text-4xl font-bold">SocialFlow</span>
           </div>
-
-          {/* Text Content */}
-          <div className="mt-10 text-center max-w-md">
-            <h2 className="text-3xl font-bold text-white mb-4">
-              We've Got You Covered
-            </h2>
-            <p className="text-lg text-violet-100/90">
-              Password recovery is quick and secure. You'll be back to managing your social media in no time.
-            </p>
-          </div>
+          
+          <h2 className="text-3xl font-bold text-center mb-4">
+            Don't worry, it happens!
+          </h2>
+          <p className="text-xl text-center text-white/80 max-w-md">
+            We'll help you get back into your account in no time.
+          </p>
 
           {/* Security Features */}
           <div className="flex flex-wrap justify-center gap-3 mt-8">

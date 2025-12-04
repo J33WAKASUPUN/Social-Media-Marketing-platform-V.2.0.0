@@ -1,20 +1,14 @@
-import { useState, useEffect, useRef } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "sonner";
-import { 
-  Shield, 
-  Smartphone, 
-  Mail, 
-  ArrowLeft,
-  Loader2,
-  RefreshCw
-} from 'lucide-react';
-import { cn } from "@/lib/utils";
-import { twoFactorApi } from "@/services/twoFactorApi";
-import { useAuth } from "@/contexts/AuthContext";
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { toast } from 'sonner';
+import { Shield, Smartphone, Mail, Loader2, RefreshCw, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { twoFactorApi } from '@/services/twoFactorApi';
 
 export default function TwoFactorVerify() {
   const navigate = useNavigate();
@@ -62,28 +56,25 @@ export default function TwoFactorVerify() {
   const handleCodeChange = (index: number, value: string) => {
     if (value.length > 1) {
       // Handle paste
-      const pastedCode = value.slice(0, 6).split('');
+      const digits = value.replace(/\D/g, '').slice(0, 6).split('');
       const newCode = [...code];
-      pastedCode.forEach((char, i) => {
+      digits.forEach((digit, i) => {
         if (index + i < 6) {
-          newCode[index + i] = char;
+          newCode[index + i] = digit;
         }
       });
       setCode(newCode);
-      
-      // Focus last filled input or next empty
-      const nextIndex = Math.min(index + pastedCode.length, 5);
+      const nextIndex = Math.min(index + digits.length, 5);
       inputRefs.current[nextIndex]?.focus();
-      return;
-    }
+    } else {
+      const newCode = [...code];
+      newCode[index] = value;
+      setCode(newCode);
 
-    const newCode = [...code];
-    newCode[index] = value;
-    setCode(newCode);
-
-    // Auto-focus next input
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus();
+      // Move to next input
+      if (value && index < 5) {
+        inputRefs.current[index + 1]?.focus();
+      }
     }
   };
 
@@ -93,9 +84,46 @@ export default function TwoFactorVerify() {
     }
   };
 
+  const handleVerify = async () => {
+    const fullCode = code.join('');
+    if (fullCode.length !== 6) {
+      toast.error('Please enter the complete 6-digit code');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setLoading(true);
+
+    try {
+      // Verify the 2FA code
+      await twoFactorApi.verifyCode(fullCode, userId);
+      
+      // Complete login after verification
+      const response = await twoFactorApi.complete2FALogin(userId);
+      
+      // Store tokens
+      localStorage.setItem('accessToken', response.data.tokens.accessToken);
+      localStorage.setItem('refreshToken', response.data.tokens.refreshToken);
+      
+      // Set user in context
+      setUser(response.data.user);
+      
+      toast.success('Login successful!');
+      navigate('/dashboard');
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Invalid verification code';
+      toast.error(message);
+      setCode(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
+    } finally {
+      setLoading(false);
+      setIsSubmitting(false);
+    }
+  };
+
   const handleResendCode = async () => {
-    if (countdown > 0) return;
-    
+    if (countdown > 0 || resending) return;
+
     setResending(true);
     try {
       await twoFactorApi.sendCode(userId);
@@ -108,50 +136,15 @@ export default function TwoFactorVerify() {
     }
   };
 
-  const handleVerify = async () => {
-    const fullCode = code.join('');
-    
-    if (fullCode.length !== 6 || isSubmitting) {
-      return;
-    }
-
-    setIsSubmitting(true);
-    setLoading(true);
-    try {
-      // Verify 2FA code
-      await twoFactorApi.verifyCode(fullCode, userId);
-      
-      // Complete login
-      const response = await twoFactorApi.complete2FALogin(userId);
-      
-      // Store tokens and user
-      localStorage.setItem('accessToken', response.data.tokens.accessToken);
-      localStorage.setItem('refreshToken', response.data.tokens.refreshToken);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      
-      setUser(response.data.user);
-      
-      toast.success('Verification successful!');
-      navigate('/dashboard');
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Invalid verification code');
-      setCode(['', '', '', '', '', '']);
-      inputRefs.current[0]?.focus();
-      setIsSubmitting(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-violet-50 via-white to-purple-50 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-violet-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 p-4">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-r from-violet-600 to-purple-600 flex items-center justify-center">
+          <div className="mx-auto w-16 h-16 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center">
             <Shield className="h-8 w-8 text-white" />
           </div>
           <CardTitle className="text-2xl">Two-Factor Authentication</CardTitle>
-          <CardDescription>
+          <CardDescription className="text-base">
             {twoFactorMethod === 'totp' ? (
               <>
                 <Smartphone className="inline h-4 w-4 mr-1" />
@@ -167,6 +160,16 @@ export default function TwoFactorVerify() {
         </CardHeader>
         
         <CardContent className="space-y-6">
+          {/* Spam Notice for Email 2FA */}
+          {twoFactorMethod === 'email' && (
+            <Alert className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
+              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <AlertDescription className="text-amber-800 dark:text-amber-200 text-sm">
+                <strong>Can't find the code?</strong> Check your <strong>Spam</strong> or <strong>Junk</strong> folder.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Code Input */}
           <div className="flex justify-center gap-2">
             {code.map((digit, index) => (
@@ -182,7 +185,7 @@ export default function TwoFactorVerify() {
                 className={cn(
                   "w-12 h-14 text-center text-2xl font-bold border-2",
                   "focus:ring-2 focus:ring-violet-500 focus:border-violet-500",
-                  digit && "border-violet-500 bg-violet-50"
+                  digit && "border-violet-500 bg-violet-50 dark:bg-violet-950"
                 )}
                 disabled={loading}
                 autoFocus={index === 0}
@@ -249,7 +252,7 @@ export default function TwoFactorVerify() {
               to="/login"
               className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
             >
-              <ArrowLeft className="mr-1 h-4 w-4" />
+              <ArrowLeft className="mr-2 h-4 w-4" />
               Back to login
             </Link>
           </div>

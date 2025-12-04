@@ -22,7 +22,8 @@ import {
   Check, 
   AlertTriangle,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  MailWarning
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -50,6 +51,7 @@ export const TwoFactorSettings: React.FC = () => {
   
   // Track if we're currently setting up (to prevent double-clicks)
   const [settingUp, setSettingUp] = useState(false);
+  
   // Track if email is being sent
   const [sendingEmail, setSendingEmail] = useState(false);
 
@@ -402,7 +404,7 @@ export const TwoFactorSettings: React.FC = () => {
             </>
           )}
 
-          {/* Email Setup - Updated with better loading state */}
+          {/* Email Setup - Updated with better loading state and spam warning */}
           {setupMethod === 'email' && (
             <>
               {sendingEmail ? (
@@ -428,6 +430,14 @@ export const TwoFactorSettings: React.FC = () => {
                     <Mail className="h-4 w-4" />
                     <AlertDescription>
                       We've sent a 6-digit verification code to your email. Please enter it below to enable 2FA.
+                    </AlertDescription>
+                  </Alert>
+
+                  {/* Spam Folder Warning */}
+                  <Alert className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
+                    <MailWarning className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    <AlertDescription className="text-amber-800 dark:text-amber-200 text-sm">
+                      <strong>Can't find the email?</strong> Please check your <strong>Spam</strong> or <strong>Junk</strong> folder. If found, mark it as "Not Spam" to receive future emails.
                     </AlertDescription>
                   </Alert>
 
