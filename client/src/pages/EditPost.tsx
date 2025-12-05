@@ -697,7 +697,7 @@ export default function EditPost() {
                 ) : (
                   <div className="bg-white dark:bg-card rounded-xl border shadow-sm p-4 space-y-3">
                     <div className="flex items-center gap-3">
-                      <div className="min-w-0">
+                      <div className="min-w-0 space-y-2">
                         <p className="text-sm font-bold text-gray-900 dark:text-foreground truncate">Your Brand</p>
                         <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-muted-foreground">
                           <PlatformBadge platform={selectedPlatform} size="sm" />

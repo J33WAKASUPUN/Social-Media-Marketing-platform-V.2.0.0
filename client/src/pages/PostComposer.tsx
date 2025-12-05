@@ -8,8 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Save, Send, CalendarClock, AlertTriangle, CheckCircle2, XCircle, Smile, X } from 'lucide-react';
+import { Save, Send, CalendarClock, AlertTriangle, CheckCircle2, XCircle, Smile, X, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { channelApi } from '@/services/channelApi';
 import { mediaApi } from '@/services/mediaApi';
@@ -36,13 +35,13 @@ export default function PostComposer() {
   const { currentBrand } = useBrand();
 
   // State
+  const [loading, setLoading] = useState(false);
   const [content, setContent] = useState('');
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [hashtagInput, setHashtagInput] = useState('');
   const [selectedChannel, setSelectedChannel] = useState<string>('');
-  const [publishType, setPublishType] = useState<'now' | 'schedule'>('now');
+  const [publishType, setPublishType] = useState<'draft' | 'now' | 'schedule'>('draft');
   const [scheduledDate, setScheduledDate] = useState('');
-  const [loading, setLoading] = useState(false);
   const [previewImageIndex, setPreviewImageIndex] = useState(0);
   
   // Data
@@ -63,12 +62,32 @@ export default function PostComposer() {
     }
   }, [currentBrand]);
 
+  // ✅ FIX: Fetch library media when brand changes (for preview purposes)
+  useEffect(() => {
+    if (currentBrand) {
+      fetchLibraryMedia();
+    }
+  }, [currentBrand]);
+
   const fetchChannels = async () => {
     try {
       const response = await channelApi.getAll(currentBrand!._id);
       setChannels(response.data.filter(ch => ch.connectionStatus === 'active'));
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to load channels');
+    }
+  };
+
+  // ✅ ADD: Fetch library media for preview
+  const fetchLibraryMedia = async () => {
+    try {
+      const response = await mediaApi.getAll({
+        brandId: currentBrand!._id,
+        limit: 100,
+      });
+      setLibraryMedia(response.data);
+    } catch (error: any) {
+      console.error('Failed to load library media:', error);
     }
   };
 
@@ -115,21 +134,26 @@ export default function PostComposer() {
     return types;
   }, [selectedPlatform]);
 
-  // Calculate totalMediaCount BEFORE using it
+  // Calculate totalMediaCount
   const totalMediaCount = uploadedFiles.length + selectedLibraryMedia.length;
 
+  // ✅ FIX: Build preview media from libraryMedia state
   const allPreviewMedia = useMemo(() => {
-    const libraryItems = libraryMedia.filter(m => selectedLibraryMedia.includes(m._id));
+    const libraryItems = libraryMedia
+      .filter(m => selectedLibraryMedia.includes(m._id))
+      .map(m => ({
+        type: 'library' as const,
+        url: m.s3Url,
+        id: m._id,
+      }));
+
     const uploadedItems = uploadedFiles.map((file, index) => ({
       type: 'upload' as const,
       url: URL.createObjectURL(file),
       index,
     }));
 
-    return [
-      ...libraryItems.map(m => ({ type: 'library' as const, url: m.s3Url })),
-      ...uploadedItems,
-    ];
+    return [...libraryItems, ...uploadedItems];
   }, [libraryMedia, selectedLibraryMedia, uploadedFiles]);
 
   // Reset preview index when media changes
@@ -147,7 +171,6 @@ export default function PostComposer() {
       const end = textarea.selectionEnd;
       const newContent = content.substring(0, start) + emojiObject.emoji + content.substring(end);
       setContent(newContent);
-      // Move cursor after the inserted emoji
       setTimeout(() => {
         textarea.selectionStart = textarea.selectionEnd = start + emojiObject.emoji.length;
         textarea.focus();
@@ -170,6 +193,7 @@ export default function PostComposer() {
     setHashtags(hashtags.filter(tag => tag !== tagToRemove));
   };
   
+  // ✅ FIX: Open media library and refresh media list
   const openMediaLibrary = async () => {
     try {
       const response = await mediaApi.getAll({
@@ -201,117 +225,162 @@ export default function PostComposer() {
   };
 
   const removeUploadedFile = (index: number) => setUploadedFiles(prev => prev.filter((_, i) => i !== index));
-  const removeLibraryMedia = (mediaId: string) => setSelectedLibraryMedia(prev => prev.filter(id => id !== mediaId));
+  
+  // ✅ FIX: Define the removeLibraryMedia function properly
+  const removeLibraryMedia = (mediaId: string) => {
+    setSelectedLibraryMedia(prev => prev.filter(id => id !== mediaId));
+  };
 
-  // --- Save & Publish ---
-  const handleSaveDraft = async () => {
-    if (!currentBrand) return;
+  // --- Main Create Logic ---
+  const handleCreate = async () => {
+    if (!content.trim()) {
+      toast.error('Please enter content');
+      return;
+    }
+
+    if (publishType !== 'draft') {
+      if (!selectedChannel) {
+        toast.error('Please select a platform');
+        return;
+      }
+      if (publishType === 'schedule' && !scheduledDate) {
+        toast.error('Please select a date and time');
+        return;
+      }
+    }
+
     try {
       setLoading(true);
+      
+      // 1. Upload new files if any
       let uploadedMediaIds: string[] = [];
       if (uploadedFiles.length > 0) {
         const uploadResponse = await mediaApi.upload(uploadedFiles, {
-          brandId: currentBrand._id, folder: 'Default',
+          brandId: currentBrand._id,
+          folder: 'Default',
         });
         uploadedMediaIds = uploadResponse.data.map((m: Media) => m._id);
+        console.log('✅ Uploaded new files:', uploadedMediaIds);
       }
+
+      // Combine library + uploaded
       const allMediaIds = [...selectedLibraryMedia, ...uploadedMediaIds];
+
+      // 2. Build Schedules
+      let schedules: any[] = [];
+      
+      if (publishType === 'now') {
+        const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel)!;
+        // FIX: Use current time, not 10 seconds in future
+        const now = new Date();
+        // Set to 2 seconds ago to ensure immediate processing
+        const scheduledFor = new Date(now.getTime() - 2000).toISOString();
+        schedules.push({
+          channel: channel._id || (channel as any).id,
+          provider: channel.provider,
+          scheduledFor,
+        });
+      } else if (publishType === 'schedule') {
+        const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel)!;
+        const scheduledFor = new Date(scheduledDate).toISOString();
+        
+        if (new Date(scheduledFor) <= new Date()) {
+          toast.error('Scheduled time must be in the future');
+          setLoading(false);
+          return;
+        }
+        
+        schedules.push({
+          channel: channel._id || (channel as any).id,
+          provider: channel.provider,
+          scheduledFor,
+        });
+      }
+
+      // 3. Create Payload
       const postData: CreatePostData = {
-        brandId: currentBrand._id, content, hashtags, mediaLibraryIds: allMediaIds, schedules: [],
+        brandId: currentBrand._id,
+        content,
+        hashtags,
+        mediaLibraryIds: allMediaIds,
+        schedules,
+        settings: { notifyOnPublish: true },
       };
-      await postApi.create(postData);
-      toast.success('Post saved as draft');
+
+      console.log('📤 Sending create payload:', postData);
+
+      const response = await postApi.create(postData);
+      
+      // FIX: For "Publish Now", poll for completion
+      if (publishType === 'now' && response.data?._id) {
+        const postId = response.data._id;
+        let attempts = 0;
+        const maxAttempts = 30; // 30 seconds max wait
+        
+        const checkStatus = async (): Promise<boolean> => {
+          try {
+            const statusResponse = await postApi.getById(postId);
+            const post = statusResponse.data;
+            
+            if (post.status === 'published') {
+              return true;
+            }
+            if (post.status === 'failed') {
+              throw new Error(post.schedules?.[0]?.error || 'Publishing failed');
+            }
+            return false;
+          } catch (error) {
+            console.error('Status check error:', error);
+            return false;
+          }
+        };
+        
+        // Poll every second
+        while (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          attempts++;
+          
+          const isComplete = await checkStatus();
+          if (isComplete) {
+            toast.success('Post published successfully!');
+            navigate('/posts');
+            return;
+          }
+        }
+        
+        // If we get here, it's taking too long
+        toast.info('Post is being published. Check the Posts page for status.');
+        navigate('/posts');
+        return;
+      }
+      
+      const successMessage = publishType === 'draft' 
+        ? 'Post saved as draft' 
+        : publishType === 'now'
+        ? 'Post is being published!'
+        : 'Post scheduled successfully';
+      
+      toast.success(successMessage);
       navigate('/posts');
+      
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to save draft');
+      console.error('❌ Create failed:', error);
+      toast.error(error.response?.data?.message || 'Failed to create post');
     } finally {
       setLoading(false);
     }
   };
 
-const handlePublish = async () => {
-  if (!currentBrand) return;
-  if (!selectedChannel) { toast.error('Please select a platform'); return; }
-  if (!content.trim()) { toast.error('Please enter some content'); return; }
-  if (publishType === 'schedule' && !scheduledDate) { toast.error('Please select a date and time'); return; }
-
-  try {
-    setLoading(true);
-    
-    // Upload files first if any
-    let uploadedMediaIds: string[] = [];
-    if (uploadedFiles.length > 0) {
-      const uploadResponse = await mediaApi.upload(uploadedFiles, {
-        brandId: currentBrand._id, 
-        folder: 'Default' // EXPLICITLY SET TO "Default" (capital D)
-      });
-      uploadedMediaIds = uploadResponse.data.map((m: Media) => m._id);
-      console.log('✅ Uploaded media to Default folder:', uploadedMediaIds);
-    }
-    
-    const allMediaIds = [...selectedLibraryMedia, ...uploadedMediaIds];
-    const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel)!;
-    
-    // Calculate scheduledFor correctly
-    let scheduledFor: string;
-    
-    if (publishType === 'now') {
-      const now = new Date();
-      scheduledFor = new Date(now.getTime() + 10 * 1000).toISOString();
-    } else {
-      scheduledFor = new Date(scheduledDate).toISOString();
-    }
-    
-    const schedules = [{
-      channel: channel._id || (channel as any).id,
-      provider: channel.provider,
-      scheduledFor,
-    }];
-    
-    const postData: CreatePostData = {
-      brandId: currentBrand._id, 
-      content,
-      hashtags,
-      mediaLibraryIds: allMediaIds, 
-      schedules, 
-      settings: { notifyOnPublish: true },
-    };
-    
-    console.log('📤 Sending post data:', postData);
-    
-    await postApi.create(postData);
-    
-    toast.success(
-      publishType === 'now' 
-        ? 'Post is being published!' 
-        : 'Post scheduled successfully!'
-    );
-    
-    navigate('/posts');
-  } catch (error: any) {
-    console.error('❌ Publishing failed:', error);
-    toast.error(error.response?.data?.message || 'Publishing failed');
-  } finally {
-    setLoading(false);
-  }
-};
-
-// Determine the exact media type filter for the selected platform
+  // Determine the exact media type filter
   const mediaTypeFilter = useMemo<'all' | 'image' | 'video'>(() => {
     if (!selectedPlatform) return 'all';
     
     const cap = getPlatformCapability(selectedPlatform);
     
-    // If platform supports both, show all
     if (cap.supports.images && cap.supports.videos) return 'all';
-    
-    // If platform supports only videos (YouTube)
     if (cap.supports.videos && !cap.supports.images) return 'video';
-    
-    // If platform supports only images
     if (cap.supports.images && !cap.supports.videos) return 'image';
     
-    // Default to all
     return 'all';
   }, [selectedPlatform]);
 
@@ -328,47 +397,90 @@ const handlePublish = async () => {
     }
   };
 
-  if (!currentBrand) return <div className="p-6 text-foreground">Select a brand</div>;
+  if (!currentBrand) return <div className="p-6">Please select a brand</div>;
 
   return (
     <div className="min-h-screen bg-gray-50/30 dark:bg-background p-4 md:p-6">
       <div className="mx-auto max-w-6xl space-y-6">
         
-        <PageHeader title="Create Post" description="Compose and schedule your social media post" />
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => navigate('/posts')}
+          className="mb-2"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Posts
+        </Button>
+
+        <PageHeader 
+          title="Create Post" 
+          description="Compose and schedule your social media post" 
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* LEFT COLUMN - Content Editor */}
-          <div className="lg:col-span-7 space-y-5">
-            <Card className="shadow-md border-0">
-              <CardHeader className="pb-3 border-b bg-muted/30">
-                <CardTitle className="text-base font-semibold text-foreground">Post Content</CardTitle>
+          
+          {/* LEFT COLUMN: Main Editor */}
+          <div className="lg:col-span-8 space-y-6 min-w-0">
+            <Card className="border-none shadow-md overflow-hidden">
+              <CardHeader className="border-b bg-white dark:bg-card px-6 py-4">
+                <CardTitle className="text-lg text-gray-800 dark:text-foreground">Post Content</CardTitle>
               </CardHeader>
-              <CardContent className="p-5 space-y-5 bg-card">
-                {/* Content Editor */}
-                <div className="space-y-3" data-tour="content-editor">
-                  <Label className="text-sm font-medium text-foreground">Caption</Label>
+              
+              <CardContent className="p-6 space-y-6 bg-card">
+                
+                {/* 1. PLATFORM SELECTOR */}
+                <PlatformSelector
+                  channels={channels}
+                  selectedChannel={selectedChannel}
+                  onSelectChannel={handleChannelSelect}
+                  onViewCapabilities={() => setShowWarnings(true)}
+                  loading={loading}
+                />
+
+                <div className="h-px bg-gray-100 dark:bg-border" />
+
+                {/* 2. TEXT AREA */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700 dark:text-foreground">Content</Label>
                   <div className="relative">
                     <Textarea
-                      placeholder="What's on your mind? Write your post here..."
+                      ref={contentTextareaRef}
+                      placeholder="What would you like to share?"
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
-                      className="min-h-[180px] text-base resize-none pr-12 bg-background border-input focus:border-primary focus:ring-1 focus:ring-primary"
+                      rows={6}
+                      className="resize-none pr-16 text-base focus:border-violet-500 focus:ring-violet-500 bg-background"
+                      maxLength={maxChars}
+                      disabled={loading}
                     />
-                    {/* Emoji picker and character count can be added here if needed */}
-                  </div>
-                  {/* Character count */}
-                  <div className="flex justify-between items-center text-xs">
-                    <span className={content.length > maxChars * 0.9 ? 'text-red-500 font-bold' : ''}>
-                      {content.length}
-                    </span>
-                    <span>/</span>
-                    <span>{maxChars}</span>
+                    <div className="absolute bottom-3 right-3 flex items-center gap-2 text-xs text-gray-400 dark:text-muted-foreground">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-gray-600 dark:text-muted-foreground dark:hover:text-foreground">
+                            <Smile className="h-4 w-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 border-0">
+                          <EmojiPicker
+                            emojiStyle={EmojiStyle.NATIVE}
+                            onEmojiClick={handleEmojiClick}
+                            width={350}
+                            height={400}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <span className={content.length > maxChars * 0.9 ? 'text-red-500 font-bold' : ''}>
+                        {content.length}
+                      </span>
+                      <span>/</span>
+                      <span>{maxChars}</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Hashtags */}
-                <div className="space-y-3" data-tour="hashtag-input">
-                  <Label className="text-sm font-medium text-foreground">Hashtags</Label>
+                {/* HASHTAGS */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700 dark:text-foreground">Hashtags</Label>
                   <div className="flex flex-wrap gap-2">
                     {hashtags.map((tag, index) => (
                       <Badge key={index} variant="secondary" className="flex items-center gap-1">
@@ -389,129 +501,136 @@ const handlePublish = async () => {
                   />
                 </div>
 
-                {/* Media Selector */}
-                <div data-tour="media-selector">
+                {/* 3. MEDIA */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700 dark:text-foreground">Media</Label>
                   <MediaSelector
                     canAddMedia={canAddMedia}
                     allowedMediaTypes={allowedMediaTypes}
                     selectedLibraryMedia={selectedLibraryMedia}
-                    uploadedFiles={[]}
+                    uploadedFiles={uploadedFiles}
                     libraryMedia={libraryMedia}
-                    onOpenLibrary={() => setShowMediaLibrary(true)}
-                    onFileSelect={() => {}}
-                    onRemoveLibraryMedia={handleRemoveLibraryMedia}
-                    onRemoveUploadedFile={() => {}}
+                    onOpenLibrary={openMediaLibrary}
+                    onFileSelect={handleFileSelect}
+                    onRemoveLibraryMedia={removeLibraryMedia}
+                    onRemoveUploadedFile={removeUploadedFile}
+                    loading={loading}
                   />
                 </div>
+
+                {/* 4. IN-LINE WARNINGS */}
+                {hasLimitations && selectedChannel && (
+                  <div className="animate-in fade-in slide-in-from-top-2">
+                    <PlatformWarnings
+                      warnings={warnings}
+                      onViewAll={() => setShowWarnings(true)}
+                    />
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* RIGHT COLUMN - Settings & Preview */}
-          <div className="lg:col-span-5 space-y-5">
-            {/* Platform Selector */}
-            <Card className="shadow-md border-0" data-tour="platform-selector">
-              <CardHeader className="pb-3 border-b bg-muted/30">
-                <CardTitle className="text-base font-semibold text-foreground">Select Platform</CardTitle>
-              </CardHeader>
-              <CardContent className="p-5 bg-card">
-                <PlatformSelector
-                  channels={channels}
-                  selectedChannel={selectedChannel}
-                  onSelectChannel={setSelectedChannel}
-                  onViewCapabilities={() => setShowCapabilities(true)}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Schedule Options */}
-            <Card className="shadow-md border-0" data-tour="schedule-options">
-              <CardHeader className="pb-3 border-b bg-muted/30">
+          {/* RIGHT COLUMN: Publish Settings & Preview */}
+          <div className="lg:col-span-4 space-y-6 sticky top-6">
+            
+            {/* PUBLISH SETTINGS */}
+            <Card className="border-none shadow-md">
+              <CardHeader className="border-b px-5 py-4 bg-white dark:bg-card">
                 <CardTitle className="text-base font-semibold text-foreground">Publish Settings</CardTitle>
               </CardHeader>
               <CardContent className="p-5 space-y-5 bg-card">
                 <RadioGroup 
                   value={publishType} 
                   onValueChange={(v) => setPublishType(v as typeof publishType)}
-                  className="grid grid-cols-2 gap-3"
+                  className="grid grid-cols-1 gap-3"
                 >
+                  {/* Keep as Draft */}
+                  <div>
+                    <RadioGroupItem value="draft" id="draft" className="peer sr-only" />
+                    <Label
+                      htmlFor="draft"
+                      className="flex items-center gap-3 rounded-lg border-2 border-muted bg-transparent p-3 hover:bg-gray-50 dark:hover:bg-muted peer-data-[state=checked]:border-violet-600 peer-data-[state=checked]:bg-violet-50 dark:peer-data-[state=checked]:bg-violet-950 peer-data-[state=checked]:text-violet-900 dark:peer-data-[state=checked]:text-violet-100 cursor-pointer transition-all"
+                    >
+                      <Save className="h-5 w-5" />
+                      <div className="flex-1 text-left">
+                        <div className="text-sm font-semibold">Save as Draft</div>
+                        <div className="text-xs text-muted-foreground">Edit and publish later</div>
+                      </div>
+                    </Label>
+                  </div>
+
+                  {/* Publish Now */}
                   <div>
                     <RadioGroupItem value="now" id="now" className="peer sr-only" />
                     <Label
                       htmlFor="now"
-                      className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-muted bg-transparent p-3 hover:bg-gray-50 dark:hover:bg-muted peer-data-[state=checked]:border-violet-600 peer-data-[state=checked]:bg-violet-50 dark:peer-data-[state=checked]:bg-violet-950 peer-data-[state=checked]:text-violet-900 dark:peer-data-[state=checked]:text-violet-100 cursor-pointer transition-all"
+                      className="flex items-center gap-3 rounded-lg border-2 border-muted bg-transparent p-3 hover:bg-gray-50 dark:hover:bg-muted peer-data-[state=checked]:border-violet-600 peer-data-[state=checked]:bg-violet-50 dark:peer-data-[state=checked]:bg-violet-950 peer-data-[state=checked]:text-violet-900 dark:peer-data-[state=checked]:text-violet-100 cursor-pointer transition-all"
                     >
                       <Send className="h-5 w-5" />
-                      <span className="text-xs font-semibold">Publish Now</span>
+                      <div className="flex-1 text-left">
+                        <div className="text-sm font-semibold">Publish Now</div>
+                        <div className="text-xs text-muted-foreground">Post immediately</div>
+                      </div>
                     </Label>
                   </div>
+
+                  {/* Schedule */}
                   <div>
                     <RadioGroupItem value="schedule" id="schedule" className="peer sr-only" />
                     <Label
                       htmlFor="schedule"
-                      className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-muted bg-transparent p-3 hover:bg-gray-50 dark:hover:bg-muted peer-data-[state=checked]:border-violet-600 peer-data-[state=checked]:bg-violet-50 dark:peer-data-[state=checked]:bg-violet-950 peer-data-[state=checked]:text-violet-900 dark:peer-data-[state=checked]:text-violet-100 cursor-pointer transition-all"
+                      className="flex items-center gap-3 rounded-lg border-2 border-muted bg-transparent p-3 hover:bg-gray-50 dark:hover:bg-muted peer-data-[state=checked]:border-violet-600 peer-data-[state=checked]:bg-violet-50 dark:peer-data-[state=checked]:bg-violet-950 peer-data-[state=checked]:text-violet-900 dark:peer-data-[state=checked]:text-violet-100 cursor-pointer transition-all"
                     >
                       <CalendarClock className="h-5 w-5" />
-                      <span className="text-xs font-semibold">Schedule</span>
+                      <div className="flex-1 text-left">
+                        <div className="text-sm font-semibold">Schedule</div>
+                        <div className="text-xs text-muted-foreground">Pick a date & time</div>
+                      </div>
                     </Label>
                   </div>
                 </RadioGroup>
 
                 {publishType === 'schedule' && (
-                  <div className="pt-2 animate-in fade-in">
-                    <Label className="mb-1.5 block text-xs font-medium text-gray-600 dark:text-muted-foreground">Select Date & Time</Label>
-                    <input
+                  <div className="animate-in fade-in slide-in-from-top-2">
+                    <Label className="text-sm font-medium">Schedule Date & Time</Label>
+                    <Input
                       type="datetime-local"
                       value={scheduledDate}
                       onChange={(e) => setScheduledDate(e.target.value)}
                       min={new Date().toISOString().slice(0, 16)}
-                      className="w-full rounded-lg border border-gray-200 dark:border-border bg-background px-3 py-2 text-sm focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+                      className="mt-2 bg-background"
                     />
                   </div>
                 )}
 
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    className="flex-1" 
-                    onClick={handleSaveDraft}
-                    disabled={loading || !content.trim()}
-                  >
-                    <Save className="mr-2 h-4 w-4" />
-                    Save Draft
-                  </Button>
-                  <Button 
-                    variant="gradient" 
-                    className="flex-1 bg-purple-600" 
-                    onClick={handlePublish}
-                    disabled={loading || !selectedChannel || !content.trim()}
-                  >
-                    {loading ? (
-                      <>
-                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                        Publishing...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="mr-2 h-4 w-4" />
-                        {publishType === 'now' ? 'Publish' : 'Schedule'}
-                      </>
-                    )}
-                  </Button>
-                </div>
+                <Button
+                  onClick={handleCreate}
+                  disabled={loading || !content.trim()}
+                  className="w-full bg-violet-600 hover:bg-violet-700"
+                  size="lg"
+                >
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="mr-2 h-4 w-4" />
+                      {publishType === 'now' ? 'Publish Post' : publishType === 'schedule' ? 'Schedule Post' : 'Create Draft'}
+                    </>
+                  )}
+                </Button>
               </CardContent>
             </Card>
 
-            {/* Preview Panel */}
-            <Card className="shadow-md border-0" data-tour="preview-panel">
-              <CardHeader className="pb-3 border-b bg-muted/30">
-                <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
-                  <Eye className="h-4 w-4" />
-                  Live Preview
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-5 bg-card">
-                {/* Preview content based on selectedPlatform, content, hashtags, and media */}
+            {/* PREVIEW CARD */}
+            <Card className="border shadow-sm overflow-hidden bg-gray-50/50 dark:bg-card">
+              <div className="p-2 border-b bg-white/80 dark:bg-card/80 backdrop-blur text-center">
+                <span className="text-xs font-medium text-gray-500 dark:text-muted-foreground uppercase tracking-wide">Live Preview</span>
+              </div>
+              <CardContent className="p-4">
                 {!selectedPlatform ? (
                   <div className="h-48 flex flex-col items-center justify-center text-center text-gray-400 dark:text-muted-foreground border-2 border-dashed border-gray-200 dark:border-border rounded-lg bg-white dark:bg-muted/20">
                     <Send className="h-8 w-8 mb-2 opacity-20" />
@@ -520,7 +639,7 @@ const handlePublish = async () => {
                 ) : (
                   <div className="bg-white dark:bg-card rounded-xl border shadow-sm p-4 space-y-3">
                     <div className="flex items-center gap-3">
-                      <div className="min-w-0">
+                      <div className="min-w-0 space-y-2">
                         <p className="text-sm font-bold text-gray-900 dark:text-foreground truncate">Your Brand</p>
                         <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-muted-foreground">
                           <PlatformBadge platform={selectedPlatform} size="sm" />
@@ -529,7 +648,6 @@ const handlePublish = async () => {
                       </div>
                     </div>
 
-                    {/* POST CONTENT */}
                     <div className="text-sm text-gray-800 dark:text-foreground whitespace-pre-wrap break-words">
                       {content || <span className="text-gray-300 dark:text-muted-foreground italic">Write something...</span>}
                     </div>
@@ -545,10 +663,9 @@ const handlePublish = async () => {
                       </div>
                     )}
 
-                    {/* IMAGE SLIDER */}
+                    {/* ✅ FIX: MEDIA PREVIEW */}
                     {totalMediaCount > 0 && allPreviewMedia.length > 0 && (
                       <div className="relative rounded-lg overflow-hidden bg-gray-100">
-                        {/* Image */}
                         <div className="aspect-video relative">
                           <img
                             src={allPreviewMedia[previewImageIndex]?.url}
@@ -559,7 +676,6 @@ const handlePublish = async () => {
                             }}
                           />
 
-                          {/* Navigation Arrows */}
                           {totalMediaCount > 1 && (
                             <>
                               <button
@@ -577,7 +693,6 @@ const handlePublish = async () => {
                                 <ChevronRight className="h-5 w-5" />
                               </button>
 
-                              {/* Dot Indicators */}
                               <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
                                 {allPreviewMedia.map((_, index) => (
                                   <button
@@ -594,7 +709,6 @@ const handlePublish = async () => {
                                 ))}
                               </div>
 
-                              {/* Counter */}
                               <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-sm px-2 py-1 rounded-full text-xs text-white font-medium">
                                 {previewImageIndex + 1} / {totalMediaCount}
                               </div>
@@ -611,7 +725,7 @@ const handlePublish = async () => {
         </div>
       </div>
 
-{/* CAPABILITIES DIALOG */}
+      {/* CAPABILITIES DIALOG */}
       <Dialog open={showWarnings} onOpenChange={setShowWarnings}>
         <DialogContent className="max-w-2xl h-[600px] flex flex-col p-0 gap-0 overflow-hidden">
           <DialogHeader className="px-6 py-4 border-b bg-gray-50/50 dark:bg-card/50">
@@ -621,95 +735,91 @@ const handlePublish = async () => {
           <div className="flex-1 overflow-hidden">
             <Tabs defaultValue={selectedChannel || (channels[0]?._id || (channels[0] as any)?.id)} className="h-full flex">
               <TabsList className="w-48 h-full flex-col justify-start rounded-none border-r bg-gray-50/30 dark:bg-muted/30 p-0 space-y-0">
-                 {channels.map((ch) => {
-                    const id = ch._id || (ch as any).id;
-                    return (
-                      <TabsTrigger 
-                        key={id} 
-                        value={id} 
-                        className="w-full justify-start px-4 py-3 rounded-none data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:border-r-2 data-[state=active]:border-violet-600 data-[state=active]:text-violet-700 dark:data-[state=active]:text-violet-400 border-r-2 border-transparent"
-                      >
-                        <div className="flex items-center gap-2 overflow-hidden">
-                           <PlatformBadge platform={ch.provider as Platform} size="sm" />
-                           <span className="truncate text-xs">{ch.displayName}</span>
-                        </div>
-                      </TabsTrigger>
-                    )
-                 })}
+                {channels.map((ch) => {
+                  const id = ch._id || (ch as any).id;
+                  return (
+                    <TabsTrigger 
+                      key={id} 
+                      value={id} 
+                      className="w-full justify-start px-4 py-3 rounded-none data-[state=active]:bg-white dark:data-[state=active]:bg-card data-[state=active]:border-r-2 data-[state=active]:border-violet-600 data-[state=active]:text-violet-700 dark:data-[state=active]:text-violet-400 border-r-2 border-transparent"
+                    >
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <PlatformBadge platform={ch.provider as Platform} size="sm" />
+                        <span className="truncate text-xs">{ch.displayName}</span>
+                      </div>
+                    </TabsTrigger>
+                  );
+                })}
               </TabsList>
 
               <div className="flex-1 h-full overflow-y-auto">
-                 {channels.map((ch) => {
-                   const id = ch._id || (ch as any).id;
-                   const cap = getPlatformCapability(ch.provider as Platform);
-                   
-                   return (
-                     <TabsContent key={id} value={id} className="m-0 p-6 space-y-6 animate-in fade-in slide-in-from-left-2 duration-200">
-                        <div className="flex items-center gap-3">
-                           <PlatformBadge platform={ch.provider as Platform} size="lg" />
-                           <h3 className="text-lg font-bold text-gray-900 dark:text-foreground">{ch.displayName}</h3>
-                        </div>
+                {channels.map((ch) => {
+                  const id = ch._id || (ch as any).id;
+                  const cap = getPlatformCapability(ch.provider as Platform);
+                  
+                  return (
+                    <TabsContent key={id} value={id} className="m-0 p-6 space-y-6 animate-in fade-in slide-in-from-left-2 duration-200">
+                      <div className="flex items-center gap-3">
+                        <PlatformBadge platform={ch.provider as Platform} size="lg" />
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-foreground">{ch.displayName}</h3>
+                      </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                           <div className="space-y-2">
-                              <h4 className="text-xs font-bold text-gray-400 dark:text-gray-300 uppercase">Media Support</h4>
-                              <div className="space-y-1">
-                                 <SupportItem supported={cap.supports.text} label="Text Posts" />
-                                 <SupportItem supported={cap.supports.images} label="Images" />
-                                 <SupportItem supported={cap.supports.videos} label="Videos" />
-                              </div>
-                           </div>
-                           <div className="space-y-2">
-                              <h4 className="text-xs font-bold text-gray-400 dark:text-gray-300 uppercase">Actions</h4>
-                              <div className="space-y-1">
-                                 <SupportItem supported={cap.supports.update} label="Edit Post" />
-                                 <SupportItem supported={cap.supports.delete} label="Delete Post" />
-                              </div>
-                           </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <h4 className="text-xs font-bold text-gray-400 dark:text-gray-300 uppercase">Media Support</h4>
+                          <div className="space-y-1">
+                            <SupportItem supported={cap.supports.text} label="Text Posts" />
+                            <SupportItem supported={cap.supports.images} label="Images" />
+                            <SupportItem supported={cap.supports.videos} label="Videos" />
+                          </div>
                         </div>
+                        <div className="space-y-2">
+                          <h4 className="text-xs font-bold text-gray-400 dark:text-gray-300 uppercase">Actions</h4>
+                          <div className="space-y-1">
+                            <SupportItem supported={cap.supports.update} label="Edit Post" />
+                            <SupportItem supported={cap.supports.delete} label="Delete Post" />
+                          </div>
+                        </div>
+                      </div>
 
-                        <div className="bg-gray-50 dark:bg-muted/30 rounded-lg p-4 border dark:border-border space-y-3">
-                           <h4 className="text-sm font-semibold text-gray-900 dark:text-foreground">Hard Limits</h4>
-                           <div className="grid grid-cols-2 gap-y-4 text-sm">
-                              <div>
-                                <span className="block text-xs text-gray-500 dark:text-gray-400">Max Text</span>
-                                <span className="font-medium text-gray-900 dark:text-white">{cap.limits.maxTextLength.toLocaleString()} chars</span>
-                              </div>
-                              <div>
-                                <span className="block text-xs text-gray-500 dark:text-gray-400">Max Images</span>
-                                <span className="font-medium text-gray-900 dark:text-white">{cap.limits.maxImages || 'N/A'}</span>
-                              </div>
-                              <div>
-                                <span className="block text-xs text-gray-500 dark:text-gray-400">Max Video Size</span>
-                                <span className="font-medium text-gray-900 dark:text-white">{cap.limits.maxVideoSize || 'N/A'}</span>
-                              </div>
-                              <div>
-                                <span className="block text-xs text-gray-500 dark:text-gray-400">Video Duration</span>
-                                <span className="font-medium text-gray-900 dark:text-white">{cap.limits.videoDuration || 'N/A'}</span>
-                              </div>
-                           </div>
+                      <div className="bg-gray-50 dark:bg-muted/30 rounded-lg p-4 border dark:border-border space-y-3">
+                        <h4 className="text-sm font-semibold text-gray-900 dark:text-foreground">Platform Limits</h4>
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <span className="block text-xs text-gray-500 dark:text-gray-400">Character Limit</span>
+                            <span className="font-medium text-gray-900 dark:text-white">{cap.limits.maxTextLength}</span>
+                          </div>
+                          <div>
+                            <span className="block text-xs text-gray-500 dark:text-gray-400">Max Images</span>
+                            <span className="font-medium text-gray-900 dark:text-white">{cap.limits.maxImages || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="block text-xs text-gray-500 dark:text-gray-400">Max Video Size</span>
+                            <span className="font-medium text-gray-900 dark:text-white">{cap.limits.maxVideoSize || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="block text-xs text-gray-500 dark:text-gray-400">Video Duration</span>
+                            <span className="font-medium text-gray-900 dark:text-white">{cap.limits.videoDuration || 'N/A'}</span>
+                          </div>
                         </div>
+                      </div>
 
-                        <div>
-                           <h4 className="text-sm font-semibold text-gray-900 dark:text-foreground mb-2">Platform Notes</h4>
-                           <ul className="space-y-2">
-                              {cap.warnings.map((w, i) => (
-                                 <li key={i} className="flex items-start gap-2 text-sm text-gray-600 dark:text-muted-foreground bg-amber-50 dark:bg-amber-950/30 p-2 rounded border border-amber-100 dark:border-amber-900/50">
-                                    <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500 mt-0.5 shrink-0" />
-                                    <span>{w.replace('⚠️', '').replace('❌', '').replace('✅', '')}</span>
-                                 </li>
-                              ))}
-                           </ul>
-                        </div>
-                     </TabsContent>
-                   )
-                 })}
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-900 dark:text-foreground mb-2">Platform Notes</h4>
+                        <ul className="space-y-2">
+                          {cap.warnings.map((w, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
+                              <span>{w.replace('⚠️', '').replace('❌', '').replace('✅', '')}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </TabsContent>
+                  );
+                })}
               </div>
             </Tabs>
           </div>
-          <DialogFooter className="p-4 border-t bg-white dark:bg-card">
-             <Button onClick={() => setShowWarnings(false)}>Close</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -734,7 +844,7 @@ const handlePublish = async () => {
               isDialogMode={true}
               initialSelectedIds={selectedLibraryMedia}
               onSelectionChange={setSelectedLibraryMedia}
-              initialMediaTypeFilter={mediaTypeFilter} // Pass the filter
+              initialMediaTypeFilter={mediaTypeFilter}
             />
           </div>
           <DialogFooter>
@@ -747,21 +857,20 @@ const handlePublish = async () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }
 
 function SupportItem({ supported, label }: { supported: boolean, label: string }) {
-   return (
-      <div className="flex items-center gap-2 text-sm">
-         {supported 
-            ? <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-500" />
-            : <XCircle className="h-4 w-4 text-gray-300 dark:text-gray-600" />
-         }
-         <span className={supported ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'}>
-            {label}
-         </span>
-      </div>
-   )
+  return (
+    <div className="flex items-center gap-2 text-sm">
+      {supported 
+        ? <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-500" />
+        : <XCircle className="h-4 w-4 text-gray-300 dark:text-gray-600" />
+      }
+      <span className={supported ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400 dark:text-gray-500'}>
+        {label}
+      </span>
+    </div>
+  );
 }
