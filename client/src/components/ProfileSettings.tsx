@@ -244,22 +244,17 @@ export const ProfileSettings: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Account Type</Label>
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary">
-                  {user.provider === 'google' ? 'Google Account' : 'Email Account'}
-                </Badge>
-                <span className="text-sm text-muted-foreground">
-                  Member since {new Date(user.createdAt).toLocaleDateString()}
-                </span>
-              </div>
-            </div>
-
-            <Button type="submit" disabled={loading}>
-              <Save className="mr-2 h-4 w-4" />
-              {loading ? 'Saving...' : 'Save Changes'}
-            </Button>
+<div className="flex items-center gap-3">
+  <Label>Account Type</Label>
+  <div className="flex items-center gap-2">
+    <Badge variant="secondary">
+      {user.provider === 'google' ? 'Google Account' : 'Email Account'}
+    </Badge>
+    <span className="text-sm text-muted-foreground">
+      Member since {new Date(user.createdAt).toLocaleDateString()}
+    </span>
+  </div>
+</div>
           </form>
         </CardContent>
       </Card>

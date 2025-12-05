@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useOrganization } from '@/contexts/OrganizationContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Trash2, Save, Building2 } from 'lucide-react';
+import { Trash2, Save, Building2, Eye } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,17 +18,22 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { OrganizationSelector } from '@/components/OrganizationSelector';
 import { CreateOrganizationDialog } from '@/components/CreateOrganizationDialog';
 
 export const OrganizationSettings: React.FC = () => {
   const { currentOrganization, updateOrganization, deleteOrganization } = useOrganization();
+  const permissions = usePermissions();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
   });
   const [loading, setLoading] = useState(false);
+
+  // Only owner can edit and delete
+  const canEdit = permissions.isOwner;
+  const canDelete = permissions.isOwner;
 
   useEffect(() => {
     if (currentOrganization) {
@@ -40,7 +46,7 @@ export const OrganizationSettings: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentOrganization) return;
+    if (!currentOrganization || !canEdit) return;
 
     setLoading(true);
     await updateOrganization(currentOrganization._id, formData);
@@ -48,7 +54,7 @@ export const OrganizationSettings: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (!currentOrganization) return;
+    if (!currentOrganization || !canDelete) return;
     await deleteOrganization(currentOrganization._id);
   };
 
@@ -93,6 +99,18 @@ export const OrganizationSettings: React.FC = () => {
         <CreateOrganizationDialog />
       </div>
 
+      {/* Read-only notice for non-owners */}
+      {!canEdit && (
+        <Alert>
+          <Eye className="h-4 w-4" />
+          <AlertTitle>View Only</AlertTitle>
+          <AlertDescription>
+            You don't have permission to edit this organization's settings. 
+            Only the organization owner can make changes.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
@@ -102,7 +120,9 @@ export const OrganizationSettings: React.FC = () => {
             <div>
               <CardTitle className="text-foreground">Organization Settings</CardTitle>
               <CardDescription>
-                Manage your organization details and settings
+                {canEdit 
+                  ? 'Manage your organization details and settings'
+                  : 'View organization details'}
               </CardDescription>
             </div>
           </div>
@@ -117,6 +137,7 @@ export const OrganizationSettings: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Enter organization name"
                 required
+                disabled={!canEdit}
                 className="bg-background"
               />
             </div>
@@ -129,6 +150,7 @@ export const OrganizationSettings: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Describe your organization..."
                 rows={3}
+                disabled={!canEdit}
                 className="bg-background"
               />
               <p className="text-xs text-muted-foreground">
@@ -136,39 +158,42 @@ export const OrganizationSettings: React.FC = () => {
               </p>
             </div>
 
-            <div className="flex justify-between pt-4 border-t border-border">
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button type="button" variant="destructive">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete Organization
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete your
-                      organization and all associated data including brands, posts, and channels.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction 
-                      onClick={handleDelete} 
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              
-              <Button type="submit" disabled={loading}>
-                <Save className="mr-2 h-4 w-4" />
-                {loading ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </div>
+            {/* Only show action buttons if user is owner */}
+            {canEdit && (
+              <div className="flex justify-between pt-4 border-t border-border">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button type="button" variant="destructive">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Organization
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete your
+                        organization and all associated data including brands, posts, and channels.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={handleDelete} 
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+                
+                <Button type="submit" disabled={loading}>
+                  <Save className="mr-2 h-4 w-4" />
+                  {loading ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            )}
           </form>
         </CardContent>
       </Card>
