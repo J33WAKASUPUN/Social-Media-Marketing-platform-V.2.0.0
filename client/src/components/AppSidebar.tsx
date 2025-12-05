@@ -9,7 +9,7 @@ import {
   LogOut,
   ChevronRight,
 } from "lucide-react";
-import { NavLink, useNavigate, useLocation } from "react-router-dom";
+import { NavLink, useNavigate, useLocation, Link } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
@@ -33,50 +33,58 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
+import { TourTrigger } from '@/components/TourTrigger';
 
-// Define menu items with permission requirements
+// Define menu items with permission requirements and tour IDs
 const menuItems = [
   { 
     title: "Dashboard", 
     url: "/dashboard", 
     icon: LayoutDashboard,
-    requiredPermission: null
+    requiredPermission: null,
+    tourId: "menu-dashboard"
   },
   { 
     title: "Submission History", 
     url: "/posts", 
     icon: FileText,
-    requiredPermission: 'canViewPosts'
+    requiredPermission: 'canViewPosts',
+    tourId: "menu-posts"
   },
   { 
     title: "Calendar", 
     url: "/calendar", 
     icon: Calendar,
-    requiredPermission: 'canViewPosts'
+    requiredPermission: 'canViewPosts',
+    tourId: "menu-calendar"
   },
   { 
     title: "Analytics", 
     url: "/analytics", 
     icon: BarChart3,
-    requiredPermission: 'canViewAnalytics'
+    requiredPermission: 'canViewAnalytics',
+    tourId: "menu-analytics"
   },
   { 
     title: "Channels", 
     url: "/channels", 
     icon: Share2,
-    requiredPermission: 'canConnectChannels'
+    requiredPermission: 'canConnectChannels',
+    tourId: "menu-channels"
   },
   { 
     title: "Media Library", 
     url: "/media", 
     icon: Image,
-    requiredPermission: 'canViewMedia'
+    requiredPermission: 'canViewMedia',
+    tourId: "menu-media"
   },
   { 
     title: "Settings", 
     url: "/settings", 
     icon: Settings,
-    requiredPermission: null
+    requiredPermission: null,
+    tourId: "menu-settings"
   },
 ];
 
@@ -109,13 +117,13 @@ export function AppSidebar() {
 
   return (
     <TooltipProvider delayDuration={100} skipDelayDuration={0}>
-      <Sidebar collapsible="icon">
+      <Sidebar data-tour="sidebar" collapsible="icon">
         <SidebarContent>
           <SidebarGroup>
             {/* Logo */}
             <SidebarGroupLabel className="px-4 py-6">
               <NavLink to="/dashboard" className="flex items-center gap-0">
-                  <img 
+                <img 
                   src="/logo.png" 
                   alt="SocialFlow" 
                   className="h-10 w-10"
@@ -136,7 +144,7 @@ export function AppSidebar() {
                   const Icon = item.icon;
 
                   return (
-                    <SidebarMenuItem key={item.title}>
+                    <SidebarMenuItem key={item.title} data-tour={item.tourId}>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <SidebarMenuButton

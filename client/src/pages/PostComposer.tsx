@@ -243,7 +243,7 @@ const handlePublish = async () => {
     if (uploadedFiles.length > 0) {
       const uploadResponse = await mediaApi.upload(uploadedFiles, {
         brandId: currentBrand._id, 
-        folder: 'Default', // EXPLICITLY SET TO "Default" (capital D)
+        folder: 'Default' // EXPLICITLY SET TO "Default" (capital D)
       });
       uploadedMediaIds = uploadResponse.data.map((m: Media) => m._id);
       console.log('✅ Uploaded media to Default folder:', uploadedMediaIds);
@@ -332,75 +332,43 @@ const handlePublish = async () => {
 
   return (
     <div className="min-h-screen bg-gray-50/30 dark:bg-background p-4 md:p-6">
-      {/* Prevents container from exploding on large screens */}
       <div className="mx-auto max-w-6xl space-y-6">
         
         <PageHeader title="Create Post" description="Compose and schedule your social media post" />
 
-        {/* CSS Grid forces the sidebar to respect width */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          
-          {/* LEFT COLUMN: Main Composer (Takes up 8/12 columns on Large screens) */}
-          <div className="lg:col-span-8 space-y-6 min-w-0">
-            <Card className="border-none shadow-md overflow-hidden">
-              <CardHeader className="border-b bg-white dark:bg-card px-6 py-4">
-                <CardTitle className="text-lg text-gray-800 dark:text-foreground">Compose</CardTitle>
+          {/* LEFT COLUMN - Content Editor */}
+          <div className="lg:col-span-7 space-y-5">
+            <Card className="shadow-md border-0">
+              <CardHeader className="pb-3 border-b bg-muted/30">
+                <CardTitle className="text-base font-semibold text-foreground">Post Content</CardTitle>
               </CardHeader>
-              
-              <CardContent className="p-6 space-y-6 bg-card">
-                
-                {/* 1. PLATFORM SELECTOR (Grid Layout) */}
-                <PlatformSelector
-                  channels={channels}
-                  selectedChannel={selectedChannel}
-                  onSelectChannel={handleChannelSelect}
-                  onViewCapabilities={() => setShowWarnings(true)}
-                  loading={loading}
-                />
-
-                <div className="h-px bg-gray-100 dark:bg-border" />
-
-                {/* 2. TEXT AREA */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700 dark:text-foreground">Content</Label>
+              <CardContent className="p-5 space-y-5 bg-card">
+                {/* Content Editor */}
+                <div className="space-y-3" data-tour="content-editor">
+                  <Label className="text-sm font-medium text-foreground">Caption</Label>
                   <div className="relative">
                     <Textarea
-                      ref={contentTextareaRef}
-                      placeholder={selectedPlatform ? `Write for ${selectedPlatform}...` : "What do you want to share?"}
-                      className="min-h-[200px] resize-none text-base p-4 border-gray-200 dark:border-border focus-visible:ring-violet-500 bg-background"
+                      placeholder="What's on your mind? Write your post here..."
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
-                      maxLength={maxChars}
-                      disabled={loading}
+                      className="min-h-[180px] text-base resize-none pr-12 bg-background border-input focus:border-primary focus:ring-1 focus:ring-primary"
                     />
-                    <div className="absolute bottom-3 right-3 flex items-center gap-2 bg-white/90 dark:bg-card/90 px-2 py-1 rounded text-xs text-gray-500 dark:text-muted-foreground border shadow-sm">
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full">
-                            <Smile className="h-4 w-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 border-0">
-                          <EmojiPicker
-                            emojiStyle={EmojiStyle.NATIVE}
-                            onEmojiClick={handleEmojiClick}
-                            width={350}
-                            height={400}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <span className={content.length > maxChars * 0.9 ? 'text-red-500 font-bold' : ''}>
-                        {content.length}
-                      </span>
-                      <span>/</span>
-                      <span>{maxChars}</span>
-                    </div>
+                    {/* Emoji picker and character count can be added here if needed */}
+                  </div>
+                  {/* Character count */}
+                  <div className="flex justify-between items-center text-xs">
+                    <span className={content.length > maxChars * 0.9 ? 'text-red-500 font-bold' : ''}>
+                      {content.length}
+                    </span>
+                    <span>/</span>
+                    <span>{maxChars}</span>
                   </div>
                 </div>
 
-                {/* HASHTAGS */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700 dark:text-foreground">Hashtags</Label>
+                {/* Hashtags */}
+                <div className="space-y-3" data-tour="hashtag-input">
+                  <Label className="text-sm font-medium text-foreground">Hashtags</Label>
                   <div className="flex flex-wrap gap-2">
                     {hashtags.map((tag, index) => (
                       <Badge key={index} variant="secondary" className="flex items-center gap-1">
@@ -421,42 +389,44 @@ const handlePublish = async () => {
                   />
                 </div>
 
-                {/* 3. MEDIA */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700 dark:text-foreground">Media</Label>
+                {/* Media Selector */}
+                <div data-tour="media-selector">
                   <MediaSelector
                     canAddMedia={canAddMedia}
                     allowedMediaTypes={allowedMediaTypes}
                     selectedLibraryMedia={selectedLibraryMedia}
-                    uploadedFiles={uploadedFiles}
+                    uploadedFiles={[]}
                     libraryMedia={libraryMedia}
-                    onOpenLibrary={openMediaLibrary}
-                    onFileSelect={handleFileSelect}
-                    onRemoveLibraryMedia={removeLibraryMedia}
-                    onRemoveUploadedFile={removeUploadedFile}
-                    loading={loading}
+                    onOpenLibrary={() => setShowMediaLibrary(true)}
+                    onFileSelect={() => {}}
+                    onRemoveLibraryMedia={handleRemoveLibraryMedia}
+                    onRemoveUploadedFile={() => {}}
                   />
                 </div>
-
-                {/* 4. IN-LINE WARNINGS */}
-                {hasLimitations && selectedChannel && (
-                  <div className="animate-in fade-in slide-in-from-top-2">
-                    <PlatformWarnings
-                      warnings={warnings}
-                      onViewAll={() => setShowWarnings(true)}
-                    />
-                  </div>
-                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* RIGHT COLUMN: Sidebar (Takes up 4/12 columns on Large screens) */}
-          <div className="lg:col-span-4 space-y-6 sticky top-6">
-            
-            {/* PUBLISH SETTINGS */}
-            <Card className="border-none shadow-md">
-              <CardHeader className="border-b px-5 py-4 bg-white dark:bg-card">
+          {/* RIGHT COLUMN - Settings & Preview */}
+          <div className="lg:col-span-5 space-y-5">
+            {/* Platform Selector */}
+            <Card className="shadow-md border-0" data-tour="platform-selector">
+              <CardHeader className="pb-3 border-b bg-muted/30">
+                <CardTitle className="text-base font-semibold text-foreground">Select Platform</CardTitle>
+              </CardHeader>
+              <CardContent className="p-5 bg-card">
+                <PlatformSelector
+                  channels={channels}
+                  selectedChannel={selectedChannel}
+                  onSelectChannel={setSelectedChannel}
+                  onViewCapabilities={() => setShowCapabilities(true)}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Schedule Options */}
+            <Card className="shadow-md border-0" data-tour="schedule-options">
+              <CardHeader className="pb-3 border-b bg-muted/30">
                 <CardTitle className="text-base font-semibold text-foreground">Publish Settings</CardTitle>
               </CardHeader>
               <CardContent className="p-5 space-y-5 bg-card">
@@ -532,12 +502,16 @@ const handlePublish = async () => {
               </CardContent>
             </Card>
 
-            {/* ENHANCED PREVIEW CARD */}
-            <Card className="border shadow-sm overflow-hidden bg-gray-50/50 dark:bg-card">
-              <div className="p-2 border-b bg-white/80 dark:bg-card/80 backdrop-blur text-center">
-                <span className="text-xs font-medium text-gray-500 dark:text-muted-foreground uppercase tracking-wide">Live Preview</span>
-              </div>
-              <CardContent className="p-4">
+            {/* Preview Panel */}
+            <Card className="shadow-md border-0" data-tour="preview-panel">
+              <CardHeader className="pb-3 border-b bg-muted/30">
+                <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
+                  <Eye className="h-4 w-4" />
+                  Live Preview
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-5 bg-card">
+                {/* Preview content based on selectedPlatform, content, hashtags, and media */}
                 {!selectedPlatform ? (
                   <div className="h-48 flex flex-col items-center justify-center text-center text-gray-400 dark:text-muted-foreground border-2 border-dashed border-gray-200 dark:border-border rounded-lg bg-white dark:bg-muted/20">
                     <Send className="h-8 w-8 mb-2 opacity-20" />

@@ -8,10 +8,12 @@ import { OrganizationProvider } from "@/contexts/OrganizationContext";
 import { BrandProvider } from "@/contexts/BrandContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { TourProvider } from "@/contexts/TourContext";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { WelcomeTourDialog } from "@/components/WelcomeTourDialog";
 
 // Pages
 import Login from "@/pages/Login";
@@ -42,6 +44,8 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => (
         <main className="animate-fade-in">{children}</main>
       </div>
     </div>
+    {/* Welcome Tour Dialog - Shows for new users */}
+    <WelcomeTourDialog />
   </SidebarProvider>
 );
 
@@ -52,117 +56,120 @@ const App = () => (
         <OrganizationProvider>
           <BrandProvider>
             <NotificationProvider>
-              <TooltipProvider>
-                <Toaster />
-                <Sonner />
-                <BrowserRouter>
-                  <Routes>
-                    {/* Public Routes */}
-                    <Route path="/" element={<Navigate to="/login" replace />} />
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<Register />} />
-                    <Route path="/forgot-password" element={<ForgotPassword />} />
-                    <Route path="/reset-password" element={<ResetPassword />} />
-                    <Route path="/auth/callback" element={<GoogleCallback />} />
-                    <Route path="/2fa-verify" element={<TwoFactorVerify />} />
+              {/* TourProvider must wrap components that use useTour */}
+              <TourProvider>
+                <TooltipProvider>
+                  <Toaster />
+                  <Sonner />
+                  <BrowserRouter>
+                    <Routes>
+                      {/* Public Routes */}
+                      <Route path="/" element={<Navigate to="/login" replace />} />
+                      <Route path="/login" element={<Login />} />
+                      <Route path="/register" element={<Register />} />
+                      <Route path="/forgot-password" element={<ForgotPassword />} />
+                      <Route path="/reset-password" element={<ResetPassword />} />
+                      <Route path="/auth/callback" element={<GoogleCallback />} />
+                      <Route path="/2fa-verify" element={<TwoFactorVerify />} />
 
-                    {/* Protected Routes */}
-                    <Route
-                      path="/dashboard"
-                      element={
-                        <ProtectedRoute>
-                          <MainLayout>
-                            <Dashboard />
-                          </MainLayout>
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/posts"
-                      element={
-                        <ProtectedRoute>
-                          <MainLayout>
-                            <Posts />
-                          </MainLayout>
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/posts/new"
-                      element={
-                        <ProtectedRoute>
-                          <MainLayout>
-                            <PostComposer />
-                          </MainLayout>
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/posts/edit/:id"
-                      element={
-                        <ProtectedRoute>
-                          <MainLayout>
-                            <EditPost />
-                          </MainLayout>
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/calendar"
-                      element={
-                        <ProtectedRoute>
-                          <MainLayout>
-                            <Calendar />
-                          </MainLayout>
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/analytics"
-                      element={
-                        <ProtectedRoute>
-                          <MainLayout>
-                            <Analytics />
-                          </MainLayout>
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/channels"
-                      element={
-                        <ProtectedRoute>
-                          <MainLayout>
-                            <Channels />
-                          </MainLayout>
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/media"
-                      element={
-                        <ProtectedRoute>
-                          <MainLayout>
-                            <Media />
-                          </MainLayout>
-                        </ProtectedRoute>
-                      }
-                    />
-                    <Route
-                      path="/settings"
-                      element={
-                        <ProtectedRoute>
-                          <MainLayout>
-                            <Settings />
-                          </MainLayout>
-                        </ProtectedRoute>
-                      }
-                    />
+                      {/* Protected Routes */}
+                      <Route
+                        path="/dashboard"
+                        element={
+                          <ProtectedRoute>
+                            <MainLayout>
+                              <Dashboard />
+                            </MainLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/posts"
+                        element={
+                          <ProtectedRoute>
+                            <MainLayout>
+                              <Posts />
+                            </MainLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/posts/new"
+                        element={
+                          <ProtectedRoute>
+                            <MainLayout>
+                              <PostComposer />
+                            </MainLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/posts/edit/:id"
+                        element={
+                          <ProtectedRoute>
+                            <MainLayout>
+                              <EditPost />
+                            </MainLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/calendar"
+                        element={
+                          <ProtectedRoute>
+                            <MainLayout>
+                              <Calendar />
+                            </MainLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/analytics"
+                        element={
+                          <ProtectedRoute>
+                            <MainLayout>
+                              <Analytics />
+                            </MainLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/channels"
+                        element={
+                          <ProtectedRoute>
+                            <MainLayout>
+                              <Channels />
+                            </MainLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/media"
+                        element={
+                          <ProtectedRoute>
+                            <MainLayout>
+                              <Media />
+                            </MainLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/settings"
+                        element={
+                          <ProtectedRoute>
+                            <MainLayout>
+                              <Settings />
+                            </MainLayout>
+                          </ProtectedRoute>
+                        }
+                      />
 
-                    {/* 404 */}
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </BrowserRouter>
-              </TooltipProvider>
+                      {/* 404 */}
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </BrowserRouter>
+                </TooltipProvider>
+              </TourProvider>
             </NotificationProvider>
           </BrandProvider>
         </OrganizationProvider>

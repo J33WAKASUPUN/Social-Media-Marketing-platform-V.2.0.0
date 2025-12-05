@@ -769,7 +769,7 @@ const Dashboard = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4" data-tour="stats-overview">
         <StatCard
           title="Total Posts"
           value={stats.total}
@@ -815,160 +815,120 @@ const Dashboard = () => {
         {/* Left Column - 2/3 width */}
         <div className="lg:col-span-2 space-y-6">
           {/* Quick Actions */}
-{permissions.canCreatePosts && (
-  <Card className="shadow-md">
-    <CardHeader className="pb-4">
-      <div className="flex items-center gap-2">
-        <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
-          <Zap className="h-5 w-5 text-amber-600" />
-        </div>
-        <CardTitle className="text-lg">Quick Actions</CardTitle>
-      </div>
-    </CardHeader>
-    <CardContent>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <QuickActionCard
-          icon={Plus}
-          label="Create Post"
-          description="Schedule content for your channels"
-          onClick={() => navigate('/posts/new')}
-          gradient="from-violet-500 to-purple-600"
-        />
-        <QuickActionCard
-          icon={Calendar}
-          label="View Calendar"
-          description="See your content schedule"
-          onClick={() => navigate('/calendar')}
-          gradient="from-blue-500 to-cyan-500"
-          badge={stats.next7Days > 0 ? `${stats.next7Days} upcoming` : undefined}
-        />
-        <QuickActionCard
-          icon={Share2}
-          label="Connect Channel"
-          description="Add new social media accounts"
-          onClick={() => navigate('/channels')}
-          gradient="from-emerald-500 to-green-500"
-        />
-        <QuickActionCard
-          icon={BarChart3}
-          label="View Analytics"
-          description="Track your performance"
-          onClick={() => navigate('/analytics')}
-          gradient="from-orange-500 to-red-500"
-        />
-      </div>
-    </CardContent>
-  </Card>
-)}
-
-          {/* Upcoming Posts with Timeline */}
-<Card className="shadow-md">
-  <CardHeader className="flex flex-row items-center justify-between pb-4">
-    <div className="flex items-center gap-2">
-      <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-        <CalendarDays className="h-5 w-5 text-blue-600" />
-      </div>
-      <div>
-        <CardTitle className="text-lg">Upcoming Posts</CardTitle>
-        <CardDescription>
-          {stats.next7Days} posts in the next 7 days
-        </CardDescription>
-      </div>
-    </div>
-    {upcomingPosts.length > 0 && (
-      <Button variant="ghost" size="sm" onClick={() => navigate('/calendar')} className="gap-1">
-        View All
-        <ChevronRight className="h-4 w-4" />
-      </Button>
-    )}
-  </CardHeader>
-  <CardContent>
-    {upcomingPosts.length > 0 ? (
-      <div className="space-y-1">
-        {upcomingPosts.map((post, index) => (
-          <UpcomingPostCard
-            key={post._id}
-            post={post}
-            // ✅ Viewers go to posts list, others can edit
-            onClick={() => permissions.canCreatePosts 
-              ? navigate(`/posts/edit/${post._id}`)
-              : navigate('/posts')
-            }
-            isFirst={index === 0}
-          />
-        ))}
-      </div>
-    ) : (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
-          <Calendar className="h-8 w-8 text-muted-foreground" />
-        </div>
-        <p className="text-base font-medium">No upcoming posts</p>
-        <p className="text-sm text-muted-foreground mt-1 mb-4">
-          {permissions.canCreatePosts 
-            ? 'Schedule your first post to see it here'
-            : 'No scheduled posts to display'}
-        </p>
-        {/* ✅ Only show Create Post button if user has permission */}
-        {permissions.canCreatePosts && (
-          <Button size="sm" onClick={() => navigate('/posts/new')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Post
-          </Button>
-        )}
-      </div>
-    )}
-  </CardContent>
-</Card>
-
-          {/* Platform Performance */}
-          {platformStats.length > 0 && (
-            <Card className="shadow-md">
+          {permissions.canCreatePosts && (
+            <Card className="shadow-md" data-tour="quick-actions">
               <CardHeader className="pb-4">
                 <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-900/30">
-                    <Activity className="h-5 w-5 text-violet-600" />
+                  <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
+                    <Zap className="h-5 w-5 text-amber-600" />
                   </div>
-                  <div>
-                    <CardTitle className="text-lg">Platform Distribution</CardTitle>
-                    <CardDescription>
-                      Posts across your connected platforms
-                    </CardDescription>
-                  </div>
+                  <CardTitle className="text-lg">Quick Actions</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
-                <PlatformDistribution platformStats={platformStats} total={stats.total} />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <QuickActionCard
+                    icon={Plus}
+                    label="Create Post"
+                    description="Schedule content for your channels"
+                    onClick={() => navigate('/posts/new')}
+                    gradient="from-violet-500 to-purple-600"
+                  />
+                  <QuickActionCard
+                    icon={Calendar}
+                    label="View Calendar"
+                    description="See your content schedule"
+                    onClick={() => navigate('/calendar')}
+                    gradient="from-blue-500 to-cyan-500"
+                    badge={stats.next7Days > 0 ? `${stats.next7Days} upcoming` : undefined}
+                  />
+                  {/* Only show Connect Channel if user has permission */}
+                  {permissions.canConnectChannels && (
+                    <QuickActionCard
+                      icon={Share2}
+                      label="Connect Channel"
+                      description="Add new social media accounts"
+                      onClick={() => navigate('/channels')}
+                      gradient="from-emerald-500 to-green-500"
+                    />
+                  )}
+                  {/* Only show View Analytics if user has permission */}
+                  {permissions.canViewAnalytics && (
+                    <QuickActionCard
+                      icon={BarChart3}
+                      label="View Analytics"
+                      description="Track your performance"
+                      onClick={() => navigate('/analytics')}
+                      gradient="from-orange-500 to-red-500"
+                    />
+                  )}
+                </div>
               </CardContent>
             </Card>
           )}
 
-          {/* FAILED POSTS ALERT - MOVED HERE */}
-          {stats.failed > 0 && (
-            <Alert 
-              variant="destructive" 
-              className="shadow-lg border-red-200 bg-red-50 text-red-800 dark:bg-red-900/20 dark:border-red-900 dark:text-red-300"
-            >
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Attention Required</AlertTitle>
-              <AlertDescription className="flex items-center justify-between mt-2 sm:mt-0">
-                <span>
-                  You have <strong>{stats.failed}</strong> failed post{stats.failed > 1 ? 's' : ''} that need attention.
-                </span>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => navigate('/posts')} 
-                  className="ml-4 border-red-200 bg-white hover:bg-red-50 text-red-700 dark:bg-red-950 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-900/50"
-                >
-                  View Posts
+          {/* Upcoming Posts with Timeline */}
+          <Card className="shadow-md" data-tour="upcoming-posts">
+            <CardHeader className="flex flex-row items-center justify-between pb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                  <CalendarDays className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Upcoming Posts</CardTitle>
+                  <CardDescription>
+                    {stats.next7Days} posts in the next 7 days
+                  </CardDescription>
+                </div>
+              </div>
+              {upcomingPosts.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={() => navigate('/calendar')} className="gap-1">
+                  View All
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
-              </AlertDescription>
-            </Alert>
-          )}
+              )}
+            </CardHeader>
+            <CardContent>
+              {upcomingPosts.length > 0 ? (
+                <div className="space-y-1">
+                  {upcomingPosts.map((post, index) => (
+                    <UpcomingPostCard
+                      key={post._id}
+                      post={post}
+                      // ✅ Viewers go to posts list, others can edit
+                      onClick={() => permissions.canCreatePosts 
+                        ? navigate(`/posts/edit/${post._id}`)
+                        : navigate('/posts')
+                      }
+                      isFirst={index === 0}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+                    <Calendar className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <p className="text-base font-medium">No upcoming posts</p>
+                  <p className="text-sm text-muted-foreground mt-1 mb-4">
+                    {permissions.canCreatePosts 
+                      ? 'Schedule your first post to see it here'
+                      : 'No scheduled posts to display'}
+                  </p>
+                  {/* ✅ Only show Create Post button if user has permission */}
+                  {permissions.canCreatePosts && (
+                    <Button size="sm" onClick={() => navigate('/posts/new')}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Post
+                    </Button>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Right Column - 1/3 width */}
+        {/* Right Column */}
         <div className="space-y-6">
           {/* Recent Activity */}
           <Card className="shadow-md">
@@ -1016,20 +976,20 @@ const Dashboard = () => {
 
           {/* Connected Channels */}
           <Card className="shadow-md">
-  <CardHeader className="flex flex-row items-center justify-between pb-4">
-    <div className="flex items-center gap-2">
-      <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-        <Share2 className="h-5 w-5 text-blue-600" />
-      </div>
-      <CardTitle className="text-lg">Channels</CardTitle>
-    </div>
-    {/* ✅ Only show Manage button if user can connect channels */}
-    {permissions.canConnectChannels && (
-      <Button variant="ghost" size="sm" onClick={() => navigate('/channels')}>
-        Manage
-      </Button>
-    )}
-  </CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between pb-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                  <Share2 className="h-5 w-5 text-blue-600" />
+                </div>
+                <CardTitle className="text-lg">Channels</CardTitle>
+              </div>
+              {/* ✅ Only show Manage button if user can connect channels */}
+              {permissions.canConnectChannels && (
+                <Button variant="ghost" size="sm" onClick={() => navigate('/channels')}>
+                  Manage
+                </Button>
+              )}
+            </CardHeader>
             <CardContent>
               {channels.length > 0 ? (
                 <div className="space-y-2">

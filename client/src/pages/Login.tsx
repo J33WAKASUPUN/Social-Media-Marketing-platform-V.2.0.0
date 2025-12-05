@@ -219,7 +219,7 @@ export default function Login() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30 transition-all duration-200 hover:shadow-xl hover:shadow-violet-500/40"
+              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30 transition-all duration-200 hover:shadow-l hover:shadow-violet-500/40"
             >
               {loading ? (
                 <div className="flex items-center gap-2">

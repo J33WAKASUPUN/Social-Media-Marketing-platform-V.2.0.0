@@ -1,4 +1,4 @@
-import { Bell } from "lucide-react";
+import { Bell, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -11,6 +11,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotification } from "@/contexts/NotificationContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useNavigate } from "react-router-dom";
 import { OrganizationSelector } from "./OrganizationSelector";
 import { BrandSelector } from "./BrandSelector";
@@ -50,6 +51,7 @@ const notificationColors: Record<string, string> = {
 
 export function AppHeader() {
   const { user } = useAuth();
+  const permissions = usePermissions(); // Use the usePermissions hook instead
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotification();
   const navigate = useNavigate();
 
@@ -71,8 +73,12 @@ export function AppHeader() {
         {/* Left side - Sidebar Trigger, Organization & Brand Selector */}
         <div className="flex items-center gap-4">
           <SidebarTrigger />
-          <OrganizationSelector />
-          <BrandSelector />
+          <div data-tour="organization-selector">
+            <OrganizationSelector />
+          </div>
+          <div data-tour="brand-selector">
+            <BrandSelector />
+          </div>
         </div>
 
         {/* Right side - Actions */}
@@ -83,14 +89,14 @@ export function AppHeader() {
           {/* Notifications Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-<Button variant="outline" size="icon" className="relative border">
-  <Bell className="h-5 w-5" />
-  {unreadCount > 0 && (
-    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground flex items-center justify-center">
-      {unreadCount > 9 ? '9+' : unreadCount}
-    </span>
-  )}
-</Button>
+              <Button variant="outline" size="icon" className="relative border" data-tour="notifications">
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80">
               <div className="flex items-center justify-between px-4 py-2 border-b">
@@ -161,50 +167,6 @@ export function AppHeader() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-
-          {/* User Avatar */}
-          {/* <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.avatarUrl || user?.avatar} alt={user?.name} />
-                  <AvatarFallback className="bg-primary text-primary-foreground">
-                    {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <div className="flex items-center gap-2 p-2">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={user?.avatarUrl || user?.avatar} alt={user?.name} />
-                  <AvatarFallback className="bg-primary text-primary-foreground">
-                    {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium">{user?.name}</span>
-                  <span className="text-xs text-muted-foreground">{user?.email}</span>
-                </div>
-              </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/settings')}>
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={() => {
-                  localStorage.clear();
-                  window.location.href = '/login';
-                }}
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                Log out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu> */}
         </div>
       </div>
     </header>
