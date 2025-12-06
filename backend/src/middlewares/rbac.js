@@ -48,54 +48,37 @@ const requireRole = (roles) => {
 };
 
 /**
- * ✅ FIXED: Check brandId in params, query, AND body
+ * Check if user has required permission
  */
 const requirePermission = (permission) => {
   return async (req, res, next) => {
     try {
+      const { brandId } = req.params;
       const userId = req.user._id;
-      
-      // ✅ FIX: Check params, query, AND body for brandId
-      const brandId = req.params.brandId || req.query.brandId || req.body.brandId;
 
       if (!brandId) {
         return res.status(400).json({
           success: false,
-          message: 'Brand ID is required in params, query, or body',
+          message: 'Brand ID is required',
         });
       }
 
-      // Check direct brand membership
-      let membership = await Membership.findOne({
+      const membership = await Membership.findOne({
         user: userId,
         brand: brandId,
       });
 
-      // If no direct membership, check organization-level
-      if (!membership) {
-        const brand = await Brand.findById(brandId).populate('organization');
-        if (brand && brand.organization) {
-          membership = await Membership.findOne({
-            user: userId,
-            organization: brand.organization._id,
-          });
-        }
-      }
-
       if (!membership) {
         return res.status(403).json({
           success: false,
-          message: 'Access denied - You are not a member of this brand or organization',
+          message: 'Access denied',
         });
       }
 
-      // Check permission
       if (!membership.hasPermission(permission)) {
         return res.status(403).json({
           success: false,
-          message: `Access denied - Required permission: ${permission}`,
-          userRole: membership.role,
-          userPermissions: membership.permissions,
+          message: `Permission required: ${permission}`,
         });
       }
 
