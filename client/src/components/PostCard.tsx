@@ -57,6 +57,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { getPlatformCapability } from "@/lib/platformCapabilities";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { sanitizeText, sanitizeHTML } from '@/lib/sanitize';
 
 interface PostCardProps {
   post: Post;
@@ -103,7 +104,12 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
   
   const statusStyle = statusConfig[post.status] || statusConfig.draft;
   const StatusIcon = statusStyle.icon;
-  const contentPreview = post.content.length > 100 ? post.content.slice(0, 100) + "..." : post.content;
+  
+  // Sanitize content before displaying
+  const sanitizedContent = sanitizeText(post.content);
+  const contentPreview = sanitizedContent.length > 100 
+    ? sanitizedContent.slice(0, 100) + "..." 
+    : sanitizedContent;
 
   const mediaUrls = post.mediaUrls || [];
   const isVideo = post.mediaType === 'video';

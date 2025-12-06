@@ -24,6 +24,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, FileText, Loader2, HelpCircle, CheckCircle, ExternalLink, Archive, Eye, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { sanitizeText } from '@/lib/sanitize';
 import { useBrand } from "@/contexts/BrandContext";
 import { postApi } from "@/services/postApi";
 import { Post } from "@/types";
@@ -67,27 +68,31 @@ export default function Posts() {
     }
   };
 
+  // Sanitize search query to prevent XSS
+  const sanitizedSearchQuery = sanitizeText(searchQuery);
+
   // Filter posts by status AND platform
   const getPostsByStatus = (status?: Post['status']) => {
-    let filtered = posts;
+    let filtered = status 
+      ? posts.filter((p) => p.status === status) 
+      : posts;
 
-    // Filter by status
-    if (status) {
-      filtered = filtered.filter(post => post.status === status);
-    }
-
-    // Filter by platform
+    // Apply platform filter
     if (filterPlatform !== 'all') {
-      filtered = filtered.filter(post => 
-        post.schedules?.some(s => s.channel.provider === filterPlatform)
+      filtered = filtered.filter(p => 
+        p.schedules?.some(s => s.channel.provider === filterPlatform)
       );
     }
 
-    // Filter by search query
-    if (searchQuery) {
-      filtered = filtered.filter(post => 
-        post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.title?.toLowerCase().includes(searchQuery.toLowerCase())
+    // Apply search filter (sanitized)
+    if (sanitizedSearchQuery.trim()) {
+      const query = sanitizedSearchQuery.toLowerCase();
+      filtered = filtered.filter((p) =>
+        sanitizeText(p.content).toLowerCase().includes(query) ||
+        sanitizeText(p.title || '').toLowerCase().includes(query) ||
+        (p.hashtags && p.hashtags.some(tag => 
+          sanitizeText(tag).toLowerCase().includes(query)
+        ))
       );
     }
 
