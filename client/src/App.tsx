@@ -14,6 +14,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { WelcomeTourDialog } from "@/components/WelcomeTourDialog";
+import { RoleProtectedRoute } from '@/components/RoleProtectedRoute';
 
 // Pages
 import Login from "@/pages/Login";
@@ -69,10 +70,10 @@ const App = () => (
                       <Route path="/register" element={<Register />} />
                       <Route path="/forgot-password" element={<ForgotPassword />} />
                       <Route path="/reset-password" element={<ResetPassword />} />
-                      <Route path="/auth/callback" element={<GoogleCallback />} />
-                      <Route path="/2fa-verify" element={<TwoFactorVerify />} />
+                      <Route path="/google/callback" element={<GoogleCallback />} />
+                      <Route path="/verify-2fa" element={<TwoFactorVerify />} />
 
-                      {/* Protected Routes */}
+                      {/* Protected Routes - Require Authentication */}
                       <Route
                         path="/dashboard"
                         element={
@@ -83,76 +84,106 @@ const App = () => (
                           </ProtectedRoute>
                         }
                       />
+
+                      {/* ✅ Posts - Require canViewPosts */}
                       <Route
                         path="/posts"
                         element={
                           <ProtectedRoute>
-                            <MainLayout>
-                              <Posts />
-                            </MainLayout>
+                            <RoleProtectedRoute requiredPermission="canViewPosts">
+                              <MainLayout>
+                                <Posts />
+                              </MainLayout>
+                            </RoleProtectedRoute>
                           </ProtectedRoute>
                         }
                       />
+
+                      {/* ✅ Create Post - Require canCreatePosts */}
                       <Route
                         path="/posts/new"
                         element={
                           <ProtectedRoute>
-                            <MainLayout>
-                              <PostComposer />
-                            </MainLayout>
+                            <RoleProtectedRoute requiredPermission="canCreatePosts">
+                              <MainLayout>
+                                <PostComposer />
+                              </MainLayout>
+                            </RoleProtectedRoute>
                           </ProtectedRoute>
                         }
                       />
+
+                      {/* ✅ Edit Post - Require canCreatePosts */}
                       <Route
                         path="/posts/edit/:id"
                         element={
                           <ProtectedRoute>
-                            <MainLayout>
-                              <EditPost />
-                            </MainLayout>
+                            <RoleProtectedRoute requiredPermission="canCreatePosts">
+                              <MainLayout>
+                                <EditPost />
+                              </MainLayout>
+                            </RoleProtectedRoute>
                           </ProtectedRoute>
                         }
                       />
+
+                      {/* ✅ Calendar - Require canViewPosts */}
                       <Route
                         path="/calendar"
                         element={
                           <ProtectedRoute>
-                            <MainLayout>
-                              <Calendar />
-                            </MainLayout>
+                            <RoleProtectedRoute requiredPermission="canViewPosts">
+                              <MainLayout>
+                                <Calendar />
+                              </MainLayout>
+                            </RoleProtectedRoute>
                           </ProtectedRoute>
                         }
                       />
+
+                      {/* ✅ Analytics - Require canViewAnalytics */}
                       <Route
                         path="/analytics"
                         element={
                           <ProtectedRoute>
-                            <MainLayout>
-                              <Analytics />
-                            </MainLayout>
+                            <RoleProtectedRoute requiredPermission="canViewAnalytics">
+                              <MainLayout>
+                                <Analytics />
+                              </MainLayout>
+                            </RoleProtectedRoute>
                           </ProtectedRoute>
                         }
                       />
+
+                      {/* ✅ Channels - Require canConnectChannels */}
                       <Route
                         path="/channels"
                         element={
                           <ProtectedRoute>
-                            <MainLayout>
-                              <Channels />
-                            </MainLayout>
+                            <RoleProtectedRoute requiredPermission="canConnectChannels">
+                              <MainLayout>
+                                <Channels />
+                              </MainLayout>
+                            </RoleProtectedRoute>
                           </ProtectedRoute>
                         }
                       />
+
+                      {/* ✅ Media Library - Require canViewMedia */}
                       <Route
                         path="/media"
                         element={
                           <ProtectedRoute>
-                            <MainLayout>
-                              <Media />
-                            </MainLayout>
+                            <RoleProtectedRoute requiredPermission="canViewMedia">
+                              <MainLayout>
+                                <Media />
+                              </MainLayout>
+                            </RoleProtectedRoute>
                           </ProtectedRoute>
                         }
                       />
+
+                      {/* Settings - No special permission required (all users can access) */}
                       <Route
                         path="/settings"
                         element={
