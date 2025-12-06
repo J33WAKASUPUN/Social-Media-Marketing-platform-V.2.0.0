@@ -16,6 +16,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { WelcomeTourDialog } from "@/components/WelcomeTourDialog";
 import { RoleProtectedRoute } from '@/components/RoleProtectedRoute';
 
+
 // Pages
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
@@ -33,6 +34,7 @@ import Channels from "@/pages/Channels";
 import Media from "@/pages/Media";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
+
 
 const queryClient = new QueryClient();
 
@@ -70,8 +72,8 @@ const App = () => (
                       <Route path="/register" element={<Register />} />
                       <Route path="/forgot-password" element={<ForgotPassword />} />
                       <Route path="/reset-password" element={<ResetPassword />} />
-                      <Route path="/google/callback" element={<GoogleCallback />} />
-                      <Route path="/verify-2fa" element={<TwoFactorVerify />} />
+                      <Route path="/auth/callback" element={<GoogleCallback />} />
+                      <Route path="/2fa-verify" element={<TwoFactorVerify />} />
 
                       {/* Protected Routes - Require Authentication */}
                       <Route
