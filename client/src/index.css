@@ -1,0 +1,162 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import tour styles */
+@import './styles/tour.css';
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 240 10% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 15%;
+
+    --primary: 271 81% 56%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 271 81% 66%;
+    --primary-dark: 263 55% 55%;
+
+    --secondary: 263 70% 58%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* Changed from Pink (300) to Soft Violet (260) for hover states */
+    --accent: 260 50% 96%;
+    --accent-foreground: 271 81% 56%;
+
+    --success: 158 64% 52%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 246 65% 65%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 240 10% 15%;
+    --sidebar-primary: 246 65% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 246 65% 95%;
+    --sidebar-accent-foreground: 246 65% 65%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 246 65% 65%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(246 65% 65%), hsl(263 55% 55%));
+    /* Changed gradient to Violet -> Purple */
+    --gradient-accent: linear-gradient(135deg, hsl(263 55% 55%), hsl(280 60% 60%));
+    --gradient-soft: linear-gradient(180deg, hsl(0 0% 100%), hsl(246 65% 98%));
+
+    /* Shadows */
+    --shadow-primary: 0 10px 40px -10px hsl(246 65% 65% / 0.3);
+    --shadow-elevated: 0 20px 50px -10px hsl(246 65% 65% / 0.2);
+    
+    /* Transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    --background: 240 10% 8%;
+    --foreground: 0 0% 95%;
+
+    --card: 240 10% 12%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 240 10% 12%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 263 70% 58%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 246 65% 75%;
+    --primary-dark: 263 55% 55%;
+
+    --secondary: 263 55% 55%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* Changed from Pink (316) to Deep Violet (263) for dark mode hover */
+    --accent: 263 40% 20%;
+    --accent-foreground: 246 65% 85%;
+
+    --success: 158 64% 52%;
+    --warning: 38 92% 50%;
+
+    --muted: 240 10% 18%;
+    --muted-foreground: 240 5% 65%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 10% 18%;
+    --input: 240 10% 18%;
+    --ring: 246 65% 65%;
+
+    --sidebar-background: 240 10% 12%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 246 65% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 263 40% 20%;
+    --sidebar-accent-foreground: 246 65% 85%;
+    --sidebar-border: 240 10% 18%;
+    --sidebar-ring: 246 65% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .gradient-accent {
+    background: var(--gradient-accent);
+  }
+
+  .shadow-primary {
+    box-shadow: var(--shadow-primary);
+  }
+
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .hover-lift {
+    transition: var(--transition-smooth);
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-elevated);
+  }
+}

@@ -1,0 +1,55 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'backend/**'       # Only triggers when backend files change
+      - 'infrastructure/**' # Or when infrastructure changes
+  workflow_dispatch:        # Allows you to click "Run workflow" manually in GitHub
+
+env:
+  # ✅ UPDATED WITH YOUR TERRAFORM OUTPUTS
+  AZURE_WEBAPP_NAME: "socialflow-jii2if-api" 
+  ACR_NAME: "acrjii2if"
+  RESOURCE_GROUP: "socialflow-jii2if-rg"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - uses: actions/checkout@v3
+
+    # 1. Log into Azure using the Secret you added to GitHub Settings
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    # 2. Log into your specific Container Registry
+    - name: ACR Login
+      run: az acr login --name ${{ env.ACR_NAME }}
+
+    # 3. Build the Docker Image & Push to Azure Registry
+    - name: Build and Push Image
+      uses: docker/build-push-action@v4
+      with:
+        context: ./backend
+        push: true
+        no-cache: true 
+        tags: ${{ env.ACR_NAME }}.azurecr.io/backend:${{ github.sha }}
+
+    # 4. Tell the App Service to use the new Image
+    - name: Deploy to Web App
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        images: ${{ env.ACR_NAME }}.azurecr.io/backend:${{ github.sha }}
+    
+    # 5. Restart to ensure database connections are refreshed
+    - name: Restart Web App
+      run: az webapp restart --name ${{ env.AZURE_WEBAPP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }}
