@@ -285,14 +285,14 @@ export default function WhatsAppContacts() {
         description="Manage your WhatsApp contacts and customer database"
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
+            {/* <Button variant="outline" size="sm">
               <Download className="h-4 w-4 mr-2" />
               Export CSV
             </Button>
             <Button variant="outline" size="sm">
               <Upload className="h-4 w-4 mr-2" />
               Import CSV
-            </Button>
+            </Button> */}
             <Button onClick={() => setShowCreateDialog(true)}>
               <Plus className="h-4 w-4 mr-2" />
               Add Contact

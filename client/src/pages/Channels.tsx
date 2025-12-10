@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PlatformBadge } from "@/components/PlatformBadge";
-import { RefreshCw, Link as LinkIcon, AlertCircle, MessageCircle } from "lucide-react";
+import { RefreshCw, Link as LinkIcon, AlertCircle, MessageCircle, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useBrand } from '@/contexts/BrandContext';
 import { channelApi } from '@/services/channelApi';
@@ -20,10 +20,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-// Supported Platforms Configuration
+// Supported Platforms
 const SUPPORTED_PLATFORMS: Array<{
   id: PlatformType;
   name: string;
@@ -60,7 +70,6 @@ const SUPPORTED_PLATFORMS: Array<{
     description: 'Upload and share video content with your audience',
     requiresOAuth: true,
   },
-  // ✅ ADD: WhatsApp (Manual Setup)
   {
     id: 'whatsapp',
     name: 'WhatsApp Business',
@@ -76,8 +85,8 @@ export default function Channels() {
   const [loading, setLoading] = useState(true);
   const [connectingPlatform, setConnectingPlatform] = useState<PlatformType | null>(null);
   const [testingChannel, setTestingChannel] = useState<string | null>(null);
-  
-  // ✅ WhatsApp Setup Dialog State
+
+  // WhatsApp Dialog State
   const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
   const [whatsappSetup, setWhatsappSetup] = useState({
     phoneNumberId: '',
@@ -85,7 +94,13 @@ export default function Channels() {
     accessToken: '',
   });
 
-  // Fetch Channels on Load
+  // Disconnect & Delete Dialog States
+  const [disconnectingChannel, setDisconnectingChannel] = useState<Channel | null>(null);
+  const [deletingChannel, setDeletingChannel] = useState<Channel | null>(null);
+  const [deleteImpact, setDeleteImpact] = useState<any>(null);
+  const [loadingImpact, setLoadingImpact] = useState(false);
+
+  // FETCH CHANNELS
   useEffect(() => {
     if (currentBrand) {
       fetchChannels();
@@ -106,38 +121,32 @@ export default function Channels() {
     }
   };
 
-  // Handle Connect Button Click
+  // HANDLE CONNECT
   const handleConnect = async (platform: PlatformType) => {
     if (!currentBrand) {
       toast.error('Please select a brand first');
       return;
     }
 
-    // ✅ Special handling for WhatsApp (Open Dialog)
     if (platform === 'whatsapp') {
       setShowWhatsAppDialog(true);
       return;
     }
 
-    // Handle OAuth Platforms
     try {
       setConnectingPlatform(platform);
       const response = await channelApi.getOAuthUrl(platform, currentBrand._id);
-      
-      // Redirect to external OAuth provider
+      toast.success(`Redirecting to ${platform}...`);
       window.location.href = response.data.authUrl;
     } catch (error: any) {
-      toast.error(error.response?.data?.message || `Failed to connect ${platform}`);
+      toast.error(error.response?.data?.message || `Failed to connect to ${platform}`);
       setConnectingPlatform(null);
     }
   };
 
-  // ✅ Handle WhatsApp Connection (Submit Form)
+  // HANDLE WHATSAPP CONNECT
   const handleConnectWhatsApp = async () => {
-    if (!currentBrand) {
-      toast.error('Please select a brand first');
-      return;
-    }
+    if (!currentBrand) return;
 
     const { phoneNumberId, businessAccountId, accessToken } = whatsappSetup;
     
@@ -149,7 +158,6 @@ export default function Channels() {
     try {
       setConnectingPlatform('whatsapp');
       
-      // Call your backend API directly
       const response = await fetch(`${import.meta.env.VITE_API_URL}/whatsapp/connect`, {
         method: 'POST',
         headers: {
@@ -174,7 +182,6 @@ export default function Channels() {
       setShowWhatsAppDialog(false);
       setWhatsappSetup({ phoneNumberId: '', businessAccountId: '', accessToken: '' });
       
-      // Refresh list and go to inbox
       await fetchChannels();
       navigate('/whatsapp/inbox');
 
@@ -185,39 +192,76 @@ export default function Channels() {
     }
   };
 
-  // Test Connection
-  const handleTestConnection = async (channelId: string, provider: string) => {
+  const handleTestConnection = async (channelId: string, platformName: string) => {
     try {
       setTestingChannel(channelId);
       await channelApi.testConnection(channelId);
-      toast.success(`${provider} connection is working!`);
+      toast.success(`Connection to ${platformName} is working!`);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || `${provider} connection failed`);
+      toast.error(error.response?.data?.message || `Connection to ${platformName} failed`);
     } finally {
       setTestingChannel(null);
     }
   };
 
-  // Disconnect Channel
-  const handleDisconnect = async (channelId: string, provider: string) => {
-    if (!confirm(`Are you sure you want to disconnect ${provider}?`)) return;
+  // OPEN DISCONNECT DIALOG
+  const handleOpenDisconnectDialog = (channel: Channel) => {
+    setDisconnectingChannel(channel);
+  };
+
+  // CONFIRM DISCONNECT
+  const handleConfirmDisconnect = async () => {
+    if (!disconnectingChannel) return;
 
     try {
-      await channelApi.disconnect(channelId);
-      toast.success(`${provider} disconnected successfully`);
+      await channelApi.disconnect(disconnectingChannel._id);
+      toast.success(`Disconnected from ${disconnectingChannel.displayName}`);
+      setDisconnectingChannel(null);
       fetchChannels();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to disconnect channel');
     }
   };
 
-  // Filter available platforms
-  const connectedPlatformIds = channels
-    .filter(ch => ch.connectionStatus === 'active')
-    .map(ch => ch.provider);
-  
+  // OPEN DELETE DIALOG
+  const handleOpenDeleteDialog = async (channel: Channel) => {
+    setDeletingChannel(channel);
+    setLoadingImpact(true);
+
+    try {
+      const response = await channelApi.getDeleteImpact(channel._id);
+      setDeleteImpact(response.data);
+    } catch (error: any) {
+      toast.error('Failed to load delete impact details');
+      setDeleteImpact(null);
+    } finally {
+      setLoadingImpact(false);
+    }
+  };
+
+  // CONFIRM DELETE
+  const handleConfirmDelete = async () => {
+    if (!deletingChannel) return;
+
+    try {
+      await channelApi.permanentlyDelete(deletingChannel._id);
+      toast.success(`${deletingChannel.displayName} permanently deleted`);
+      setDeletingChannel(null);
+      setDeleteImpact(null);
+      fetchChannels();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to delete channel');
+    }
+  };
+
+  const isPlatformConnected = (platformId: PlatformType): boolean => {
+    return channels.some(
+      (ch) => ch.provider === platformId && ch.connectionStatus === 'active'
+    );
+  };
+
   const availablePlatforms = SUPPORTED_PLATFORMS.filter(
-    p => !connectedPlatformIds.includes(p.id)
+    (platform) => !isPlatformConnected(platform.id)
   );
 
   if (!currentBrand) {
@@ -241,7 +285,7 @@ export default function Channels() {
         description="Manage your connected social media accounts"
       />
 
-      {/* --- CONNECTED CHANNELS SECTION --- */}
+      {/* CONNECTED CHANNELS */}
       <div>
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -257,35 +301,23 @@ export default function Channels() {
         </div>
 
         {loading ? (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Card key={i}>
-                <CardHeader>
-                  <Skeleton className="h-12 w-12" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-4 w-full mb-2" />
-                  <Skeleton className="h-4 w-2/3" />
-                </CardContent>
-              </Card>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-48" />
             ))}
           </div>
-        ) : channels.filter(ch => ch.connectionStatus === 'active').length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                <LinkIcon className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">No channels connected</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Connect your social media accounts to start scheduling posts
-              </p>
-            </CardContent>
-          </Card>
+        ) : channels.filter((ch) => ch.connectionStatus === 'active').length === 0 ? (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>No Connected Channels</AlertTitle>
+            <AlertDescription>
+              Connect your first social media account below to start publishing.
+            </AlertDescription>
+          </Alert>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
             {channels
-              .filter(ch => ch.connectionStatus === 'active')
+              .filter((ch) => ch.connectionStatus === 'active')
               .map((channel) => (
                 <Card
                   key={channel._id}
@@ -308,46 +340,33 @@ export default function Channels() {
                         @{channel.platformUsername || channel.platformUserId}
                       </p>
                       
-                      {/* ✅ WhatsApp Specific Info */}
-                      {channel.provider === 'whatsapp' && channel.providerData && (
-                        <div className="mt-3 space-y-2">
-                          <div className="flex items-center gap-2 text-xs">
-                            <span className="text-muted-foreground">Quality:</span>
-                            <Badge variant={
-                              channel.providerData.qualityRating === 'GREEN' ? 'default' :
-                              channel.providerData.qualityRating === 'YELLOW' ? 'secondary' :
-                              'destructive'
-                            }>
-                              {channel.providerData.qualityRating || 'UNKNOWN'}
-                            </Badge>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="w-full mt-2"
-                            onClick={() => navigate('/whatsapp/inbox')}
-                          >
-                            <MessageCircle className="mr-2 h-4 w-4" />
-                            Open Inbox
-                          </Button>
-                        </div>
-                      )}
-                      
-                      {/* Standard Social Info */}
+                      {/* Standard Followers Display (Social Only) */}
                       {channel.provider !== 'whatsapp' && channel.providerData && (
                         <div className="flex gap-4 text-sm text-muted-foreground">
                           {channel.providerData.followers !== undefined && (
-                            <span>{channel.providerData.followers} followers</span>
+                            <div className="flex gap-1">
+                              <span className="font-semibold text-foreground">
+                                {channel.providerData.followers}
+                              </span>
+                              <span>followers</span>
+                            </div>
                           )}
                         </div>
                       )}
+                      
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <span className="text-success">✓</span>
+                        Connected on{' '}
+                        {new Date(channel.connectedAt).toLocaleDateString()}
+                      </p>
                     </div>
 
-                    <div className="flex gap-2">
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 pt-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1"
+                        className="flex-1 group-hover:border-primary/50 transition-colors"
                         onClick={() => handleTestConnection(channel._id, channel.provider)}
                         disabled={testingChannel === channel._id}
                       >
@@ -356,14 +375,14 @@ export default function Channels() {
                             testingChannel === channel._id ? 'animate-spin' : ''
                           }`}
                         />
-                        {testingChannel === channel._id ? 'Testing...' : 'Test'}
+                        {testingChannel === channel._id ? 'Testing...' : 'Test Connection'}
                       </Button>
 
                       <Button
-                        variant="ghost"
+                        variant="outline" 
                         size="sm"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDisconnect(channel._id, channel.provider)}
+                        className="text-destructive border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => handleOpenDisconnectDialog(channel)}
                       >
                         Disconnect
                       </Button>
@@ -375,7 +394,7 @@ export default function Channels() {
         )}
       </div>
 
-      {/* --- AVAILABLE PLATFORMS SECTION --- */}
+      {/* AVAILABLE PLATFORMS */}
       {availablePlatforms.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-6">
@@ -401,9 +420,10 @@ export default function Channels() {
                     {platform.description}
                   </p>
                   <Button
+                    variant="default"
+                    className="w-full group-hover:shadow-lg transition-shadow"
                     onClick={() => handleConnect(platform.id)}
                     disabled={connectingPlatform === platform.id}
-                    className="w-full"
                   >
                     {connectingPlatform === platform.id ? (
                       <>
@@ -413,7 +433,7 @@ export default function Channels() {
                     ) : (
                       <>
                         <LinkIcon className="mr-2 h-4 w-4" />
-                        {platform.requiresOAuth ? 'Connect' : 'Setup'}
+                        {platform.requiresOAuth ? `Connect ${platform.name}` : 'Setup'}
                       </>
                     )}
                   </Button>
@@ -424,7 +444,59 @@ export default function Channels() {
         </div>
       )}
 
-      {/* --- WHATSAPP SETUP DIALOG --- */}
+      {/* DISCONNECTED CHANNELS */}
+      {channels.filter((ch) => ch.connectionStatus !== 'active').length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold">Disconnected Channels</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                These channels need to be reconnected
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
+            {channels
+              .filter((ch) => ch.connectionStatus !== 'active')
+              .map((channel) => (
+                <Card key={channel._id} className="border-destructive/20">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <PlatformBadge platform={channel.provider} size="lg" />
+                      <Badge variant="destructive">Disconnected</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {channel.displayName} (@{channel.platformUsername})
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        className="flex-1"
+                        onClick={() => handleConnect(channel.provider)}
+                      >
+                        <LinkIcon className="mr-2 h-4 w-4" />
+                        Reconnect
+                      </Button>
+                      
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handleOpenDeleteDialog(channel)}
+                        title="Permanently Delete"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* WHATSAPP SETUP DIALOG */}
       <Dialog open={showWhatsAppDialog} onOpenChange={setShowWhatsAppDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -500,6 +572,141 @@ export default function Channels() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ✅ DISCONNECT CONFIRMATION DIALOG */}
+      <AlertDialog 
+        open={!!disconnectingChannel} 
+        onOpenChange={(open) => !open && setDisconnectingChannel(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Disconnect {disconnectingChannel?.displayName}?
+            </AlertDialogTitle>
+            
+            {/* ✅ FIXED HTML STRUCTURE: Moved complex content outside Description */}
+            <AlertDialogDescription>
+              This will pause the connection to your {disconnectingChannel?.provider} account.
+            </AlertDialogDescription>
+
+            <div className="space-y-3 pt-2 text-sm text-muted-foreground">
+              {disconnectingChannel?.provider === 'whatsapp' ? (
+                <ul className="list-disc list-inside space-y-1">
+                  <li>You will stop receiving new customer messages.</li>
+                  <li>You won't be able to send templates or replies.</li>
+                  <li>Existing chat history will be preserved.</li>
+                  <li>You can reconnect anytime later.</li>
+                </ul>
+              ) : (
+                <ul className="list-disc list-inside space-y-1">
+                  <li>You won't be able to publish to this channel.</li>
+                  <li>Scheduled posts will be canceled.</li>
+                  <li>Published posts will remain on {disconnectingChannel?.provider}.</li>
+                  <li>You can reconnect anytime later.</li>
+                </ul>
+              )}
+              
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+                <p className="text-xs text-amber-800 dark:text-amber-200">
+                  <strong>Note:</strong> This is a soft disconnect. Your data is safe.
+                </p>
+              </div>
+            </div>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmDisconnect}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Disconnect
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* PERMANENT DELETE CONFIRMATION DIALOG */}
+      <AlertDialog 
+        open={!!deletingChannel} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeletingChannel(null);
+            setDeleteImpact(null);
+          }
+        }}
+      >
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Permanently Delete {deletingChannel?.displayName}?
+            </AlertDialogTitle>
+            
+            {/* ✅ FIXED HTML STRUCTURE */}
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete your channel data.
+            </AlertDialogDescription>
+
+            <div className="space-y-4 pt-2 text-sm text-muted-foreground">
+              <div className="p-4 bg-destructive/10 rounded-lg border border-destructive/20 text-foreground">
+                <p className="font-semibold text-destructive mb-2">⚠️ Warning</p>
+                <p className="text-sm">
+                  This will permanently delete all data associated with this channel from our database.
+                </p>
+              </div>
+
+              {loadingImpact ? (
+                <div className="flex items-center justify-center py-4">
+                  <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
+                  <span className="ml-2 text-sm text-muted-foreground">
+                    Calculating impact...
+                  </span>
+                </div>
+              ) : deleteImpact ? (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">What will be deleted:</p>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start gap-2">
+                      <span className="text-destructive">•</span>
+                      <span>
+                        <strong>{deleteImpact.impact.publishedPosts}</strong> published post records 
+                        from our database
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-destructive">•</span>
+                      <span>All connection credentials and tokens</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-destructive">•</span>
+                      <span>Channel configuration and settings</span>
+                    </li>
+                  </ul>
+
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <p className="text-xs text-blue-800 dark:text-blue-200">
+                      <strong>Important:</strong> Posts already published on {deletingChannel?.provider}{' '}
+                      will NOT be deleted. You'll need to delete them directly on the platform.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={loadingImpact}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Permanently Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

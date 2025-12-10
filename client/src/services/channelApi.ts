@@ -5,7 +5,7 @@ export const channelApi = {
   // Get all channels for a brand
   getAll: async (brandId: string) => {
     const response = await api.get<ApiResponse<Channel[]>>('/channels', {
-      params: { brandId }, // Pass as query parameter
+      params: { brandId },
     });
     return response.data;
   },
@@ -19,11 +19,11 @@ export const channelApi = {
   // Get OAuth URL for platform
   getOAuthUrl: async (platform: PlatformType, brandId: string) => {
     const response = await api.get<ApiResponse<{ authUrl: string; state: string }>>(
-      `/channels/oauth/${platform}`,
+      `/channels/auth/${platform}`, // ✅ FIXED: Matches backend route '/auth/:provider'
       {
         params: {
           brandId,
-          returnUrl: window.location.origin, // Frontend URL for callback
+          returnUrl: window.location.origin,
         },
       }
     );
@@ -32,7 +32,7 @@ export const channelApi = {
 
   // Test connection
   testConnection: async (channelId: string) => {
-    const response = await api.get<ApiResponse<{ isValid: boolean }>>(
+    const response = await api.post<ApiResponse<{ isValid: boolean }>>( // ✅ FIXED: Changed to POST to match backend
       `/channels/${channelId}/test`
     );
     return response.data;
@@ -41,6 +41,12 @@ export const channelApi = {
   // Disconnect channel (soft delete)
   disconnect: async (channelId: string) => {
     const response = await api.delete<ApiResponse<void>>(`/channels/${channelId}`);
+    return response.data;
+  },
+
+  // Delete  
+  getDeleteImpact: async (channelId: string) => {
+    const response = await api.get<ApiResponse<any>>(`/channels/${channelId}/delete-impact`);
     return response.data;
   },
 

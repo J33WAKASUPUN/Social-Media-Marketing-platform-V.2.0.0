@@ -1,105 +1,84 @@
-import { 
-  Linkedin, 
-  Facebook, 
-  Twitter, 
-  Instagram, 
-  Youtube, 
-  MessageCircle, // ✅ Added for WhatsApp
-  Globe,
-  AlertCircle
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-
-// Add 'whatsapp' to the type definition
-export type PlatformType = 'linkedin' | 'facebook' | 'twitter' | 'instagram' | 'youtube' | 'whatsapp';
+import { Badge } from "@/components/ui/badge";
+import { Linkedin, Facebook, Twitter, Instagram, Youtube, MessageCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface PlatformBadgeProps {
-  platform: string;
+  platform: 'linkedin' | 'facebook' | 'twitter' | 'instagram' | 'youtube' | 'whatsapp';
   size?: 'sm' | 'md' | 'lg';
-  className?: string;
-  showName?: boolean;
+  showIcon?: boolean;
 }
 
-const PLATFORM_CONFIG: Record<string, { icon: any; label: string; color: string; bg: string }> = {
+const platformConfig = {
   linkedin: {
+    name: "LinkedIn",
     icon: Linkedin,
-    label: 'LinkedIn',
-    color: 'text-[#0077b5]',
-    bg: 'bg-[#0077b5]/10',
+    color: "bg-[#0077B5] hover:bg-[#0077B5]/90",
   },
   facebook: {
+    name: "Facebook",
     icon: Facebook,
-    label: 'Facebook',
-    color: 'text-[#1877f2]',
-    bg: 'bg-[#1877f2]/10',
+    color: "bg-[#1877F2] hover:bg-[#1877F2]/90",
   },
   twitter: {
+    name: "Twitter",
     icon: Twitter,
-    label: 'Twitter',
-    color: 'text-[#1da1f2]',
-    bg: 'bg-[#1da1f2]/10',
+    color: "bg-[#1DA1F2] hover:bg-[#1DA1F2]/90",
   },
   instagram: {
+    name: "Instagram",
     icon: Instagram,
-    label: 'Instagram',
-    color: 'text-[#e4405f]',
-    bg: 'bg-[#e4405f]/10',
+    color: "bg-gradient-to-r from-[#E4405F] to-[#F77737] hover:opacity-90",
   },
   youtube: {
+    name: "YouTube",
     icon: Youtube,
-    label: 'YouTube',
-    color: 'text-[#ff0000]',
-    bg: 'bg-[#ff0000]/10',
+    color: "bg-[#FF0000] hover:bg-[#FF0000]/90",
   },
-  // ✅ ADDED: WhatsApp Configuration
   whatsapp: {
-    icon: MessageCircle, 
-    label: 'WhatsApp',
-    color: 'text-[#25D366]', // Official WhatsApp Green
-    bg: 'bg-[#25D366]/10',
+    name: "WhatsApp",
+    icon: MessageCircle,
+    color: "bg-[#25D366] hover:bg-[#25D366]/90",
   },
-  // ✅ ADDED: Fallback for any unknown platform (prevents future crashes)
-  default: {
-    icon: Globe,
-    label: 'Unknown',
-    color: 'text-gray-500',
-    bg: 'bg-gray-100',
-  }
 };
 
-export function PlatformBadge({ platform, size = 'md', className, showName = true }: PlatformBadgeProps) {
-  // ✅ SAFETY CHECK: If platform key doesn't exist, use 'default'
-  // We use ?.toLowerCase() to handle cases where API might send 'WhatsApp' vs 'whatsapp'
-  const config = PLATFORM_CONFIG[platform?.toLowerCase()] || PLATFORM_CONFIG.default;
+export function PlatformBadge({ platform, size = 'md', showIcon = true }: PlatformBadgeProps) {
+  const config = platformConfig[platform];
   
+  // If platform not found, return fallback
+  if (!config) {
+    console.warn(`Unknown platform: ${platform}`);
+    return (
+      <Badge className="bg-gray-500 text-white">
+        {platform}
+      </Badge>
+    );
+  }
+
   const Icon = config.icon;
 
   const sizeClasses = {
-    sm: 'h-3 w-3',
-    md: 'h-4 w-4',
-    lg: 'h-5 w-5',
+    sm: "h-6 px-2 text-xs",
+    md: "h-8 px-3 text-sm",
+    lg: "h-10 px-4 text-base",
   };
 
-  const badgeSizeClasses = {
-    sm: 'text-[10px] px-1.5 py-0',
-    md: 'text-xs px-2.5 py-0.5',
-    lg: 'text-sm px-3 py-1',
+  const iconSizes = {
+    sm: "h-3 w-3",
+    md: "h-4 w-4",
+    lg: "h-5 w-5",
   };
 
   return (
-    <Badge 
-      variant="outline" 
+    <Badge
       className={cn(
-        "font-medium border-0 gap-1.5 transition-all",
-        config.bg,
+        "text-white font-medium",
         config.color,
-        badgeSizeClasses[size],
-        className
+        sizeClasses[size],
+        "flex items-center gap-1.5"
       )}
     >
-      <Icon className={sizeClasses[size]} />
-      {showName && config.label}
+      {showIcon && <Icon className={iconSizes[size]} />}
+      {config.name}
     </Badge>
   );
 }
