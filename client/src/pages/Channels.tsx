@@ -1,48 +1,71 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from "@/components/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PlatformBadge } from "@/components/PlatformBadge";
-import { RefreshCw, Link as LinkIcon, AlertCircle } from "lucide-react";
+import { RefreshCw, Link as LinkIcon, AlertCircle, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useBrand } from '@/contexts/BrandContext';
 import { channelApi } from '@/services/channelApi';
 import { Channel, PlatformType } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
-// Only 5 platforms we support
+// Supported Platforms Configuration
 const SUPPORTED_PLATFORMS: Array<{
   id: PlatformType;
   name: string;
   description: string;
+  requiresOAuth: boolean;
 }> = [
   {
     id: 'linkedin',
     name: 'LinkedIn',
     description: 'Connect with professionals and share business updates',
+    requiresOAuth: true,
   },
   {
     id: 'facebook',
     name: 'Facebook',
     description: 'Reach your audience on the world\'s largest social network',
+    requiresOAuth: true,
   },
   {
     id: 'twitter',
     name: 'Twitter',
     description: 'Share quick updates and engage in real-time conversations',
+    requiresOAuth: true,
   },
   {
     id: 'instagram',
     name: 'Instagram',
     description: 'Share visual stories and connect through photos and videos',
+    requiresOAuth: true,
   },
   {
     id: 'youtube',
     name: 'YouTube',
     description: 'Upload and share video content with your audience',
+    requiresOAuth: true,
+  },
+  // ✅ ADD: WhatsApp (Manual Setup)
+  {
+    id: 'whatsapp',
+    name: 'WhatsApp Business',
+    description: 'Send messages and templates to your customers',
+    requiresOAuth: false,
   },
 ];
 
@@ -53,8 +76,16 @@ export default function Channels() {
   const [loading, setLoading] = useState(true);
   const [connectingPlatform, setConnectingPlatform] = useState<PlatformType | null>(null);
   const [testingChannel, setTestingChannel] = useState<string | null>(null);
+  
+  // ✅ WhatsApp Setup Dialog State
+  const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
+  const [whatsappSetup, setWhatsappSetup] = useState({
+    phoneNumberId: '',
+    businessAccountId: '',
+    accessToken: '',
+  });
 
-  // FETCH CHANNELS FROM BACKEND
+  // Fetch Channels on Load
   useEffect(() => {
     if (currentBrand) {
       fetchChannels();
@@ -75,65 +106,118 @@ export default function Channels() {
     }
   };
 
-  // CONNECT TO PLATFORM (OAUTH)
+  // Handle Connect Button Click
   const handleConnect = async (platform: PlatformType) => {
     if (!currentBrand) {
       toast.error('Please select a brand first');
       return;
     }
 
+    // ✅ Special handling for WhatsApp (Open Dialog)
+    if (platform === 'whatsapp') {
+      setShowWhatsAppDialog(true);
+      return;
+    }
+
+    // Handle OAuth Platforms
     try {
       setConnectingPlatform(platform);
-      
-      // Get OAuth URL from backend
       const response = await channelApi.getOAuthUrl(platform, currentBrand._id);
       
-      toast.success(`Redirecting to ${platform}...`);
-      
-      // Redirect to OAuth provider
+      // Redirect to external OAuth provider
       window.location.href = response.data.authUrl;
     } catch (error: any) {
-      toast.error(error.response?.data?.message || `Failed to connect to ${platform}`);
+      toast.error(error.response?.data?.message || `Failed to connect ${platform}`);
       setConnectingPlatform(null);
     }
   };
 
-  // Pass channelId instead of platform name
-  const handleDisconnect = async (channelId: string, platformName: string) => {
-    if (!confirm(`Are you sure you want to disconnect ${platformName}?`)) return;
+  // ✅ Handle WhatsApp Connection (Submit Form)
+  const handleConnectWhatsApp = async () => {
+    if (!currentBrand) {
+      toast.error('Please select a brand first');
+      return;
+    }
+
+    const { phoneNumberId, businessAccountId, accessToken } = whatsappSetup;
+    
+    if (!phoneNumberId || !businessAccountId || !accessToken) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
 
     try {
-      await channelApi.disconnect(channelId);
-      toast.success(`Disconnected from ${platformName}`);
-      fetchChannels(); // Refresh list
+      setConnectingPlatform('whatsapp');
+      
+      // Call your backend API directly
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/whatsapp/connect`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: JSON.stringify({
+          brandId: currentBrand._id,
+          phoneNumberId,
+          businessAccountId,
+          accessToken,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to connect WhatsApp');
+      }
+
+      toast.success('WhatsApp Business Account connected successfully!');
+      setShowWhatsAppDialog(false);
+      setWhatsappSetup({ phoneNumberId: '', businessAccountId: '', accessToken: '' });
+      
+      // Refresh list and go to inbox
+      await fetchChannels();
+      navigate('/whatsapp/inbox');
+
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to disconnect channel');
+      toast.error(error.message || 'Failed to connect WhatsApp');
+    } finally {
+      setConnectingPlatform(null);
     }
   };
 
-  // Pass channelId instead of platform name
-  const handleTestConnection = async (channelId: string, platformName: string) => {
+  // Test Connection
+  const handleTestConnection = async (channelId: string, provider: string) => {
     try {
       setTestingChannel(channelId);
       await channelApi.testConnection(channelId);
-      toast.success(`Connection to ${platformName} is working!`);
+      toast.success(`${provider} connection is working!`);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || `Connection to ${platformName} failed`);
+      toast.error(error.response?.data?.message || `${provider} connection failed`);
     } finally {
       setTestingChannel(null);
     }
   };
 
-  // CHECK IF PLATFORM IS CONNECTED
-  const isPlatformConnected = (platform: PlatformType): Channel | undefined => {
-    return channels.find(
-      (ch) => ch.provider === platform && ch.connectionStatus === 'active'
-    );
+  // Disconnect Channel
+  const handleDisconnect = async (channelId: string, provider: string) => {
+    if (!confirm(`Are you sure you want to disconnect ${provider}?`)) return;
+
+    try {
+      await channelApi.disconnect(channelId);
+      toast.success(`${provider} disconnected successfully`);
+      fetchChannels();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to disconnect channel');
+    }
   };
 
-  // GET AVAILABLE PLATFORMS (NOT CONNECTED)
+  // Filter available platforms
+  const connectedPlatformIds = channels
+    .filter(ch => ch.connectionStatus === 'active')
+    .map(ch => ch.provider);
+  
   const availablePlatforms = SUPPORTED_PLATFORMS.filter(
-    (platform) => !isPlatformConnected(platform.id)
+    p => !connectedPlatformIds.includes(p.id)
   );
 
   if (!currentBrand) {
@@ -157,7 +241,7 @@ export default function Channels() {
         description="Manage your connected social media accounts"
       />
 
-      {/* CONNECTED CHANNELS */}
+      {/* --- CONNECTED CHANNELS SECTION --- */}
       <div>
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -173,23 +257,35 @@ export default function Channels() {
         </div>
 
         {loading ? (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-48" />
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <Skeleton className="h-12 w-12" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-4 w-full mb-2" />
+                  <Skeleton className="h-4 w-2/3" />
+                </CardContent>
+              </Card>
             ))}
           </div>
-        ) : channels.filter((ch) => ch.connectionStatus === 'active').length === 0 ? (
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>No Connected Channels</AlertTitle>
-            <AlertDescription>
-              Connect your first social media account below to start publishing.
-            </AlertDescription>
-          </Alert>
+        ) : channels.filter(ch => ch.connectionStatus === 'active').length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <LinkIcon className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">No channels connected</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Connect your social media accounts to start scheduling posts
+              </p>
+            </CardContent>
+          </Card>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {channels
-              .filter((ch) => ch.connectionStatus === 'active')
+              .filter(ch => ch.connectionStatus === 'active')
               .map((channel) => (
                 <Card
                   key={channel._id}
@@ -211,62 +307,65 @@ export default function Channels() {
                       <p className="text-sm text-muted-foreground">
                         @{channel.platformUsername || channel.platformUserId}
                       </p>
-                      {channel.providerData && (
+                      
+                      {/* ✅ WhatsApp Specific Info */}
+                      {channel.provider === 'whatsapp' && channel.providerData && (
+                        <div className="mt-3 space-y-2">
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-muted-foreground">Quality:</span>
+                            <Badge variant={
+                              channel.providerData.qualityRating === 'GREEN' ? 'default' :
+                              channel.providerData.qualityRating === 'YELLOW' ? 'secondary' :
+                              'destructive'
+                            }>
+                              {channel.providerData.qualityRating || 'UNKNOWN'}
+                            </Badge>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full mt-2"
+                            onClick={() => navigate('/whatsapp/inbox')}
+                          >
+                            <MessageCircle className="mr-2 h-4 w-4" />
+                            Open Inbox
+                          </Button>
+                        </div>
+                      )}
+                      
+                      {/* Standard Social Info */}
+                      {channel.provider !== 'whatsapp' && channel.providerData && (
                         <div className="flex gap-4 text-sm text-muted-foreground">
                           {channel.providerData.followers !== undefined && (
-                            <div className="flex gap-1">
-                              <span className="font-semibold text-foreground">
-                                {channel.providerData.followers}
-                              </span>
-                              <span>followers</span>
-                            </div>
-                          )}
-                          {channel.providerData.subscribers !== undefined && (
-                            <div className="flex gap-1">
-                              <span className="font-semibold text-foreground">
-                                {channel.providerData.subscribers}
-                              </span>
-                              <span>subscribers</span>
-                            </div>
+                            <span>{channel.providerData.followers} followers</span>
                           )}
                         </div>
                       )}
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <span className="text-success">✓</span>
-                        Connected on{' '}
-                        {new Date(channel.connectedAt).toLocaleDateString()}
-                      </p>
                     </div>
-                    <div className="flex gap-2 pt-2">
-                      {/* Pass channel._id and channel.provider */}
+
+                    <div className="flex gap-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1 group-hover:border-primary/50 transition-colors"
-                        onClick={() => {
-                          console.log('🧪 Test button clicked for:', channel.id); 
-                          handleTestConnection(channel.id, channel.provider);     
-                        }}
-                        disabled={testingChannel === channel.id}                 
-                       >
+                        className="flex-1"
+                        onClick={() => handleTestConnection(channel._id, channel.provider)}
+                        disabled={testingChannel === channel._id}
+                      >
                         <RefreshCw
                           className={`mr-2 h-3.5 w-3.5 ${
-                            testingChannel === channel.id ? 'animate-spin' : ''  
+                            testingChannel === channel._id ? 'animate-spin' : ''
                           }`}
                         />
-                        {testingChannel === channel.id ? 'Testing...' : 'Test Connection'}
+                        {testingChannel === channel._id ? 'Testing...' : 'Test'}
                       </Button>
 
                       <Button
                         variant="ghost"
                         size="sm"
                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => {
-                          console.log('🔌 Disconnect button clicked for:', channel.id); 
-                          handleDisconnect(channel.id, channel.provider);                 
-                        }}
+                        onClick={() => handleDisconnect(channel._id, channel.provider)}
                       >
-                       Disconnect
+                        Disconnect
                       </Button>
                     </div>
                   </CardContent>
@@ -276,7 +375,7 @@ export default function Channels() {
         )}
       </div>
 
-      {/* AVAILABLE PLATFORMS */}
+      {/* --- AVAILABLE PLATFORMS SECTION --- */}
       {availablePlatforms.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-6">
@@ -302,15 +401,21 @@ export default function Channels() {
                     {platform.description}
                   </p>
                   <Button
-                    variant="gradient"
-                    className="w-full group-hover:shadow-lg transition-shadow"
                     onClick={() => handleConnect(platform.id)}
                     disabled={connectingPlatform === platform.id}
+                    className="w-full"
                   >
-                    <LinkIcon className="mr-2 h-4 w-4" />
-                    {connectingPlatform === platform.id
-                      ? 'Connecting...'
-                      : `Connect ${platform.name}`}
+                    {connectingPlatform === platform.id ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Connecting...
+                      </>
+                    ) : (
+                      <>
+                        <LinkIcon className="mr-2 h-4 w-4" />
+                        {platform.requiresOAuth ? 'Connect' : 'Setup'}
+                      </>
+                    )}
                   </Button>
                 </CardContent>
               </Card>
@@ -319,45 +424,82 @@ export default function Channels() {
         </div>
       )}
 
-      {/* DISCONNECTED CHANNELS (if any) */}
-      {channels.filter((ch) => ch.connectionStatus !== 'active').length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-bold">Disconnected Channels</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                These channels need to be reconnected
-              </p>
+      {/* --- WHATSAPP SETUP DIALOG --- */}
+      <Dialog open={showWhatsAppDialog} onOpenChange={setShowWhatsAppDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-green-600" />
+              Connect WhatsApp Business
+            </DialogTitle>
+            <DialogDescription>
+              Enter your WhatsApp Business API credentials from Meta Business Manager.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="phoneNumberId">
+                Phone Number ID <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="phoneNumberId"
+                placeholder="e.g. 10056044..."
+                value={whatsappSetup.phoneNumberId}
+                onChange={(e) => setWhatsappSetup({ ...whatsappSetup, phoneNumberId: e.target.value })}
+              />
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="businessAccountId">
+                Business Account ID <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="businessAccountId"
+                placeholder="e.g. 13621440..."
+                value={whatsappSetup.businessAccountId}
+                onChange={(e) => setWhatsappSetup({ ...whatsappSetup, businessAccountId: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="accessToken">
+                Access Token <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="accessToken"
+                type="password"
+                placeholder="EAAvVzs..."
+                value={whatsappSetup.accessToken}
+                onChange={(e) => setWhatsappSetup({ ...whatsappSetup, accessToken: e.target.value })}
+              />
+            </div>
+
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-xs">
+                Ensure your System User has 'Full Control' permission on the WhatsApp Account.
+              </AlertDescription>
+            </Alert>
           </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
-            {channels
-              .filter((ch) => ch.connectionStatus !== 'active')
-              .map((channel) => (
-                <Card key={channel._id} className="border-destructive/20">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <PlatformBadge platform={channel.provider} size="lg" />
-                      <Badge variant="destructive">Disconnected</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      {channel.displayName} (@{channel.platformUsername})
-                    </p>
-                    <Button
-                      className="w-full"
-                      onClick={() => handleConnect(channel.provider)}
-                    >
-                      <LinkIcon className="mr-2 h-4 w-4" />
-                      Reconnect
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-          </div>
-        </div>
-      )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowWhatsAppDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConnectWhatsApp} disabled={connectingPlatform === 'whatsapp'}>
+              {connectingPlatform === 'whatsapp' ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                'Connect'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

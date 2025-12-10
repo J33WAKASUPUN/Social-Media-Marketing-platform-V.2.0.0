@@ -16,7 +16,6 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { WelcomeTourDialog } from "@/components/WelcomeTourDialog";
 import { RoleProtectedRoute } from '@/components/RoleProtectedRoute';
 
-
 // Pages
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
@@ -34,7 +33,10 @@ import Channels from "@/pages/Channels";
 import Media from "@/pages/Media";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
-
+import WhatsAppInbox from '@/pages/whatsapp/Inbox';
+import WhatsAppTemplates from '@/pages/whatsapp/Templates';
+import WhatsAppContacts from '@/pages/whatsapp/Contacts';
+import WhatsAppCallLogs from '@/pages/whatsapp/CallLogs';
 
 const queryClient = new QueryClient();
 
@@ -66,7 +68,7 @@ const App = () => (
                   <Sonner />
                   <BrowserRouter>
                     <Routes>
-                      {/* Public Routes */}
+                      {/* Public Routes (Unchanged) */}
                       <Route path="/" element={<Navigate to="/login" replace />} />
                       <Route path="/login" element={<Login />} />
                       <Route path="/register" element={<Register />} />
@@ -87,7 +89,7 @@ const App = () => (
                         }
                       />
 
-                      {/* ✅ Posts - Require canViewPosts */}
+                      {/* Posts - Require canViewPosts */}
                       <Route
                         path="/posts"
                         element={
@@ -101,7 +103,7 @@ const App = () => (
                         }
                       />
 
-                      {/* ✅ Create Post - Require canCreatePosts */}
+                      {/* Create Post - Require canCreatePosts */}
                       <Route
                         path="/posts/new"
                         element={
@@ -115,7 +117,7 @@ const App = () => (
                         }
                       />
 
-                      {/* ✅ Edit Post - Require canCreatePosts */}
+                      {/* Edit Post - Require canCreatePosts */}
                       <Route
                         path="/posts/edit/:id"
                         element={
@@ -129,7 +131,7 @@ const App = () => (
                         }
                       />
 
-                      {/* ✅ Calendar - Require canViewPosts */}
+                      {/* Calendar - Require canViewPosts */}
                       <Route
                         path="/calendar"
                         element={
@@ -143,7 +145,7 @@ const App = () => (
                         }
                       />
 
-                      {/* ✅ Analytics - Require canViewAnalytics */}
+                      {/* Analytics - Require canViewAnalytics */}
                       <Route
                         path="/analytics"
                         element={
@@ -157,7 +159,7 @@ const App = () => (
                         }
                       />
 
-                      {/* ✅ Channels - Require canConnectChannels */}
+                      {/* Channels - Require canConnectChannels */}
                       <Route
                         path="/channels"
                         element={
@@ -171,7 +173,57 @@ const App = () => (
                         }
                       />
 
-                      {/* ✅ Media Library - Require canViewMedia */}
+                      {/* ✅ ADDED: WhatsApp Routes (Require canConnectChannels) */}
+                      <Route
+                        path="/whatsapp/inbox"
+                        element={
+                          <ProtectedRoute>
+                            <RoleProtectedRoute requiredPermission="canConnectChannels">
+                              <MainLayout>
+                                <WhatsAppInbox />
+                              </MainLayout>
+                            </RoleProtectedRoute>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/whatsapp/templates"
+                        element={
+                          <ProtectedRoute>
+                            <RoleProtectedRoute requiredPermission="canConnectChannels">
+                              <MainLayout>
+                                <WhatsAppTemplates />
+                              </MainLayout>
+                            </RoleProtectedRoute>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/whatsapp/contacts"
+                        element={
+                          <ProtectedRoute>
+                            <RoleProtectedRoute requiredPermission="canConnectChannels">
+                              <MainLayout>
+                                <WhatsAppContacts />
+                              </MainLayout>
+                            </RoleProtectedRoute>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/whatsapp/calls"
+                        element={
+                          <ProtectedRoute>
+                            <RoleProtectedRoute requiredPermission="canConnectChannels">
+                              <MainLayout>
+                                <WhatsAppCallLogs />
+                              </MainLayout>
+                            </RoleProtectedRoute>
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      {/* Media Library - Require canViewMedia */}
                       <Route
                         path="/media"
                         element={
@@ -185,7 +237,7 @@ const App = () => (
                         }
                       />
 
-                      {/* Settings - No special permission required (all users can access) */}
+                      {/* Settings - No special permission required */}
                       <Route
                         path="/settings"
                         element={

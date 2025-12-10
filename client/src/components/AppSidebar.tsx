@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   LayoutDashboard,
   FileText,
@@ -8,8 +9,13 @@ import {
   Settings,
   LogOut,
   ChevronRight,
+  MessageCircle,
+  MessageSquare,
+  Users,
+  Phone,
+  ChevronDown,
 } from "lucide-react";
-import { NavLink, useNavigate, useLocation, Link } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
@@ -21,7 +27,15 @@ import {
   SidebarMenuItem,
   SidebarFooter,
   useSidebar,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,9 +47,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
-import { TourTrigger } from '@/components/TourTrigger';
 
-// Define menu items with permission requirements and tour IDs
 const menuItems = [
   { 
     title: "Dashboard", 
@@ -72,6 +84,39 @@ const menuItems = [
     requiredPermission: 'canConnectChannels',
     tourId: "menu-channels"
   },
+  // WhatsApp Nested Menu
+  {
+    title: "WhatsApp",
+    icon: MessageCircle,
+    requiredPermission: 'canConnectChannels',
+    tourId: "menu-whatsapp",
+    children: [
+      { 
+        title: "Inbox", 
+        url: "/whatsapp/inbox", 
+        icon: MessageSquare,
+        tourId: "menu-whatsapp-inbox"
+      },
+      { 
+        title: "Templates", 
+        url: "/whatsapp/templates", 
+        icon: FileText,
+        tourId: "menu-whatsapp-templates"
+      },
+      { 
+        title: "Contacts", 
+        url: "/whatsapp/contacts", 
+        icon: Users,
+        tourId: "menu-whatsapp-contacts"
+      },
+      { 
+        title: "Call Logs", 
+        url: "/whatsapp/calls", 
+        icon: Phone,
+        tourId: "menu-whatsapp-calls"
+      },
+    ]
+  },
   { 
     title: "Media Library", 
     url: "/media", 
@@ -96,12 +141,15 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
 
+  const [whatsappOpen, setWhatsappOpen] = useState(
+    location.pathname.startsWith('/whatsapp')
+  );
+
   const handleLogout = async () => {
     await logout();
     navigate("/login");
   };
 
-  // Check if a menu item is active
   const isActive = (url: string) => {
     if (url === '/dashboard') {
       return location.pathname === '/dashboard';
@@ -109,7 +157,6 @@ export function AppSidebar() {
     return location.pathname.startsWith(url);
   };
 
-  // Filter menu items based on permissions
   const visibleMenuItems = menuItems.filter(item => {
     if (!item.requiredPermission) return true;
     return permissions[item.requiredPermission as keyof typeof permissions];
@@ -120,7 +167,7 @@ export function AppSidebar() {
       <Sidebar data-tour="sidebar" collapsible="icon">
         <SidebarContent>
           <SidebarGroup>
-            {/* Logo */}
+            {/* Logo Section */}
             <SidebarGroupLabel className="px-4 py-6">
               <NavLink to="/dashboard" className="flex items-center gap-0">
                 <img 
@@ -128,21 +175,114 @@ export function AppSidebar() {
                   alt="SocialFlow" 
                   className="h-10 w-10"
                 />
+                {/* ✅ FIX: Only show text when NOT collapsed */}
                 {!isCollapsed && (
-                  <span className="text-lg font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+                  <span className="ml-2 text-lg font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent transition-all duration-300">
                     SocialFlow
                   </span>
                 )}
               </NavLink>
             </SidebarGroupLabel>
 
-            {/* Menu Items */}
             <SidebarGroupContent>
               <SidebarMenu>
                 {visibleMenuItems.map((item) => {
-                  const active = isActive(item.url);
                   const Icon = item.icon;
 
+                  // ==========================
+                  // 1. NESTED MENU (WhatsApp)
+                  // ==========================
+                  if (item.children) {
+                    const isParentActive = location.pathname.startsWith('/whatsapp');
+                    
+                    return (
+                      <Collapsible
+                        key={item.title}
+                        open={whatsappOpen}
+                        onOpenChange={setWhatsappOpen}
+                        className="group/collapsible"
+                      >
+                        <SidebarMenuItem data-tour={item.tourId}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <CollapsibleTrigger asChild>
+                                <SidebarMenuButton
+                                  className={cn(
+                                    "group relative w-full",
+                                    isParentActive && "bg-accent text-accent-foreground"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-3 w-full">
+                                    <Icon className={cn(
+                                      "h-5 w-5 shrink-0 transition-colors", // shrink-0 prevents icon squishing
+                                      isParentActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
+                                    )} />
+                                    
+                                    {/* ✅ FIX: Hide Text & Chevron when collapsed */}
+                                    {!isCollapsed && (
+                                      <>
+                                        <span className={cn(
+                                          "transition-colors flex-1 text-left truncate",
+                                          isParentActive && "font-medium"
+                                        )}>
+                                          {item.title}
+                                        </span>
+                                        <ChevronDown className={cn(
+                                          "ml-auto h-4 w-4 shrink-0 transition-transform",
+                                          whatsappOpen && "rotate-180"
+                                        )} />
+                                      </>
+                                    )}
+                                  </div>
+                                </SidebarMenuButton>
+                              </CollapsibleTrigger>
+                            </TooltipTrigger>
+                            
+                            {/* Tooltip shows when collapsed */}
+                            {isCollapsed && (
+                              <TooltipContent 
+                                side="right" 
+                                sideOffset={10} 
+                                className="z-[100] bg-popover text-popover-foreground border shadow-md font-medium"
+                              >
+                                {item.title}
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+
+                          {/* ✅ FIX: Hide Submenu content entirely when collapsed to prevent overflow */}
+                          <CollapsibleContent className={isCollapsed ? "hidden" : ""}>
+                            <SidebarMenuSub>
+                              {item.children.map((subItem) => {
+                                const SubIcon = subItem.icon;
+                                const isSubActive = location.pathname === subItem.url;
+                                return (
+                                  <SidebarMenuSubItem key={subItem.url}>
+                                    <SidebarMenuSubButton
+                                      asChild
+                                      isActive={isSubActive}
+                                      onClick={() => navigate(subItem.url)}
+                                      className="cursor-pointer"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <SubIcon className="h-4 w-4" />
+                                        <span>{subItem.title}</span>
+                                      </div>
+                                    </SidebarMenuSubButton>
+                                  </SidebarMenuSubItem>
+                                );
+                              })}
+                            </SidebarMenuSub>
+                          </CollapsibleContent>
+                        </SidebarMenuItem>
+                      </Collapsible>
+                    );
+                  }
+
+                  // ==========================
+                  // 2. STANDARD MENU ITEMS
+                  // ==========================
+                  const active = isActive(item.url!);
                   return (
                     <SidebarMenuItem key={item.title} data-tour={item.tourId}>
                       <Tooltip>
@@ -155,23 +295,30 @@ export function AppSidebar() {
                               active && "bg-accent text-accent-foreground"
                             )}
                           >
-                            <NavLink to={item.url} className="flex items-center gap-3">
+                            <NavLink to={item.url!} className="flex items-center gap-3">
                               <Icon className={cn(
-                                "h-5 w-5 transition-colors",
+                                "h-5 w-5 shrink-0 transition-colors",
                                 active ? "text-primary" : "text-muted-foreground group-hover:text-primary"
                               )} />
-                              <span className={cn(
-                                "transition-colors",
-                                active && "font-medium"
-                              )}>
-                                {item.title}
-                              </span>
-                              {active && (
-                                <ChevronRight className="ml-auto h-4 w-4 text-primary" />
+                              
+                              {/* ✅ FIX: Hide Text & Chevron when collapsed */}
+                              {!isCollapsed && (
+                                <>
+                                  <span className={cn(
+                                    "transition-colors truncate",
+                                    active && "font-medium"
+                                  )}>
+                                    {item.title}
+                                  </span>
+                                  {active && (
+                                    <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-primary" />
+                                  )}
+                                </>
                               )}
                             </NavLink>
                           </SidebarMenuButton>
                         </TooltipTrigger>
+                        
                         {isCollapsed && (
                           <TooltipContent 
                             side="right" 
@@ -191,7 +338,6 @@ export function AppSidebar() {
           </SidebarGroup>
         </SidebarContent>
 
-        {/* Footer with User Info */}
         <SidebarFooter>
           <div className={cn(
             "border-t transition-all duration-200",

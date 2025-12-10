@@ -67,7 +67,157 @@ export interface Brand {
   updatedAt: string;
 }
 
-export type PlatformType = 'facebook' | 'instagram' | 'twitter' | 'linkedin' | 'youtube';
+export type PlatformType = 'facebook' | 'instagram' | 'twitter' | 'linkedin' | 'youtube' | 'whatsapp';
+
+// WhatsApp Channel interface
+export interface WhatsAppChannel extends Channel {
+  provider: 'whatsapp';
+  providerData: {
+    businessAccountId: string;
+    phoneNumberId: string;
+    qualityRating: 'GREEN' | 'YELLOW' | 'RED' | 'UNKNOWN';
+  };
+}
+
+// WhatsApp Contact interface
+export interface WhatsAppContact {
+  _id: string;
+  brand: string;
+  name: string;
+  phone: string;
+  email?: string;
+  tags: string[];
+  groups: string[];
+  customFields?: Record<string, string>;
+  optedIn: boolean;
+  optedInAt?: string;
+  optedOutAt?: string;
+  lastMessageSentAt?: string;
+  notes?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// WhatsApp Message interface
+export interface WhatsAppMessage {
+  _id: string;
+  messageId: string;
+  brand?: string;
+  channel?: string;
+  from: string;
+  to: string;
+  phoneNumberId: string;
+  direction: 'inbound' | 'outbound';
+  type: 'text' | 'image' | 'video' | 'audio' | 'document' | 'template' | 'interactive' | 'call';
+  status: 'sent' | 'delivered' | 'read' | 'failed' | 'received';
+  content: {
+    text?: string;
+    image?: {
+      id: string;
+      mime_type?: string;
+      sha256?: string;
+      caption?: string;
+    };
+    video?: {
+      id: string;
+      mime_type?: string;
+      sha256?: string;
+      caption?: string;
+    };
+    audio?: {
+      id: string;
+      mime_type?: string;
+      sha256?: string;
+    };
+    document?: {
+      id: string;
+      filename?: string;
+      mime_type?: string;
+      sha256?: string;
+      caption?: string;
+    };
+    template?: {
+      name: string;
+      language: string;
+      components?: any[];
+    };
+    call?: {
+      callId: string;
+      duration?: number;
+      callStatus: 'missed' | 'rejected' | 'accepted' | 'no_answer';
+      videoCall: boolean;
+    };
+  };
+  timestamp: string;
+  lastStatusUpdate?: string;
+  errors?: Array<{
+    code: number;
+    title: string;
+    message: string;
+    error_data?: any;
+  }>;
+  metadata?: {
+    displayPhoneNumber?: string;
+    phoneNumberId?: string;
+    contactName?: string;
+    conversationId?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+// WhatsApp Template interface
+export interface WhatsAppTemplate {
+  _id: string;
+  brand: string;
+  channel: string;
+  name: string;
+  language: string;
+  category: 'MARKETING' | 'UTILITY' | 'AUTHENTICATION';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  components: Array<{
+    type: 'HEADER' | 'BODY' | 'FOOTER' | 'BUTTONS';
+    format?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT';
+    text?: string;
+    example?: any;
+    buttons?: Array<{
+      type: string;
+      text: string;
+      url?: string;
+      phone_number?: string;
+    }>;
+  }>;
+  platformTemplateId?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// WhatsApp Account Health interface
+export interface WhatsAppAccountHealth {
+  _id: string;
+  channel: string;
+  phoneNumberId: string;
+  qualityRating: 'GREEN' | 'YELLOW' | 'RED' | 'UNKNOWN';
+  messagingLimit: 'TIER_NOT_SET' | 'TIER_50' | 'TIER_250' | 'TIER_1K' | 'TIER_10K' | 'TIER_100K' | 'TIER_UNLIMITED';
+  qualityScore?: number;
+  lastUpdated: string;
+  history: Array<{
+    qualityRating: string;
+    messagingLimit?: string;
+    timestamp: string;
+    reason?: string;
+  }>;
+  alerts: Array<{
+    type: 'QUALITY_DEGRADED' | 'LIMIT_REACHED' | 'ACCOUNT_RESTRICTED';
+    message: string;
+    severity: 'info' | 'warning' | 'critical';
+    acknowledged: boolean;
+    acknowledgedBy?: string;
+    createdAt: string;
+  }>;
+}
 
 export interface Channel {
   _id?: string;
