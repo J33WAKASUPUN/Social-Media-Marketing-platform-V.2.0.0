@@ -940,6 +940,22 @@ const Dashboard = () => {
               )}
             </CardContent>
           </Card>
+
+      {/* Failed Posts Alert */}
+{stats.failed > 0 && (permissions.isEditor || permissions.isManager || permissions.isOwner) && (
+  <Alert variant="destructive" className="shadow-lg">
+    <AlertCircle className="h-4 w-4" />
+    <AlertTitle>Attention Required</AlertTitle>
+    <AlertDescription className="flex items-center justify-between">
+      <span>
+        You have <strong>{stats.failed}</strong> failed post{stats.failed > 1 ? 's' : ''} that need attention.
+      </span>
+      <Button variant="outline" size="sm" onClick={() => navigate('/posts')} className="ml-4">
+        View Posts
+      </Button>
+    </AlertDescription>
+  </Alert>
+)}
         </div>
 
         {/* Right Column */}
@@ -997,7 +1013,6 @@ const Dashboard = () => {
                 </div>
                 <CardTitle className="text-lg">Channels</CardTitle>
               </div>
-              {/* ✅ Only show Manage button if user can connect channels */}
               {permissions.canConnectChannels && (
                 <Button variant="ghost" size="sm" onClick={() => navigate('/channels')}>
                   Manage
@@ -1005,92 +1020,86 @@ const Dashboard = () => {
               )}
             </CardHeader>
             <CardContent>
-              {channels.length > 0 ? (
+              {channels.filter(c => c.provider !== 'whatsapp').length > 0 ? ( // ✅ Filter out WhatsApp here
                 <div className="space-y-2">
-                  {channels.slice(0, 5).map(channel => (
-                    <ChannelCard 
-                      key={channel._id} 
-                      channel={channel} 
-                      postCount={postsPerChannel[channel._id] || 0}
-                    />
+                  {channels
+                    .filter(c => c.provider !== 'whatsapp') // ✅ Filter here too
+                    .slice(0, 5)
+                    .map(channel => (
+                      <ChannelCard 
+                        key={channel._id} 
+                        channel={channel} 
+                        postCount={postsPerChannel[channel._id] || 0}
+                      />
                   ))}
-                  {channels.length > 5 && (
+                  {channels.filter(c => c.provider !== 'whatsapp').length > 5 && (
                     <p className="text-xs text-center text-muted-foreground pt-2">
-                      +{channels.length - 5} more channels
+                      +{channels.filter(c => c.provider !== 'whatsapp').length - 5} more channels
                     </p>
                   )}
                 </div>
-) : (
-  <div className="flex flex-col items-center justify-center py-6 text-center">
-    <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-3">
-      <Share2 className="h-6 w-6 text-muted-foreground" />
-    </div>
-    <p className="text-sm font-medium">No channels connected</p>
-    <p className="text-xs text-muted-foreground mt-1 mb-3">
-      {permissions.canConnectChannels 
-        ? 'Connect your social accounts'
-        : 'No channels available'}
-    </p>
-    {/* ✅ Only show Connect Channel button if user has permission */}
-    {permissions.canConnectChannels && (
-      <Button size="sm" variant="outline" onClick={() => navigate('/channels')}>
-        Connect Channel
-      </Button>
-    )}
-  </div>
-)}
+              ) : (
+                <div className="flex flex-col items-center justify-center py-6 text-center">
+                  <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-3">
+                    <Share2 className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium">No social channels connected</p>
+                  <p className="text-xs text-muted-foreground mt-1 mb-3">
+                    {permissions.canConnectChannels 
+                      ? 'Connect your social accounts'
+                      : 'No channels available'}
+                  </p>
+                  {permissions.canConnectChannels && (
+                    <Button size="sm" variant="outline" onClick={() => navigate('/channels')}>
+                      Connect Channel
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Media Library Stats */}
-<Card className="shadow-md">
-  <CardHeader className="pb-4">
-    <div className="flex items-center gap-2">
+{(permissions.isEditor || permissions.isManager || permissions.isOwner) && (
+  <Card className="shadow-md">
+    <CardHeader className="pb-4">
+      <div className="flex items-center justify-between w-full">
+        
+        <div className="flex items-center gap-3">
       <div className="p-2 rounded-lg bg-pink-100 dark:bg-pink-900/30">
-        <ImageIcon className="h-5 w-5 text-pink-600" />
+        <ImageIcon className="h-5 w-5 text-pink-600" /> 
+          </div>
+          <CardTitle className="text-lg font-semibold">Media Library</CardTitle>
+        </div>
+        {permissions.canConnectChannels && (
+          <Button 
+            variant="ghost" 
+            size="sm" // Adjusted styling to match 'Manage' link look
+            onClick={() => navigate('/media')}
+          >
+            Manage
+          </Button>
+        )}
       </div>
-      <CardTitle className="text-lg">Media Library</CardTitle>
-    </div>
-  </CardHeader>
-  <CardContent>
-    <div className="flex items-center justify-between mb-4">
-      <div>
-        <p className="text-3xl font-bold">{mediaStats?.totalFiles || 0}</p>
-        <p className="text-xs text-muted-foreground">Total files</p>
-      </div>
-      {/* ✅ Only show View Library button if user can upload media */}
-      {permissions.canUploadMedia && (
-        <Button variant="outline" size="sm" onClick={() => navigate('/media')}>
-          View Library
-        </Button>
-      )}
-    </div>
-    <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/50">
-      <ImageIcon className="h-4 w-4 text-muted-foreground" />
-      <p className="text-xs text-muted-foreground">
-        Upload images and videos to use in your posts
-      </p>
-    </div>
-  </CardContent>
-</Card>
+    </CardHeader>
+    <CardContent>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <p className="text-3xl font-bold">{mediaStats?.totalFiles || 0}</p>
+          <p className="text-xs text-muted-foreground">Total files</p>
         </div>
       </div>
-
-      {/* Failed Posts Alert */}
-      {/* {stats.failed > 0 && (
-        <Alert variant="destructive" className="shadow-lg">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Attention Required</AlertTitle>
-          <AlertDescription className="flex items-center justify-between">
-            <span>
-              You have <strong>{stats.failed}</strong> failed post{stats.failed > 1 ? 's' : ''} that need attention.
-            </span>
-            <Button variant="outline" size="sm" onClick={() => navigate('/posts')} className="ml-4">
-              View Posts
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )} */}
+      <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/50">
+        <ImageIcon className="h-4 w-4 text-muted-foreground" />
+        <p className="text-xs text-muted-foreground">
+          Upload images and videos to use in your posts
+        </p>
+      </div>
+    </CardContent>
+  </Card>
+)}
+        </div>
+      </div>
     </div>
   );
 };
