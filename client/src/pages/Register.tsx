@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox"; // ✅ NEW
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Sparkles, Check, X, AlertTriangle, Shield } from "lucide-react"; // ✅ Added Shield
 import { cn } from "@/lib/utils";
