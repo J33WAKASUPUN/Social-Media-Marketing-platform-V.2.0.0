@@ -48,9 +48,9 @@ export function Navbar() {
             <img 
               src="/logo.png" 
               alt="SocialFlow" 
-              className="h-10 w-10"
+              className="h-11 w-11"
             />
-            <span className="ml-2 text-xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent transition-all duration-300">
+            <span className="ml-1 text-xl font-bold bg-gradient-to-r from-violet-600 to-purple-500 bg-clip-text text-transparent transition-all duration-300">
               SocialFlow
             </span>
           </a>
