@@ -132,9 +132,11 @@ export default function Register() {
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-6">
-              <div className="p-2 bg-gradient-to-r from-violet-600 to-purple-600 rounded-xl">
-                <Sparkles className="h-6 w-6 text-white" />
-              </div>
+              <img 
+                src="/logo.png" 
+                alt="SocialFlow" 
+                className="h-10 w-10"
+              />
               <span className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
                 SocialFlow
               </span>
@@ -246,7 +248,7 @@ export default function Register() {
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
-
+              
               {/* Password Requirements */}
               {password && (
                 <div className="grid grid-cols-2 gap-2 pt-2">
@@ -310,7 +312,7 @@ export default function Register() {
             <Button
               type="submit"
               disabled={loading || !isPasswordValid || !passwordsMatch}
-              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
+              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30 transition-all duration-200 hover:shadow-xl hover:shadow-violet-500/40"
             >
               {loading ? (
                 <div className="flex items-center gap-2">
@@ -327,37 +329,54 @@ export default function Register() {
           </form>
 
           {/* Login Link */}
-          <p className="mt-6 text-center text-sm text-muted-foreground">
+          <p className="mt-6 text-center text-base text-muted-foreground">
             Already have an account?{" "}
-            <Link to="/login" className="font-semibold text-violet-600 hover:text-violet-700 transition-colors">
+            <Link
+              to="/login"
+              className="font-semibold text-violet-600 hover:text-violet-700 transition-colors"
+            >
               Sign in
             </Link>
           </p>
         </div>
       </div>
 
-      {/* Right Side - Decorative */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700">
-        <div className="absolute inset-0">
-          <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-300/10 rounded-full blur-3xl animate-pulse delay-1000" />
+      {/* Right Side - Image (Updated to match Login.tsx style) */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 relative overflow-hidden">
+        {/* Background Circles */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 left-20 w-96 h-96 bg-white rounded-full -translate-x-1/2 -translate-y-1/2"></div>
+          <div className="absolute bottom-0 right-0 w-80 h-80 bg-white rounded-full translate-x-1/3 translate-y-1/3"></div>
+          <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-white rounded-full -translate-x-1/2 -translate-y-1/2"></div>
         </div>
 
+        {/* Content Container */}
         <div className="relative z-10 flex flex-col items-center justify-center w-full px-12 text-white">
+          {/* Logo Badge */}
           <div className="flex items-center gap-3 mb-8">
-            <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
-              <Sparkles className="h-10 w-10" />
-            </div>
-            <span className="text-4xl font-bold">SocialFlow</span>
           </div>
-          
-          <h2 className="text-3xl font-bold text-center mb-4">
-            Start your journey today
-          </h2>
-          <p className="text-xl text-center text-white/80 max-w-md">
-            Join thousands of creators managing their social media presence with SocialFlow.
-          </p>
+          {/* Image */}
+          <div className="relative w-full max-w-md aspect-square rounded-3xl overflow-hidden shadow-2xl shadow-black/30 ring-1 ring-white/20">
+            <img
+              src="https://raw.githubusercontent.com/J33WAKASUPUN/Social-Media-Marketing-platform-V.2.0.0/main/social%20flow.png"
+              alt="SocialFlow Platform"
+              className="w-full h-full object-cover"
+            />
+            {/* Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-violet-900/40 via-transparent to-transparent"></div>
+          </div>
 
+          {/* Text */}
+          <div className="mt-10 text-center max-w-md">
+            <h2 className="text-3xl font-bold text-white mb-4">
+              Start your journey today
+            </h2>
+            <p className="text-lg text-violet-100/90">
+              Join thousands of creators managing their social media presence with SocialFlow.
+            </p>
+          </div>
+
+          {/* Feature Pills */}
           <div className="flex flex-wrap justify-center gap-3 mt-8">
             {['Multi-Platform', 'Analytics', 'Scheduling', 'Team Collaboration'].map((feature) => (
               <span

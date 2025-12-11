@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Mail, ArrowLeft, Sparkles, Send, CheckCircle, AlertTriangle } from "lucide-react";
+import { Mail, ArrowLeft, Send, CheckCircle, AlertTriangle, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 
@@ -46,6 +46,16 @@ export default function ForgotPassword() {
 
           {/* Header */}
           <div className="mb-8">
+            <div className="flex items-center gap-2 mb-6">
+              <img 
+                src="/logo.png" 
+                alt="SocialFlow" 
+                className="h-10 w-10"
+              />
+              <span className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+                SocialFlow
+              </span>
+            </div>
             <h1 className="text-3xl font-bold tracking-tight">Reset password</h1>
             <p className="mt-2 text-muted-foreground">
               Enter your email and we'll send you a link to reset your password
@@ -83,7 +93,7 @@ export default function ForgotPassword() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-12 text-base font-semibold bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 transition-all"
+                className="w-full h-12 text-base font-semibold bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 transition-all shadow-lg shadow-violet-500/30"
               >
                 {loading ? (
                   <div className="flex items-center gap-2">
@@ -153,33 +163,39 @@ export default function ForgotPassword() {
         </div>
       </div>
 
-      {/* Right Side - Image */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700">
-        {/* Animated Background Elements */}
-        <div className="absolute inset-0">
-          <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-300/10 rounded-full blur-3xl animate-pulse delay-1000" />
+      {/* Right Side - Image (Updated) */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 relative overflow-hidden">
+        {/* Background Circles */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 left-20 w-96 h-96 bg-white rounded-full -translate-x-1/2 -translate-y-1/2"></div>
+          <div className="absolute bottom-0 right-0 w-80 h-80 bg-white rounded-full translate-x-1/3 translate-y-1/3"></div>
+          <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-white rounded-full -translate-x-1/2 -translate-y-1/2"></div>
         </div>
 
-        {/* Content */}
+        {/* Content Container */}
         <div className="relative z-10 flex flex-col items-center justify-center w-full px-12 text-white">
           <div className="flex items-center gap-3 mb-8">
-            <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
-              <Sparkles className="h-10 w-10" />
-            </div>
-            <span className="text-4xl font-bold">SocialFlow</span>
           </div>
-          
-          <h2 className="text-3xl font-bold text-center mb-4">
-            Don't worry, it happens!
-          </h2>
-          <p className="text-xl text-center text-white/80 max-w-md">
-            We'll help you get back into your account in no time.
-          </p>
+          <div className="relative w-full max-w-md aspect-square rounded-3xl overflow-hidden shadow-2xl shadow-black/30 ring-1 ring-white/20">
+            <img
+              src="https://raw.githubusercontent.com/J33WAKASUPUN/Social-Media-Marketing-platform-V.2.0.0/main/social%20flow.png"
+              alt="SocialFlow Platform"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-violet-900/40 via-transparent to-transparent"></div>
+          </div>
 
-          {/* Security Features */}
+          <div className="mt-10 text-center max-w-md">
+            <h2 className="text-3xl font-bold text-white mb-4">
+              Account Recovery
+            </h2>
+            <p className="text-lg text-violet-100/90">
+              Don't worry, we'll help you get back to managing your socials in no time.
+            </p>
+          </div>
+
           <div className="flex flex-wrap justify-center gap-3 mt-8">
-            {['Secure Reset', 'Email Verification', '24/7 Support', 'Instant Recovery'].map((feature) => (
+            {['Secure Reset', 'Instant Recovery', '24/7 Support'].map((feature) => (
               <span
                 key={feature}
                 className="px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white text-sm font-medium border border-white/20"
