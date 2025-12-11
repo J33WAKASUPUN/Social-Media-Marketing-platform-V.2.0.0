@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Sun, Moon, Zap } from "lucide-react";
+import { Menu, X, Sun, Moon } from "lucide-react";
 
 const navLinks = [
   { label: "Features", href: "#features" },
@@ -42,19 +42,18 @@ export function Navbar() {
     >
       <div className="container mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16 md:h-20">
-          {/* Logo */}
-              <NavLink to="/dashboard" className="flex items-center gap-0">
-                <img 
-                  src="/logo.png" 
-                  alt="SocialFlow" 
-                  className="h-10 w-10"
-                />
-                {!isCollapsed && (
-                  <span className="ml-2 text-lg font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent transition-all duration-300">
-                    SocialFlow
-                  </span>
-                )}
-              </NavLink>
+          
+          {/* ✅ LOGO UPDATED HERE */}
+          <a href="#" className="flex items-center gap-0">
+            <img 
+              src="/logo.png" 
+              alt="SocialFlow" 
+              className="h-10 w-10"
+            />
+            <span className="ml-2 text-xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent transition-all duration-300">
+              SocialFlow
+            </span>
+          </a>
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-8">
@@ -79,12 +78,10 @@ export function Navbar() {
               {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
             
-            {/* ✅ UPDATED: Sign In Link */}
             <a href={`${APP_URL}/login`} className="btn-ghost text-sm">
               Sign In
             </a>
             
-            {/* ✅ UPDATED: Get Started Link */}
             <a href={`${APP_URL}/register`} className="btn-primary text-sm">
               Get Started
             </a>
@@ -130,12 +127,10 @@ export function Navbar() {
                 </a>
               ))}
               <div className="pt-4 flex flex-col gap-3">
-                {/* ✅ UPDATED: Mobile Sign In Link */}
                 <a href={`${APP_URL}/login`} className="btn-ghost text-center text-sm">
                   Sign In
                 </a>
                 
-                {/* ✅ UPDATED: Mobile Get Started Link */}
                 <a href={`${APP_URL}/register`} className="btn-primary text-center text-sm">
                   Get Started
                 </a>
