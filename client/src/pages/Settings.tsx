@@ -7,6 +7,7 @@ import { BrandSettings } from "@/components/BrandSettings";
 import { TeamSettings } from "@/components/TeamSettings";
 import { ThemeSettings } from "@/components/ThemeSettings";
 import { TourSettings } from '@/components/TourSettings';
+import { Button } from "@/components/ui/button"; 
 import { 
   UserCircle, 
   Shield, 
@@ -14,77 +15,114 @@ import {
   Tag, 
   Users,
   Palette,
-  GraduationCap
+  GraduationCap,
+  RefreshCw,
+  Download
 } from "lucide-react";
 
 const Settings = () => {
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <PageHeader
-        title="Settings"
-        description="Manage your profile, security, appearance, organizations, brands, and team members"
-      />
+    <div className="w-full p-6 space-y-8">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <PageHeader
+          title="Settings"
+          description="Manage your profile, security, and team preferences"
+        />
+        
+        {/* Right side controls */}
+        <div className="flex items-center gap-2">
+           <Button variant="outline" size="sm" className="hidden md:flex gap-2">
+             <RefreshCw className="h-4 w-4" />
+             Refresh
+           </Button>
+           <Button variant="outline" size="sm" className="hidden md:flex gap-2">
+             <Download className="h-4 w-4" />
+             Export
+           </Button>
+        </div>
+      </div>
 
-      <Tabs defaultValue="profile" className="space-y-4">
-        <TabsList className="flex-wrap" data-tour="settings-tabs">
-          <TabsTrigger value="profile" data-tour="profile-tab">
-            <UserCircle className="h-4 w-4 mr-2" />
-            Profile
-          </TabsTrigger>
-          <TabsTrigger value="security" data-tour="security-tab">
-            <Shield className="h-4 w-4 mr-2" />
-            Security
-          </TabsTrigger>
-          <TabsTrigger value="appearance" data-tour="appearance-tab">
-            <Palette className="h-4 w-4 mr-2" />
-            Appearance
-          </TabsTrigger>
-          <TabsTrigger value="organization" data-tour="organization-tab">
-            <Building2 className="h-4 w-4 mr-2" />
-            Organization
-          </TabsTrigger>
-          <TabsTrigger value="brands" data-tour="brand-tab">
-            <Tag className="h-4 w-4 mr-2" />
-            Brands
-          </TabsTrigger>
-          <TabsTrigger value="team" data-tour="team-tab">
-            <Users className="h-4 w-4 mr-2" />
-            Team
-          </TabsTrigger>
-          {/* New Tours Tab */}
-          <TabsTrigger value="tours">
-            <GraduationCap className="h-4 w-4 mr-2" />
-            Tours
-          </TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="profile" className="space-y-6">
+        {/* Tabs Container 
+           - 'w-full' ensures the list spans the full width
+           - 'overflow-x-auto' keeps it scrollable on very small mobile screens if needed
+        */}
+        <div className="w-full overflow-x-auto pb-2 md:pb-0">
+            <TabsList className="w-full h-auto p-2 bg-muted/60 rounded-xl text-muted-foreground flex items-center gap-1">
+              
+              {/* Shared Trigger Styles:
+                  - 'w-full': This forces every tab to take up equal width within the parent flex container.
+                  - 'justify-center': Ensures the icon and text stay centered in their box.
+              */}
+              <TabsTrigger 
+                value="profile" 
+                className="w-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm py-2.5 rounded-lg transition-all flex items-center justify-center"
+              >
+                <UserCircle className="h-4 w-4 mr-2" />
+                Profile
+              </TabsTrigger>
+              
+              <TabsTrigger 
+                value="security" 
+                className="w-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm py-2.5 rounded-lg transition-all flex items-center justify-center"
+              >
+                <Shield className="h-4 w-4 mr-2" />
+                Security
+              </TabsTrigger>
+              
+              <TabsTrigger 
+                value="appearance" 
+                className="w-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm py-2.5 rounded-lg transition-all flex items-center justify-center"
+              >
+                <Palette className="h-4 w-4 mr-2" />
+                Appearance
+              </TabsTrigger>
+              
+              <TabsTrigger 
+                value="organization" 
+                className="w-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm py-2.5 rounded-lg transition-all flex items-center justify-center"
+              >
+                <Building2 className="h-4 w-4 mr-2" />
+                Organization
+              </TabsTrigger>
+              
+              <TabsTrigger 
+                value="brands" 
+                className="w-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm py-2.5 rounded-lg transition-all flex items-center justify-center"
+              >
+                <Tag className="h-4 w-4 mr-2" />
+                Brands
+              </TabsTrigger>
+              
+              <TabsTrigger 
+                value="team" 
+                className="w-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm py-2.5 rounded-lg transition-all flex items-center justify-center"
+              >
+                <Users className="h-4 w-4 mr-2" />
+                Team
+              </TabsTrigger>
+              
+              <TabsTrigger 
+                value="tours"
+                className="w-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm py-2.5 rounded-lg transition-all flex items-center justify-center"
+              >
+                <GraduationCap className="h-4 w-4 mr-2" />
+                Tours
+              </TabsTrigger>
+            </TabsList>
+        </div>
 
-        <TabsContent value="profile">
-          <ProfileSettings />
-        </TabsContent>
-
-        <TabsContent value="security">
-          <TwoFactorSettings />
-        </TabsContent>
-
-        <TabsContent value="appearance">
-          <ThemeSettings />
-        </TabsContent>
-
-        <TabsContent value="organization">
-          <OrganizationSettings />
-        </TabsContent>
-
-        <TabsContent value="brands">
-          <BrandSettings />
-        </TabsContent>
-
-        <TabsContent value="team">
-          <TeamSettings />
-        </TabsContent>
-
-        <TabsContent value="tours">
-          <TourSettings />
-        </TabsContent>
+        {/* Content Area */}
+        <div className="mt-6">
+            <TabsContent value="profile"><ProfileSettings /></TabsContent>
+            <TabsContent value="security"><TwoFactorSettings /></TabsContent>
+            <TabsContent value="appearance"><ThemeSettings /></TabsContent>
+            <TabsContent value="organization"><OrganizationSettings /></TabsContent>
+            <TabsContent value="brands"><BrandSettings /></TabsContent>
+            <TabsContent value="team"><TeamSettings /></TabsContent>
+            <TabsContent value="tours"><TourSettings /></TabsContent>
+        </div>
       </Tabs>
     </div>
   );
