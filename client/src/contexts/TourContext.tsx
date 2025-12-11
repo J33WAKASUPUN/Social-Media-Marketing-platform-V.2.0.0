@@ -27,16 +27,13 @@ export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [completedTours, setCompletedTours] = useState<TourId[]>([]);
   const [shouldShowWelcomeTour, setShouldShowWelcomeTour] = useState(false);
   
-  // Get user permissions
   const permissions = usePermissions();
 
-  // Load completed tours on mount
   useEffect(() => {
     const tours: TourId[] = ['welcome', 'settings'];
     const completed = tours.filter(id => isTourCompleted(id));
     setCompletedTours(completed);
     
-    // Check if should show welcome tour dialog
     if (isNewUser() && !isTourCompleted('welcome')) {
       setShouldShowWelcomeTour(true);
     }
@@ -52,18 +49,19 @@ export const TourProvider: React.FC<{ children: React.ReactNode }> = ({ children
       );
     };
 
-    // Convert permissions to the format expected by tourService
+    // Pass role flags to tour service
     const tourPermissions: UserPermissions = {
       canConnectChannels: permissions.canConnectChannels,
       canViewMedia: permissions.canViewMedia,
       canViewAnalytics: permissions.canViewAnalytics,
       canViewPosts: permissions.canViewPosts,
       canCreatePosts: permissions.canCreatePosts,
+      isManager: permissions.isManager,
+      isOwner: permissions.isOwner,
     };
 
     switch (tourId) {
       case 'welcome':
-        // Pass permissions to welcome tour
         startWelcomeTour(onComplete, tourPermissions);
         break;
       case 'settings':

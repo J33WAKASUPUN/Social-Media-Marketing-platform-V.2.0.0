@@ -1,8 +1,6 @@
 import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
-import '../styles/tour.css';
 
-// Only keep welcome and settings tours
 export type TourId = 'welcome' | 'settings';
 
 const TOUR_STORAGE_KEY = 'socialflow_completed_tours';
@@ -36,7 +34,6 @@ export const markUserAsReturning = (): void => {
   localStorage.setItem(NEW_USER_KEY, 'false');
 };
 
-// Permission-based step definitions
 interface TourStep {
   element: string;
   popover: {
@@ -45,11 +42,11 @@ interface TourStep {
     side: 'left' | 'right' | 'top' | 'bottom';
     align: 'start' | 'center' | 'end';
   };
-  // Permission required to show this step (null = always show)
-  requiredPermission?: 'canConnectChannels' | 'canViewMedia' | 'canViewAnalytics' | 'canViewPosts' | 'canCreatePosts' | null;
+  requiredPermission?: 'canConnectChannels' | 'canViewMedia' | 'canViewAnalytics' | 'canViewPosts' | 'canCreatePosts' | 'isManager' | null;
+  // ✅ NEW: Special handling for collapsible menus
+  onBeforeHighlight?: () => void;
 }
 
-// All possible welcome tour steps
 const allWelcomeTourSteps: TourStep[] = [
   {
     element: '[data-tour="sidebar"]',
@@ -59,7 +56,7 @@ const allWelcomeTourSteps: TourStep[] = [
       side: 'right',
       align: 'start',
     },
-    requiredPermission: null, // Always show
+    requiredPermission: null,
   },
   {
     element: '[data-tour="menu-dashboard"]',
@@ -69,7 +66,7 @@ const allWelcomeTourSteps: TourStep[] = [
       side: 'right',
       align: 'start',
     },
-    requiredPermission: null, // Always show
+    requiredPermission: null,
   },
   {
     element: '[data-tour="menu-posts"]',
@@ -111,6 +108,31 @@ const allWelcomeTourSteps: TourStep[] = [
     },
     requiredPermission: 'canConnectChannels',
   },
+  // ✅ FIXED: WhatsApp Step with special handling
+  {
+    element: '[data-tour="menu-whatsapp"]',
+    popover: {
+      title: '💬 WhatsApp Business',
+      description: '<p>Manage your WhatsApp Business messaging:</p><ul class="list-disc pl-4 mt-2 space-y-1"><li><strong>Inbox:</strong> Chat with customers</li><li><strong>Templates:</strong> Pre-approved message templates</li><li><strong>Contacts:</strong> Manage customer database</li><li><strong>Call Logs:</strong> Track call history</li></ul>',
+      side: 'right',
+      align: 'start',
+    },
+    requiredPermission: 'isManager',
+    // ✅ Open the collapsible menu before highlighting
+    onBeforeHighlight: () => {
+      const whatsappButton = document.querySelector('[data-tour="menu-whatsapp"]') as HTMLElement;
+      if (whatsappButton) {
+        // Check if it's collapsed
+        const isCollapsed = whatsappButton.getAttribute('data-state') === 'closed';
+        if (isCollapsed) {
+          // Click to open
+          whatsappButton.click();
+          // Wait for animation
+          return new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
+    },
+  },
   {
     element: '[data-tour="menu-media"]',
     popover: {
@@ -129,7 +151,7 @@ const allWelcomeTourSteps: TourStep[] = [
       side: 'right',
       align: 'start',
     },
-    requiredPermission: null, // Always show
+    requiredPermission: null,
   },
   {
     element: '[data-tour="organization-selector"]',
@@ -139,7 +161,7 @@ const allWelcomeTourSteps: TourStep[] = [
       side: 'bottom',
       align: 'start',
     },
-    requiredPermission: null, // Always show
+    requiredPermission: null,
   },
   {
     element: '[data-tour="brand-selector"]',
@@ -149,7 +171,7 @@ const allWelcomeTourSteps: TourStep[] = [
       side: 'bottom',
       align: 'start',
     },
-    requiredPermission: null, // Always show
+    requiredPermission: null,
   },
   {
     element: '[data-tour="notifications"]',
@@ -159,7 +181,7 @@ const allWelcomeTourSteps: TourStep[] = [
       side: 'bottom',
       align: 'end',
     },
-    requiredPermission: null, // Always show
+    requiredPermission: null,
   },
   {
     element: '[data-tour="user-menu"]',
@@ -169,39 +191,55 @@ const allWelcomeTourSteps: TourStep[] = [
       side: 'left',
       align: 'end',
     },
-    requiredPermission: null, // Always show
+    requiredPermission: null,
   },
 ];
 
-// User permissions interface (matches usePermissions hook)
 export interface UserPermissions {
   canConnectChannels: boolean;
   canViewMedia: boolean;
   canViewAnalytics: boolean;
   canViewPosts: boolean;
   canCreatePosts: boolean;
+  isManager: boolean;
+  isOwner: boolean;
 }
 
-// Welcome Tour - Permission-aware
 export const startWelcomeTour = (onComplete?: () => void, permissions?: UserPermissions) => {
-  // Filter steps based on permissions
   const filteredSteps = allWelcomeTourSteps.filter(step => {
-    // If no permission required, always include
     if (!step.requiredPermission) return true;
-    
-    // If permissions object not provided, include all (for owners)
     if (!permissions) return true;
     
-    // Check if user has the required permission
+    // Special handling for Manager/Owner only features (WhatsApp)
+    if (step.requiredPermission === 'isManager') {
+      return permissions.isManager || permissions.isOwner;
+    }
+    
     return permissions[step.requiredPermission] === true;
   });
 
-  // Add final step
-  const stepsWithFinal = [
-    ...filteredSteps.map(step => ({
+  // ✅ Process steps with onBeforeHighlight handlers
+  const processedSteps = filteredSteps.map(step => {
+    const baseStep = {
       element: step.element,
       popover: step.popover,
-    })),
+    };
+
+    // Add onBeforeHighlighted callback if defined
+    if (step.onBeforeHighlight) {
+      return {
+        ...baseStep,
+        onBeforeHighlighted: async (element: Element) => {
+          await step.onBeforeHighlight?.();
+        },
+      };
+    }
+
+    return baseStep;
+  });
+
+  const stepsWithFinal = [
+    ...processedSteps,
     {
       popover: {
         title: '🎉 You\'re All Set!',
@@ -219,11 +257,9 @@ export const startWelcomeTour = (onComplete?: () => void, permissions?: UserPerm
     stageRadius: 8,
     popoverClass: 'socialflow-tour-popover',
     steps: stepsWithFinal,
-    onDestroyStarted: () => {
+    onDestroyed: () => {
       markTourCompleted('welcome');
-      markUserAsReturning();
-      if (onComplete) onComplete();
-      driverObj.destroy();
+      onComplete?.();
     },
   });
 
@@ -231,8 +267,79 @@ export const startWelcomeTour = (onComplete?: () => void, permissions?: UserPerm
   return driverObj;
 };
 
-// Settings Tour (unchanged - settings is available to all users)
 export const startSettingsTour = (onComplete?: () => void) => {
+  const steps = [
+    {
+      element: '[data-tour="settings-profile"]',
+      popover: {
+        title: '👤 Profile Settings',
+        description: '<p>Update your name, email, and profile picture.</p>',
+        side: 'right' as const,
+        align: 'start' as const,
+      },
+    },
+    {
+      element: '[data-tour="settings-security"]',
+      popover: {
+        title: '🔒 Security',
+        description: '<p>Change your password and manage authentication settings.</p>',
+        side: 'right' as const,
+        align: 'start' as const,
+      },
+    },
+    {
+      element: '[data-tour="settings-appearance"]',
+      popover: {
+        title: '🎨 Appearance',
+        description: '<p>Customize your theme and visual preferences.</p>',
+        side: 'right' as const,
+        align: 'start' as const,
+      },
+    },
+    {
+      element: '[data-tour="settings-organization"]',
+      popover: {
+        title: '🏢 Organization',
+        description: '<p>Manage organization details and settings.</p>',
+        side: 'right' as const,
+        align: 'start' as const,
+      },
+    },
+    {
+      element: '[data-tour="settings-brands"]',
+      popover: {
+        title: '🏷️ Brands',
+        description: '<p>Create and manage brands.</p>',
+        side: 'right' as const,
+        align: 'start' as const,
+      },
+    },
+    {
+      element: '[data-tour="settings-team"]',
+      popover: {
+        title: '👥 Team',
+        description: '<p>Invite members and manage roles.</p>',
+        side: 'right' as const,
+        align: 'start' as const,
+      },
+    },
+    {
+      element: '[data-tour="settings-tours"]',
+      popover: {
+        title: '🎓 Tours',
+        description: '<p>Reset tutorials here.</p>',
+        side: 'right' as const,
+        align: 'start' as const,
+      },
+    },
+    {
+      popover: {
+        title: '✅ Settings Tour Complete!',
+        description: '<p>You now know where to find all your settings.</p>',
+      },
+    },
+  ];
+
   const driverObj = driver({
     showProgress: true,
     animate: true,
@@ -241,72 +348,10 @@ export const startSettingsTour = (onComplete?: () => void) => {
     stagePadding: 10,
     stageRadius: 8,
     popoverClass: 'socialflow-tour-popover',
-    steps: [
-      {
-        element: '[data-tour="settings-tabs"]',
-        popover: {
-          title: '⚙️ Settings Tabs',
-          description: '<p>Navigate between different settings sections using these tabs.</p>',
-          side: 'bottom',
-          align: 'start',
-        },
-      },
-      {
-        element: '[data-tour="profile-tab"]',
-        popover: {
-          title: '👤 Profile Settings',
-          description: '<p>Update your name, email, avatar, and password here.</p>',
-          side: 'bottom',
-          align: 'start',
-        },
-      },
-      {
-        element: '[data-tour="security-tab"]',
-        popover: {
-          title: '🔒 Security Settings',
-          description: '<p>Enable two-factor authentication (2FA) for extra security.</p>',
-          side: 'bottom',
-          align: 'start',
-        },
-      },
-      {
-        element: '[data-tour="appearance-tab"]',
-        popover: {
-          title: '🎨 Appearance',
-          description: '<p>Switch between light, dark, or system theme.</p>',
-          side: 'bottom',
-          align: 'start',
-        },
-      },
-      {
-        element: '[data-tour="organization-tab"]',
-        popover: {
-          title: '🏢 Organization Settings',
-          description: '<p>Manage your organization details and settings.</p>',
-          side: 'bottom',
-          align: 'start',
-        },
-      },
-      {
-        element: '[data-tour="team-tab"]',
-        popover: {
-          title: '👥 Team Management',
-          description: '<p>Invite team members and manage their roles.</p>',
-          side: 'bottom',
-          align: 'start',
-        },
-      },
-      {
-        popover: {
-          title: '✅ Settings Tour Complete!',
-          description: '<p>You now know how to customize your SocialFlow experience!</p>',
-        },
-      },
-    ],
-    onDestroyStarted: () => {
+    steps,
+    onDestroyed: () => {
       markTourCompleted('settings');
-      if (onComplete) onComplete();
-      driverObj.destroy();
+      onComplete?.();
     },
   });
 

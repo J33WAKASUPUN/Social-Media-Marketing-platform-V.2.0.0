@@ -175,7 +175,6 @@ export function AppSidebar() {
                   alt="SocialFlow" 
                   className="h-10 w-10"
                 />
-                {/* ✅ FIX: Only show text when NOT collapsed */}
                 {!isCollapsed && (
                   <span className="ml-2 text-lg font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent transition-all duration-300">
                     SocialFlow
@@ -202,11 +201,13 @@ export function AppSidebar() {
                         onOpenChange={setWhatsappOpen}
                         className="group/collapsible"
                       >
-                        <SidebarMenuItem data-tour={item.tourId}>
+                        <SidebarMenuItem>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <CollapsibleTrigger asChild>
                                 <SidebarMenuButton
+                                  // ✅ FIX: Moved data-tour HERE so driver.js finds the actual button
+                                  data-tour={item.tourId} 
                                   className={cn(
                                     "group relative w-full",
                                     isParentActive && "bg-accent text-accent-foreground"
@@ -214,11 +215,10 @@ export function AppSidebar() {
                                 >
                                   <div className="flex items-center gap-3 w-full">
                                     <Icon className={cn(
-                                      "h-5 w-5 shrink-0 transition-colors", // shrink-0 prevents icon squishing
+                                      "h-5 w-5 shrink-0 transition-colors",
                                       isParentActive ? "text-primary" : "text-muted-foreground group-hover:text-primary"
                                     )} />
                                     
-                                    {/* ✅ FIX: Hide Text & Chevron when collapsed */}
                                     {!isCollapsed && (
                                       <>
                                         <span className={cn(
@@ -250,7 +250,7 @@ export function AppSidebar() {
                             )}
                           </Tooltip>
 
-                          {/* ✅ FIX: Hide Submenu content entirely when collapsed to prevent overflow */}
+                          {/* Submenu */}
                           <CollapsibleContent className={isCollapsed ? "hidden" : ""}>
                             <SidebarMenuSub>
                               {item.children.map((subItem) => {
@@ -284,12 +284,14 @@ export function AppSidebar() {
                   // ==========================
                   const active = isActive(item.url!);
                   return (
-                    <SidebarMenuItem key={item.title} data-tour={item.tourId}>
+                    <SidebarMenuItem key={item.title}>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <SidebarMenuButton
                             asChild
                             isActive={active}
+                            // ✅ FIX: Ensure data-tour is here for standard items
+                            data-tour={item.tourId}
                             className={cn(
                               "group relative",
                               active && "bg-accent text-accent-foreground"
@@ -301,7 +303,6 @@ export function AppSidebar() {
                                 active ? "text-primary" : "text-muted-foreground group-hover:text-primary"
                               )} />
                               
-                              {/* ✅ FIX: Hide Text & Chevron when collapsed */}
                               {!isCollapsed && (
                                 <>
                                   <span className={cn(
@@ -338,7 +339,7 @@ export function AppSidebar() {
           </SidebarGroup>
         </SidebarContent>
 
-        <SidebarFooter>
+        <SidebarFooter data-tour="user-menu">
           <div className={cn(
             "border-t transition-all duration-200",
             isCollapsed ? "p-2" : "p-4"

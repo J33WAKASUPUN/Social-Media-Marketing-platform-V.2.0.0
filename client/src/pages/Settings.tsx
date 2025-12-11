@@ -30,7 +30,6 @@ const Settings = () => {
           description="Manage your profile, security, and team preferences"
         />
         
-        {/* Right side controls */}
         <div className="flex items-center gap-2">
            <Button variant="outline" size="sm" className="hidden md:flex gap-2">
              <RefreshCw className="h-4 w-4" />
@@ -44,19 +43,12 @@ const Settings = () => {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        {/* Tabs Container 
-           - 'w-full' ensures the list spans the full width
-           - 'overflow-x-auto' keeps it scrollable on very small mobile screens if needed
-        */}
         <div className="w-full overflow-x-auto pb-2 md:pb-0">
             <TabsList className="w-full h-auto p-2 bg-muted/60 rounded-xl text-muted-foreground flex items-center gap-1">
               
-              {/* Shared Trigger Styles:
-                  - 'w-full': This forces every tab to take up equal width within the parent flex container.
-                  - 'justify-center': Ensures the icon and text stay centered in their box.
-              */}
               <TabsTrigger 
                 value="profile" 
+                data-tour="settings-profile" // ✅ Added
                 className="w-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm py-2.5 rounded-lg transition-all flex items-center justify-center"
               >
                 <UserCircle className="h-4 w-4 mr-2" />
@@ -65,6 +57,7 @@ const Settings = () => {
               
               <TabsTrigger 
                 value="security" 
+                data-tour="settings-security" // ✅ Added
                 className="w-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm py-2.5 rounded-lg transition-all flex items-center justify-center"
               >
                 <Shield className="h-4 w-4 mr-2" />
@@ -73,6 +66,7 @@ const Settings = () => {
               
               <TabsTrigger 
                 value="appearance" 
+                data-tour="settings-appearance" // ✅ Added
                 className="w-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm py-2.5 rounded-lg transition-all flex items-center justify-center"
               >
                 <Palette className="h-4 w-4 mr-2" />
@@ -81,6 +75,7 @@ const Settings = () => {
               
               <TabsTrigger 
                 value="organization" 
+                data-tour="settings-organization" // ✅ Added
                 className="w-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm py-2.5 rounded-lg transition-all flex items-center justify-center"
               >
                 <Building2 className="h-4 w-4 mr-2" />
@@ -89,6 +84,7 @@ const Settings = () => {
               
               <TabsTrigger 
                 value="brands" 
+                data-tour="settings-brands" // ✅ Added
                 className="w-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm py-2.5 rounded-lg transition-all flex items-center justify-center"
               >
                 <Tag className="h-4 w-4 mr-2" />
@@ -97,6 +93,7 @@ const Settings = () => {
               
               <TabsTrigger 
                 value="team" 
+                data-tour="settings-team" // ✅ Added
                 className="w-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm py-2.5 rounded-lg transition-all flex items-center justify-center"
               >
                 <Users className="h-4 w-4 mr-2" />
@@ -105,6 +102,7 @@ const Settings = () => {
               
               <TabsTrigger 
                 value="tours"
+                data-tour="settings-tours" // ✅ Added
                 className="w-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm py-2.5 rounded-lg transition-all flex items-center justify-center"
               >
                 <GraduationCap className="h-4 w-4 mr-2" />
