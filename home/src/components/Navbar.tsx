@@ -9,6 +9,9 @@ const navLinks = [
   { label: "About", href: "#about" },
 ];
 
+// ✅ YOUR APP URL
+const APP_URL = "https://socialflow-51u9.onrender.com";
+
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isDark, setIsDark] = useState(true);
@@ -69,10 +72,14 @@ export function Navbar() {
             >
               {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
-            <a href="#pricing" className="btn-ghost text-sm">
+            
+            {/* ✅ UPDATED: Sign In Link */}
+            <a href={`${APP_URL}/login`} className="btn-ghost text-sm">
               Sign In
             </a>
-            <a href="#pricing" className="btn-primary text-sm">
+            
+            {/* ✅ UPDATED: Get Started Link */}
+            <a href={`${APP_URL}/register`} className="btn-primary text-sm">
               Get Started
             </a>
           </div>
@@ -117,10 +124,13 @@ export function Navbar() {
                 </a>
               ))}
               <div className="pt-4 flex flex-col gap-3">
-                <a href="#pricing" className="btn-ghost text-center text-sm">
+                {/* ✅ UPDATED: Mobile Sign In Link */}
+                <a href={`${APP_URL}/login`} className="btn-ghost text-center text-sm">
                   Sign In
                 </a>
-                <a href="#pricing" className="btn-primary text-center text-sm">
+                
+                {/* ✅ UPDATED: Mobile Get Started Link */}
+                <a href={`${APP_URL}/register`} className="btn-primary text-center text-sm">
                   Get Started
                 </a>
               </div>

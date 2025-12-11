@@ -62,7 +62,7 @@ export function Hero() {
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <a
-              href="#pricing"
+              href="https://socialflow-51u9.onrender.com/register"
               className="btn-primary flex items-center gap-2 text-base animate-glow"
             >
               Get Started for Free
