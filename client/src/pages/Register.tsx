@@ -4,8 +4,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox"; // ✅ NEW
 import { toast } from "sonner";
-import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Sparkles, Check, X, AlertTriangle } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Sparkles, Check, X, AlertTriangle, Shield } from "lucide-react"; // ✅ Added Shield
 import { cn } from "@/lib/utils";
 
 export default function Register() {
@@ -20,6 +21,9 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [registrationComplete, setRegistrationComplete] = useState(false);
+  
+  // ✅ NEW: Privacy Policy Agreement
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
 
   // Password validation
   const passwordValidation = {
@@ -45,6 +49,12 @@ export default function Register() {
       return;
     }
 
+    // ✅ NEW: Check privacy policy agreement
+    if (!agreedToPrivacy) {
+      toast.error("Please read and agree to the Privacy Policy");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -60,16 +70,21 @@ export default function Register() {
   };
 
   const handleGoogleSignup = () => {
+    // ✅ NEW: Check privacy policy for Google signup too
+    if (!agreedToPrivacy) {
+      toast.error("Please read and agree to the Privacy Policy before signing up with Google");
+      return;
+    }
+    
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
     window.location.href = `${apiUrl}/auth/google`;
   };
 
-  // Show success message after registration
+  // Show success message after registration (unchanged)
   if (registrationComplete) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-violet-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 p-4">
         <div className="w-full max-w-md space-y-6">
-          {/* Success Card */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 space-y-6">
             <div className="text-center">
               <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
@@ -81,7 +96,6 @@ export default function Register() {
               </p>
             </div>
 
-            {/* Spam Notice */}
             <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
@@ -97,7 +111,6 @@ export default function Register() {
               </div>
             </div>
 
-            {/* Instructions */}
             <div className="space-y-3 text-sm text-muted-foreground">
               <p className="flex items-center gap-2">
                 <Check className="h-4 w-4 text-green-500" />
@@ -208,7 +221,7 @@ export default function Register() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder="john@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   onFocus={() => setFocusedField('email')}
@@ -231,7 +244,7 @@ export default function Register() {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Create a strong password"
+                  placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onFocus={() => setFocusedField('password')}
@@ -243,7 +256,7 @@ export default function Register() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -264,7 +277,12 @@ export default function Register() {
                       ) : (
                         <X className="h-3.5 w-3.5 text-muted-foreground" />
                       )}
-                      <span className={passwordValidation[key as keyof typeof passwordValidation] ? "text-green-600" : "text-muted-foreground"}>
+                      <span className={cn(
+                        "transition-colors",
+                        passwordValidation[key as keyof typeof passwordValidation] 
+                          ? "text-green-600 dark:text-green-400" 
+                          : "text-muted-foreground"
+                      )}>
                         {label}
                       </span>
                     </div>
@@ -275,43 +293,84 @@ export default function Register() {
 
             {/* Confirm Password Field */}
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-sm font-medium">Confirm password</Label>
+              <Label htmlFor="confirm-password" className="text-sm font-medium">Confirm password</Label>
               <div className="relative">
                 <Lock className={cn(
                   "absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors",
-                  focusedField === 'confirmPassword' ? "text-violet-600" : "text-muted-foreground"
+                  focusedField === 'confirm-password' ? "text-violet-600" : "text-muted-foreground"
                 )} />
                 <Input
-                  id="confirmPassword"
+                  id="confirm-password"
                   type={showConfirmPassword ? "text" : "password"}
-                  placeholder="Confirm your password"
+                  placeholder="••••••••"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  onFocus={() => setFocusedField('confirmPassword')}
+                  onFocus={() => setFocusedField('confirm-password')}
                   onBlur={() => setFocusedField(null)}
                   required
                   disabled={loading}
-                  className={cn(
-                    "pl-10 pr-10 h-12 border-2 focus:border-violet-600",
-                    confirmPassword && (passwordsMatch ? "border-green-500" : "border-red-500")
-                  )}
+                  className="pl-10 pr-10 h-12 border-2 focus:border-violet-600"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
-              {confirmPassword && !passwordsMatch && (
-                <p className="text-xs text-red-500">Passwords do not match</p>
+              {confirmPassword && (
+                <div className="flex items-center gap-2 text-xs pt-1">
+                  {passwordsMatch ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-green-500" />
+                      <span className="text-green-600 dark:text-green-400">Passwords match</span>
+                    </>
+                  ) : (
+                    <>
+                      <X className="h-3.5 w-3.5 text-red-500" />
+                      <span className="text-red-600 dark:text-red-400">Passwords do not match</span>
+                    </>
+                  )}
+                </div>
               )}
             </div>
 
+            {/* ✅ NEW: Privacy Policy Agreement */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-start gap-3 p-4 rounded-lg border-2 bg-muted/30 hover:bg-muted/50 transition-colors">
+                <Checkbox
+                  id="privacy-policy"
+                  checked={agreedToPrivacy}
+                  onCheckedChange={(checked) => setAgreedToPrivacy(!!checked)}
+                  className="mt-1"
+                />
+                <div className="flex-1">
+                  <Label
+                    htmlFor="privacy-policy"
+                    className="text-sm font-medium cursor-pointer leading-relaxed"
+                  >
+                    I have read and agree to the{' '}
+                    <Link
+                      to="/privacy-policy"
+                      className="text-violet-600 hover:text-violet-700 underline font-semibold inline-flex items-center gap-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Privacy Policy
+                      <Shield className="h-3.5 w-3.5" />
+                    </Link>
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    We collect and process your data as described in our privacy policy.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Sign Up Button */}
             <Button
               type="submit"
-              disabled={loading || !isPasswordValid || !passwordsMatch}
+              disabled={loading || !isPasswordValid || !passwordsMatch || !agreedToPrivacy}
               className="w-full h-12 text-base font-semibold bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/30 transition-all duration-200 hover:shadow-xl hover:shadow-violet-500/40"
             >
               {loading ? (
@@ -341,32 +400,26 @@ export default function Register() {
         </div>
       </div>
 
-      {/* Right Side - Image (Updated to match Login.tsx style) */}
+      {/* Right Side - Image (Unchanged) */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 relative overflow-hidden">
-        {/* Background Circles */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-20 left-20 w-96 h-96 bg-white rounded-full -translate-x-1/2 -translate-y-1/2"></div>
           <div className="absolute bottom-0 right-0 w-80 h-80 bg-white rounded-full translate-x-1/3 translate-y-1/3"></div>
           <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-white rounded-full -translate-x-1/2 -translate-y-1/2"></div>
         </div>
 
-        {/* Content Container */}
         <div className="relative z-10 flex flex-col items-center justify-center w-full px-12 text-white">
-          {/* Logo Badge */}
           <div className="flex items-center gap-3 mb-8">
           </div>
-          {/* Image */}
           <div className="relative w-full max-w-md aspect-square rounded-3xl overflow-hidden shadow-2xl shadow-black/30 ring-1 ring-white/20">
             <img
               src="https://raw.githubusercontent.com/J33WAKASUPUN/Social-Media-Marketing-platform-V.2.0.0/main/social%20flow.png"
               alt="SocialFlow Platform"
               className="w-full h-full object-cover"
             />
-            {/* Gradient Overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-violet-900/40 via-transparent to-transparent"></div>
           </div>
 
-          {/* Text */}
           <div className="mt-10 text-center max-w-md">
             <h2 className="text-3xl font-bold text-white mb-4">
               Start your journey today
@@ -376,7 +429,6 @@ export default function Register() {
             </p>
           </div>
 
-          {/* Feature Pills */}
           <div className="flex flex-wrap justify-center gap-3 mt-8">
             {['Multi-Platform', 'Analytics', 'Scheduling', 'Team Collaboration'].map((feature) => (
               <span

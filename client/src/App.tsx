@@ -37,6 +37,8 @@ import WhatsAppInbox from '@/pages/whatsapp/Inbox';
 import WhatsAppTemplates from '@/pages/whatsapp/Templates';
 import WhatsAppContacts from '@/pages/whatsapp/Contacts';
 import WhatsAppCallLogs from '@/pages/whatsapp/CallLogs';
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
+
 
 const queryClient = new QueryClient();
 
@@ -76,6 +78,7 @@ const App = () => (
                       <Route path="/reset-password" element={<ResetPassword />} />
                       <Route path="/google/callback" element={<GoogleCallback />} />
                       <Route path="/2fa-verify" element={<TwoFactorVerify />} />
+                      <Route path="/privacy-policy" element={<PrivacyPolicy />} />
 
                       {/* Protected Routes - Require Authentication */}
                       <Route
