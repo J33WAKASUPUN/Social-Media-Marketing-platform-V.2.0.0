@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { Shield, Smartphone, Mail, Loader2, RefreshCw, ArrowLeft, AlertTriangle, Sparkles, Monitor, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { twoFactorApi } from '@/services/twoFactorApi';
+import api from '@/lib/api';
+
 
 export default function TwoFactorVerify() {
   const navigate = useNavigate();
@@ -17,8 +19,8 @@ export default function TwoFactorVerify() {
   
   const userId = location.state?.userId;
   const twoFactorMethod = location.state?.twoFactorMethod;
-  const deviceId = location.state?.deviceId; // ✅ NEW
-  const deviceName = location.state?.deviceName; // ✅ NEW
+  const deviceId = location.state?.deviceId;
+  const deviceName = location.state?.deviceName;
 
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);

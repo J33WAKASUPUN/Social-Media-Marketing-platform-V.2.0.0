@@ -26,34 +26,36 @@ export default function Login() {
     }
   }, [user, authLoading, navigate, location]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
 
-    try {
-      const result = await login(email, password);
-      
-      // Check if 2FA verification is needed
-      if (result.requires2FA) {
-        navigate('/2fa-verify', {
-          state: {
-            userId: result.userId,
-            twoFactorMethod: result.twoFactorMethod,
-          },
-          replace: true,
-        });
-        return;
-      }
-
-      // Normal login success
-      const from = (location.state as any)?.from?.pathname || '/dashboard';
-      navigate(from, { replace: true });
-    } catch (error: any) {
-      console.error('Login error:', error);
-    } finally {
-      setLoading(false);
+  try {
+    const result = await login(email, password);
+    
+    // Check if 2FA verification is needed
+    if (result.requires2FA) {
+      navigate('/2fa-verify', {
+        state: {
+          userId: result.userId,
+          twoFactorMethod: result.twoFactorMethod,
+          deviceId: result.deviceId,
+          deviceName: result.deviceName,
+        },
+        replace: true,
+      });
+      return;
     }
-  };
+
+    // Normal login success
+    const from = (location.state as any)?.from?.pathname || '/dashboard';
+    navigate(from, { replace: true });
+  } catch (error: any) {
+    console.error('Login error:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleGoogleLogin = () => {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
