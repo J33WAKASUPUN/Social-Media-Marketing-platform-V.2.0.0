@@ -13,18 +13,37 @@ export default function GoogleCallback() {
     const refresh = searchParams.get('refresh');
     const error = searchParams.get('error');
 
+    // ✅ NEW: Check for 2FA redirect parameters
+    const userId = searchParams.get('userId');
+    const method = searchParams.get('method');
+    const deviceId = searchParams.get('deviceId');
+    const deviceName = searchParams.get('deviceName');
+
     if (error) {
       toast.error(`Google login failed: ${error}`);
       navigate('/login');
       return;
     }
 
+    // ✅ NEW: Handle 2FA redirect
+    if (userId && method && deviceId) {
+      toast.info('2FA verification required for this device');
+      navigate('/2fa-verify', {
+        state: {
+          userId,
+          twoFactorMethod: method,
+          deviceId,
+          deviceName: deviceName ? decodeURIComponent(deviceName) : 'Unknown Device',
+        },
+        replace: true,
+      });
+      return;
+    }
+
+    // Normal login flow
     if (token && refresh) {
-      // Store tokens FIRST
       localStorage.setItem('accessToken', token);
       localStorage.setItem('refreshToken', refresh);
-
-      // Then fetch user data
       fetchUserData(token);
     } else {
       toast.error('Invalid authentication response');
@@ -40,38 +59,26 @@ export default function GoogleCallback() {
         },
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch user data');
-      }
+      if (!response.ok) throw new Error('Failed to fetch user data');
 
-      const data = await response.json();
-      const userData = data.data.user;
-
-      // Set user in BOTH localStorage AND AuthContext
-      localStorage.setItem('user', JSON.stringify(userData));
+      const { data } = await response.json();
+      localStorage.setItem('user', JSON.stringify(data.user));
+      setUser(data.user);
       
-      // Call setUser from AuthContext (need to update AuthContext first)
-      // For now, just refresh the page to trigger AuthContext useEffect
-      
-      toast.success(`Welcome, ${userData.name}!`);
-      
-      // USE REPLACE INSTEAD OF NAVIGATE TO AVOID BACK BUTTON ISSUES
+      toast.success('Welcome back!');
       navigate('/dashboard', { replace: true });
-      
-      // FORCE PAGE RELOAD TO TRIGGER AUTHCONTEXT REFRESH
-      window.location.reload();
     } catch (error) {
-      console.error('Error fetching user data:', error);
-      toast.error('Failed to complete authentication');
+      console.error('Fetch user error:', error);
+      toast.error('Failed to load user data');
       navigate('/login');
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-soft">
+    <div className="flex min-h-screen items-center justify-center">
       <div className="text-center">
-        <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-        <p className="mt-4 text-sm text-muted-foreground">Completing Google sign-in...</p>
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-violet-600 border-t-transparent mx-auto mb-4"></div>
+        <p className="text-muted-foreground">Completing Google sign-in...</p>
       </div>
     </div>
   );

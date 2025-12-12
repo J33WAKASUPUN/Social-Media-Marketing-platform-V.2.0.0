@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Laptop, Smartphone, Trash2, MapPin, Calendar, Shield, AlertTriangle } from 'lucide-react';
+import { Laptop, Smartphone, Trash2, MapPin, Calendar, Shield, AlertTriangle, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '@/lib/api';
 import { format } from 'date-fns';
@@ -84,6 +84,37 @@ export function TrustedDevicesSettings() {
     return <Laptop className="h-5 w-5" />;
   };
 
+  // ✅ NEW: Better location display
+  const getLocationDisplay = (location: { country: string; city: string }) => {
+    // Handle development environment
+    if (location.country === 'Local' && location.city === 'Development') {
+      return (
+        <span className="flex items-center gap-1 text-xs">
+          <Globe className="h-3 w-3 text-blue-500" />
+          <span className="text-blue-600 dark:text-blue-400">Development Environment</span>
+        </span>
+      );
+    }
+    
+    // Handle unknown location
+    if (location.country === 'Unknown' || location.city === 'Unknown') {
+      return (
+        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          <MapPin className="h-3 w-3" />
+          Location unavailable
+        </span>
+      );
+    }
+    
+    // Normal display with country flag emoji (optional)
+    return (
+      <span className="flex items-center gap-1 text-xs">
+        <MapPin className="h-3 w-3" />
+        {location.city}, {location.country}
+      </span>
+    );
+  };
+
   if (loading) {
     return (
       <Card>
@@ -142,17 +173,15 @@ export function TrustedDevicesSettings() {
                   key={device.deviceId}
                   className="flex items-start justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
                 >
-                  <div className="flex gap-3">
-                    <div className="mt-1 text-primary">
+                  <div className="flex gap-3 flex-1 min-w-0">
+                    <div className="mt-1 text-primary shrink-0">
                       {getDeviceIcon(device.deviceName)}
                     </div>
-                    <div className="space-y-1 min-w-0">
-                      <p className="font-medium text-sm">{device.deviceName}</p>
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <p className="font-medium text-sm truncate">{device.deviceName}</p>
                       <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {device.location.city}, {device.location.country}
-                        </span>
+                        {/* ✅ UPDATED: Better location display */}
+                        {getLocationDisplay(device.location)}
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           Last used: {format(new Date(device.lastUsed), 'MMM d, yyyy')}
@@ -168,7 +197,7 @@ export function TrustedDevicesSettings() {
                     size="sm"
                     onClick={() => handleRemoveDevice(device.deviceId)}
                     disabled={removingDevice === device.deviceId}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
                   >
                     {removingDevice === device.deviceId ? (
                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-destructive border-t-transparent" />
