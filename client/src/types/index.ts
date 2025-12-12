@@ -6,6 +6,7 @@ export interface User {
   avatarUrl?: string;
   emailVerified: boolean;
   provider: 'local' | 'google';
+  hasPassword?: boolean;
   createdAt: string;
   updatedAt: string;
 }
