@@ -216,8 +216,7 @@ export const TwoFactorSettings: React.FC = () => {
               <Alert>
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  Two-factor authentication adds an extra layer of security. 
-                  When enabled, you'll need to verify your identity after 3 days of inactivity.
+                  Two-factor authentication adds an extra layer of security.
                 </AlertDescription>
               </Alert>
 
