@@ -18,6 +18,8 @@ interface LoginResult {
   requires2FA: boolean;
   userId?: string;
   twoFactorMethod?: string;
+  deviceId?: string;
+  deviceName?: string;
 }
 
 interface AuthContextType {
@@ -49,8 +51,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (error) {
         console.error('Failed to parse stored user:', error);
         localStorage.removeItem('user');
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
       }
     }
 
@@ -68,6 +68,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           requires2FA: true,
           userId: data.userId,
           twoFactorMethod: data.twoFactorMethod,
+          deviceId: data.deviceId,
+          deviceName: data.deviceName,
         };
       }
 
@@ -120,7 +122,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // FIXED: Only call API when updating profile fields, not when passing full user object
   const updateProfile = async (data: Partial<User>) => {
     try {
       // If data contains only name/timezone, call API

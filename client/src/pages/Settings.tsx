@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProfileSettings } from "@/components/ProfileSettings";
 import { TwoFactorSettings } from "@/components/TwoFactorSettings";
+import { TrustedDevicesSettings } from "@/components/TrustedDevicesSettings"; // ✅ NEW
 import { OrganizationSettings } from "@/components/OrganizationSettings";
 import { BrandSettings } from "@/components/BrandSettings";
 import { TeamSettings } from "@/components/TeamSettings";
@@ -114,7 +115,12 @@ const Settings = () => {
         {/* Content Area */}
         <div className="mt-6">
             <TabsContent value="profile"><ProfileSettings /></TabsContent>
-            <TabsContent value="security"><TwoFactorSettings /></TabsContent>
+            <TabsContent value="security">
+              <div className="space-y-6">
+                <TwoFactorSettings />
+                <TrustedDevicesSettings />
+              </div>
+            </TabsContent>
             <TabsContent value="appearance"><ThemeSettings /></TabsContent>
             <TabsContent value="organization"><OrganizationSettings /></TabsContent>
             <TabsContent value="brands"><BrandSettings /></TabsContent>
