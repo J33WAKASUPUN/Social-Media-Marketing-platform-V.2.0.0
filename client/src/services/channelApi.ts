@@ -19,7 +19,7 @@ export const channelApi = {
   // Get OAuth URL for platform
   getOAuthUrl: async (platform: PlatformType, brandId: string) => {
     const response = await api.get<ApiResponse<{ authUrl: string; state: string }>>(
-      `/channels/auth/${platform}`, // ✅ FIXED: Matches backend route '/auth/:provider'
+      `/channels/oauth/${platform}`,
       {
         params: {
           brandId,
