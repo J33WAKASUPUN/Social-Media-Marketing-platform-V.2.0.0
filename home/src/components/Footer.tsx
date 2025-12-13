@@ -105,7 +105,7 @@ export function Footer() {
                 <h4 className="font-semibold mb-4">{category}</h4>
                 <ul className="space-y-3">
                   {links.map((link) => {
-                    // Privacy Policy links to route
+                    // Privacy Policy links to route (ScrollToTop will handle scroll)
                     if (link === "Privacy Policy") {
                       return (
                         <li key={link}>
@@ -141,9 +141,10 @@ export function Footer() {
               © {new Date().getFullYear()} SocialFlow. All rights reserved.
             </p>
             <div className="flex items-center gap-6">
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              {/* Use Link component for Privacy Policy */}
+              <Link to="/privacy-policy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Privacy Policy
-              </a>
+              </Link>
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Terms
               </a>

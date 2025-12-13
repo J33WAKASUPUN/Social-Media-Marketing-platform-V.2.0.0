@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Sun, Moon } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const navLinks = [
   { label: "Features", href: "#features" },
   { label: "Platforms", href: "#platforms" },
   { label: "Pricing", href: "#pricing" },
-  { label: "About", href: "#about" },
+  { label: "Contact", href: "#contact" }, // ✅ ADDED BACK
+  { label: "Privacy Policy", href: "/privacy-policy" },
 ];
 
 // ✅ YOUR APP URL
@@ -43,8 +45,8 @@ export function Navbar() {
       <div className="container mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16 md:h-20">
           
-          {/* ✅ LOGO UPDATED HERE */}
-          <a href="#" className="flex items-center gap-0">
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-0">
             <img 
               src="/logo.png" 
               alt="SocialFlow" 
@@ -53,19 +55,35 @@ export function Navbar() {
             <span className="ml-1 text-xl font-bold bg-gradient-to-r from-violet-600 to-purple-500 bg-clip-text text-transparent transition-all duration-300">
               SocialFlow
             </span>
-          </a>
+          </Link>
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
-              <a
-                key={link.label}
-                href={link.href}
-                className="text-muted-foreground hover:text-foreground transition-colors font-medium"
-              >
-                {link.label}
-              </a>
-            ))}
+            {navLinks.map((link) => {
+              // ✅ Handle internal route links (starts with /)
+              if (link.href.startsWith('/')) {
+                return (
+                  <Link
+                    key={link.label}
+                    to={link.href}
+                    className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+                  >
+                    {link.label}
+                  </Link>
+                );
+              }
+              
+              // ✅ Handle hash links (same page anchors like #contact)
+              return (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+                >
+                  {link.label}
+                </a>
+              );
+            })}
           </div>
 
           {/* Actions */}
@@ -116,16 +134,33 @@ export function Navbar() {
             className="md:hidden glass-card border-t"
           >
             <div className="container mx-auto px-4 py-4 space-y-3">
-              {navLinks.map((link) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  onClick={() => setIsOpen(false)}
-                  className="block py-2 text-muted-foreground hover:text-foreground transition-colors font-medium"
-                >
-                  {link.label}
-                </a>
-              ))}
+              {navLinks.map((link) => {
+                // ✅ Handle internal route links
+                if (link.href.startsWith('/')) {
+                  return (
+                    <Link
+                      key={link.label}
+                      to={link.href}
+                      onClick={() => setIsOpen(false)}
+                      className="block py-2 text-muted-foreground hover:text-foreground transition-colors font-medium"
+                    >
+                      {link.label}
+                    </Link>
+                  );
+                }
+                
+                // ✅ Handle hash links
+                return (
+                  <a
+                    key={link.label}
+                    href={link.href}
+                    onClick={() => setIsOpen(false)}
+                    className="block py-2 text-muted-foreground hover:text-foreground transition-colors font-medium"
+                  >
+                    {link.label}
+                  </a>
+                );
+              })}
               <div className="pt-4 flex flex-col gap-3">
                 <a href={`${APP_URL}/login`} className="btn-ghost text-center text-sm">
                   Sign In
