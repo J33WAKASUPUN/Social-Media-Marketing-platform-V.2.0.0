@@ -9,3 +9,4 @@ export { CreateTemplateDialog } from './CreateTemplateDialog';
 export { SendTemplateDialog } from './SendTemplateDialog';
 export { MediaPreview } from './MediaPreview';
 export { FileUploadButton } from './FileUploadButton';
+export { WhatsAppEmptyState } from './WhatsAppEmptyState';

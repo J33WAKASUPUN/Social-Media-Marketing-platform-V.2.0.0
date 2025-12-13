@@ -25,7 +25,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ContactCard } from '@/components/whatsapp';
+// ✅ ADDED: WhatsAppEmptyState
+import { ContactCard, WhatsAppEmptyState } from '@/components/whatsapp';
 import { whatsappApi } from '@/services/whatsappApi';
 import { channelApi } from '@/services/channelApi';
 import type { WhatsAppContact, Channel } from '@/types';
@@ -82,12 +83,6 @@ export default function WhatsAppContacts() {
     if (currentBrand) {
       loadData();
     }
-
-    // Check if edit param is present
-    const editId = searchParams.get('edit');
-    if (editId) {
-      // Will open edit dialog after contacts are loaded
-    }
   }, [currentBrand]);
 
   const loadData = async () => {
@@ -98,11 +93,11 @@ export default function WhatsAppContacts() {
 
       // Get WhatsApp channel
       const channelsRes = await channelApi.getAll(currentBrand._id);
-      const whatsappCh = channelsRes.data.find((ch) => ch.provider === 'whatsapp');
+      const whatsappCh = channelsRes.data.find((ch: any) => ch.provider === 'whatsapp');
 
       if (!whatsappCh) {
-        toast.error('No WhatsApp channel connected');
-        navigate('/channels');
+        // ✅ CHANGED: Don't navigate, just stop loading so we can show EmptyState
+        setLoading(false);
         return;
       }
 
@@ -115,9 +110,9 @@ export default function WhatsAppContacts() {
       // Extract unique tags and groups
       const allTags = new Set<string>();
       const allGroups = new Set<string>();
-      contactsRes.data.forEach((contact) => {
-        contact.tags.forEach((tag) => allTags.add(tag));
-        contact.groups.forEach((group) => allGroups.add(group));
+      contactsRes.data.forEach((contact: any) => {
+        contact.tags.forEach((tag: string) => allTags.add(tag));
+        contact.groups.forEach((group: string) => allGroups.add(group));
       });
       setAvailableTags(Array.from(allTags));
       setAvailableGroups(Array.from(allGroups));
@@ -125,7 +120,7 @@ export default function WhatsAppContacts() {
       // Check if we should open edit dialog
       const editId = searchParams.get('edit');
       if (editId) {
-        const contactToEdit = contactsRes.data.find((c) => c._id === editId);
+        const contactToEdit = contactsRes.data.find((c: any) => c._id === editId);
         if (contactToEdit) {
           handleEdit(contactToEdit);
         }
@@ -275,6 +270,16 @@ export default function WhatsAppContacts() {
           </AlertDescription>
         </Alert>
       </div>
+    );
+  }
+
+  // ✅ CHANGED: Show empty state instead of redirecting
+  if (!loading && !whatsappChannel) {
+    return (
+      <WhatsAppEmptyState
+        title="WhatsApp Not Connected"
+        description="Connect your WhatsApp Business account to manage your customer contacts and database."
+      />
     );
   }
 

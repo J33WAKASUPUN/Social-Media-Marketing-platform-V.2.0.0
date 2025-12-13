@@ -73,7 +73,7 @@ const SUPPORTED_PLATFORMS: Array<{
   {
     id: 'whatsapp',
     name: 'WhatsApp Business',
-    description: 'Send messages and templates to your customers',
+    description: 'Enable with your audience. Send messages and templates to your customers',
     requiresOAuth: false,
   },
 ];

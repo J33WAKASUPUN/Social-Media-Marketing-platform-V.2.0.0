@@ -11,6 +11,7 @@ import {
   MessageInput,
   ContactDetailsPanel,
   SendTemplateDialog,
+  WhatsAppEmptyState,
 } from '@/components/whatsapp';
 import { whatsappApi } from '@/services/whatsappApi';
 import { channelApi } from '@/services/channelApi';
@@ -77,8 +78,8 @@ export default function WhatsAppInbox() {
       const whatsappCh = channelsRes.data.find((ch) => ch.provider === 'whatsapp');
 
       if (!whatsappCh) {
-        toast.error('No WhatsApp channel connected');
-        navigate('/channels');
+        // Don't navigate, just set loading to false
+        setLoading(false);
         return;
       }
 
@@ -269,20 +270,13 @@ export default function WhatsAppInbox() {
     );
   }
 
+  // ✅ CHANGED: Show empty state instead of navigating
   if (!whatsappChannel) {
     return (
-      <div className="flex min-h-[80vh] items-center justify-center p-6">
-        <Alert className="max-w-md">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>WhatsApp Not Connected</AlertTitle>
-          <AlertDescription className="mt-2 space-y-3">
-            <p>Connect your WhatsApp Business account to start messaging.</p>
-            <Button onClick={() => navigate('/channels')}>
-              Connect WhatsApp
-            </Button>
-          </AlertDescription>
-        </Alert>
-      </div>
+      <WhatsAppEmptyState
+        title="WhatsApp Not Connected"
+        description="Connect your WhatsApp Business account to start messaging customers and managing conversations."
+      />
     );
   }
 

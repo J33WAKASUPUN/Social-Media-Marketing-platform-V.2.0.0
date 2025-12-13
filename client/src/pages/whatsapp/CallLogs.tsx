@@ -16,6 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+// ✅ ADDED: WhatsAppEmptyState
+import { WhatsAppEmptyState } from '@/components/whatsapp';
 import { whatsappApi } from '@/services/whatsappApi';
 import { channelApi } from '@/services/channelApi';
 import type { WhatsAppMessage, WhatsAppContact, Channel } from '@/types';
@@ -67,11 +69,11 @@ export default function WhatsAppCallLogs() {
 
       // Get WhatsApp channel
       const channelsRes = await channelApi.getAll(currentBrand._id);
-      const whatsappCh = channelsRes.data.find((ch) => ch.provider === 'whatsapp');
+      const whatsappCh = channelsRes.data.find((ch: any) => ch.provider === 'whatsapp');
 
       if (!whatsappCh) {
-        toast.error('No WhatsApp channel connected');
-        navigate('/channels');
+        // ✅ CHANGED: Don't navigate, just stop loading
+        setLoading(false);
         return;
       }
 
@@ -273,20 +275,13 @@ export default function WhatsAppCallLogs() {
     );
   }
 
+  // ✅ CHANGED: Show empty state instead of redirecting
   if (!whatsappChannel) {
     return (
-      <div className="flex min-h-[80vh] items-center justify-center p-6">
-        <Alert className="max-w-md">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>WhatsApp Not Connected</AlertTitle>
-          <AlertDescription className="mt-2 space-y-3">
-            <p>Connect your WhatsApp Business account to view call logs.</p>
-            <Button onClick={() => navigate('/channels')}>
-              Connect WhatsApp
-            </Button>
-          </AlertDescription>
-        </Alert>
-      </div>
+      <WhatsAppEmptyState
+        title="WhatsApp Not Connected"
+        description="Connect your WhatsApp Business account to view your call history and analytics."
+      />
     );
   }
 

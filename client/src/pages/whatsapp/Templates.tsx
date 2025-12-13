@@ -17,6 +17,7 @@ import {
   TemplateCard,
   CreateTemplateDialog,
   SendTemplateDialog,
+  WhatsAppEmptyState, // ✅ Import
 } from '@/components/whatsapp';
 import { whatsappApi } from '@/services/whatsappApi';
 import { channelApi } from '@/services/channelApi';
@@ -70,8 +71,8 @@ export default function WhatsAppTemplates() {
       const whatsappCh = channelsRes.data.find((ch) => ch.provider === 'whatsapp');
 
       if (!whatsappCh) {
-        toast.error('No WhatsApp channel connected');
-        navigate('/channels');
+        // ✅ CHANGED: Don't navigate
+        setLoading(false);
         return;
       }
 
@@ -168,6 +169,16 @@ export default function WhatsAppTemplates() {
           </AlertDescription>
         </Alert>
       </div>
+    );
+  }
+
+  // ✅ CHANGED: Show empty state instead of redirecting
+  if (!loading && !whatsappChannel) {
+    return (
+      <WhatsAppEmptyState
+        title="WhatsApp Not Connected"
+        description="Connect your WhatsApp Business account to create and manage message templates."
+      />
     );
   }
 
