@@ -1,6 +1,6 @@
 import { motion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight, Play } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useEffect, useState } from "react";
 
 export function Hero() {
   const ref = useRef<HTMLDivElement>(null);
@@ -13,6 +13,29 @@ export function Hero() {
   const rotateX = useTransform(scrollYProgress, [0, 0.5], [0, 15]);
   const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.9]);
   const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+
+  // ✅ DETECT THEME (Dark or Light)
+  const [isDark, setIsDark] = useState(true);
+
+  useEffect(() => {
+    // Check if dark mode is active
+    const checkTheme = () => {
+      const isDarkMode = document.documentElement.classList.contains('dark');
+      setIsDark(isDarkMode);
+    };
+
+    // Initial check
+    checkTheme();
+
+    // Watch for theme changes
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <section ref={ref} className="relative min-h-screen pt-24 pb-16 overflow-hidden">
@@ -68,79 +91,80 @@ export function Hero() {
               Get Started for Free
               <ArrowRight className="w-4 h-4" />
             </a>
-            <a
+            {/* <a
               href="#demo"
               className="btn-ghost flex items-center gap-2 text-base group"
             >
               <Play className="w-4 h-4" />
               View Demo
               <ArrowRight className="w-4 h-4 opacity-0 -ml-4 group-hover:opacity-100 group-hover:ml-0 transition-all" />
-            </a>
+            </a> */}
           </motion.div>
         </motion.div>
 
-        {/* Dashboard Preview with 3D Effect */}
-        <motion.div
-          style={{ y, rotateX, scale, opacity }}
-          className="relative max-w-5xl mx-auto perspective-1000"
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.8 }}
-            className="relative"
-          >
-            {/* Glow Effect */}
-            <div className="absolute -inset-4 bg-gradient-to-r from-violet-600/30 to-purple-600/30 rounded-3xl blur-2xl opacity-50" />
-            
-            {/* Dashboard Card */}
-            <div className="relative glass-card rounded-2xl md:rounded-3xl p-2 md:p-4 border border-primary/20">
-              <div className="bg-card rounded-xl md:rounded-2xl overflow-hidden">
-                {/* Mock Dashboard Header */}
-                <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-                  <div className="flex gap-1.5">
-                    <div className="w-3 h-3 rounded-full bg-red-500/80" />
-                    <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-                    <div className="w-3 h-3 rounded-full bg-green-500/80" />
-                  </div>
-                  <div className="flex-1 flex justify-center">
-                    <div className="px-4 py-1 rounded-lg bg-muted text-xs text-muted-foreground">
-                      dashboard.socialflow.io
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Dashboard Content Placeholder */}
-                <div className="aspect-[16/9] bg-gradient-to-br from-muted/50 to-muted p-4 md:p-8">
-                  <div className="h-full grid grid-cols-3 gap-4">
-                    {/* Sidebar Skeleton */}
-                    <div className="col-span-1 hidden md:flex flex-col gap-4">
-                      <div className="h-12 rounded-lg bg-primary/10" />
-                      <div className="flex-1 flex flex-col gap-2">
-                        {[...Array(5)].map((_, i) => (
-                          <div key={i} className="h-10 rounded-lg bg-muted-foreground/10" />
-                        ))}
-                      </div>
-                    </div>
-                    {/* Main Content Skeleton */}
-                    <div className="col-span-3 md:col-span-2 flex flex-col gap-4">
-                      <div className="flex gap-4">
-                        {[...Array(3)].map((_, i) => (
-                          <div key={i} className="flex-1 h-24 rounded-xl bg-muted-foreground/10" />
-                        ))}
-                      </div>
-                      <div className="flex-1 rounded-xl bg-muted-foreground/10" />
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="h-32 rounded-xl bg-muted-foreground/10" />
-                        <div className="h-32 rounded-xl bg-muted-foreground/10" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+        {/* ... inside your Hero component ... */}
+
+{/* ✅ DASHBOARD PREVIEW WITH REAL IMAGES */}
+<motion.div
+  style={{ y, rotateX, scale, opacity }}
+  className="relative max-w-5xl mx-auto perspective-1000"
+>
+  <motion.div
+    initial={{ opacity: 0, y: 50 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.6, duration: 0.8 }}
+    className="relative"
+  >
+    {/* Glow Effect */}
+    <div className="absolute -inset-4 bg-gradient-to-r from-violet-600/30 to-purple-600/30 rounded-3xl blur-2xl opacity-50" />
+    
+    {/* Dashboard Card */}
+    <div className="relative glass-card rounded-2xl md:rounded-3xl p-2 md:p-4 border border-primary/20">
+      <div className="bg-card rounded-xl md:rounded-2xl overflow-hidden">
+        {/* Mock Dashboard Header */}
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+          <div className="flex gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-red-500/80" />
+            <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
+            <div className="w-3 h-3 rounded-full bg-green-500/80" />
+          </div>
+          <div className="flex-1 flex justify-center">
+            <div className="px-4 py-1 rounded-lg bg-muted text-xs text-muted-foreground">
+              dashboard.socialflow.io
             </div>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
+        
+        {/* ✅ FIXED: Grid layout allows images to define height naturally */}
+        <div className="relative grid grid-cols-1 overflow-hidden bg-muted">
+          
+          {/* Light Mode Image */}
+          <motion.img
+            key="light"
+            src="/dashboard-light.jpg" 
+            alt="SocialFlow Dashboard - Light Mode"
+            className={`col-start-1 row-start-1 w-full h-auto object-contain transition-opacity duration-500 ${
+              isDark ? 'opacity-0' : 'opacity-100'
+            }`}
+            loading="lazy"
+          />
+          
+          {/* Dark Mode Image */}
+          <motion.img
+            key="dark"
+            src="/dashboard-dark.jpg"
+            alt="SocialFlow Dashboard - Dark Mode"
+            className={`col-start-1 row-start-1 w-full h-auto object-contain transition-opacity duration-500 ${
+              isDark ? 'opacity-100' : 'opacity-0'
+            }`}
+            loading="lazy"
+          />
+
+        </div>
+      </div>
+    </div>
+  </motion.div>
+</motion.div>
       </div>
     </section>
   );

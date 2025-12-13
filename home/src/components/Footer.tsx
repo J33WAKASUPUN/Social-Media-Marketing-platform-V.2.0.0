@@ -56,12 +56,16 @@ export function Footer() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-8 lg:gap-12">
             {/* Brand */}
             <div className="col-span-2 md:col-span-1">
-              <a href="#" className="flex items-center gap-2 mb-4">
-                <div className="w-9 h-9 gradient-primary rounded-xl flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-bold">SocialFlow</span>
-              </a>
+          <a href="#" className="flex items-center gap-0">
+            <img 
+              src="/logo.png" 
+              alt="SocialFlow" 
+              className="h-12 w-12"
+            />
+            <span className="ml-0 text-xl font-bold bg-gradient-to-r from-violet-600 to-purple-500 bg-clip-text text-transparent transition-all duration-300">
+              SocialFlow
+            </span>
+          </a>
               <p className="text-sm text-muted-foreground mb-4">
                 The all-in-one social media management platform for modern teams.
               </p>
