@@ -72,7 +72,11 @@ export default function PostComposer() {
   const fetchChannels = async () => {
     try {
       const response = await channelApi.getAll(currentBrand!._id);
-      setChannels(response.data.filter(ch => ch.connectionStatus === 'active'));
+      // ✅ FILTER: Exclude WhatsApp channels (WhatsApp is for messaging, not post publishing)
+      const socialChannels = response.data.filter(
+        (ch: Channel) => ch.connectionStatus === 'active' && ch.provider !== 'whatsapp'
+      );
+      setChannels(socialChannels);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to load channels');
     }
