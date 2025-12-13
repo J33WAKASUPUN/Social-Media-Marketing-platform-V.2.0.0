@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Zap } from "lucide-react";
-import { ContactForm } from "./ContactForm"; // ✅ NEW IMPORT
+import { ContactForm } from "./ContactForm";
+import { Link } from "react-router-dom"; // ✅ NEW IMPORT
 
 const footerLinks = {
   Product: ["Features", "Pricing", "Integrations", "Changelog", "Roadmap"],
@@ -12,7 +13,11 @@ const footerLinks = {
 export function Footer() {
   return (
     <footer className="relative">
-      {/* CTA Section */}
+
+      {/* Contact Form Section */}
+      <ContactForm />
+
+            {/* CTA Section */}
       <section className="py-20 md:py-32">
         <div className="container mx-auto px-4 sm:px-6">
           <motion.div
@@ -50,9 +55,6 @@ export function Footer() {
           </motion.div>
         </div>
       </section>
-
-      {/* ✅ NEW: Contact Form Section */}
-      <ContactForm />
 
       {/* Footer Content */}
       <div className="border-t border-border">
@@ -102,16 +104,32 @@ export function Footer() {
               <div key={category}>
                 <h4 className="font-semibold mb-4">{category}</h4>
                 <ul className="space-y-3">
-                  {links.map((link) => (
-                    <li key={link}>
-                      <a
-                        href="#"
-                        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        {link}
-                      </a>
-                    </li>
-                  ))}
+                  {links.map((link) => {
+                    // Privacy Policy links to route
+                    if (link === "Privacy Policy") {
+                      return (
+                        <li key={link}>
+                          <Link
+                            to="/privacy-policy"
+                            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {link}
+                          </Link>
+                        </li>
+                      );
+                    }
+                    
+                    return (
+                      <li key={link}>
+                        <a
+                          href="#"
+                          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {link}
+                        </a>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ))}

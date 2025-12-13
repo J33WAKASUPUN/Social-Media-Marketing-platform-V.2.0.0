@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Send, Mail, User, MessageSquare, Loader2, CheckCircle } from "lucide-react";
 import emailjs from '@emailjs/browser';
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 
 export function ContactForm() {
   const [formData, setFormData] = useState({
@@ -20,18 +21,17 @@ export function ContactForm() {
     setLoading(true);
 
     try {
-      // ✅ REPLACE WITH YOUR EMAILJS CREDENTIALS
       await emailjs.send(
-        'service_7papw6o',     // Get from EmailJS dashboard
-        'template_c78082h',    // Get from EmailJS dashboard
+        'service_7papw6o',    
+        'template_c78082h', 
         {
           from_name: formData.name,
           from_email: formData.email,
           subject: formData.subject,
           message: formData.message,
-          to_email: 'supunprabodha789@gmail.com', // Your receiving email
+          to_email: 'supunprabodha789@gmail.com', 
         },
-        'kHoj0cSS-FcHhe-aX'      // Get from EmailJS dashboard
+        'kHoj0cSS-FcHhe-aX'
       );
 
       setSubmitted(true);
@@ -232,9 +232,9 @@ export function ContactForm() {
                 {/* Privacy Note */}
                 <p className="text-xs text-center text-muted-foreground">
                   By submitting this form, you agree to our{" "}
-                  <a href="#" className="text-primary hover:underline">
+                  <Link to="/privacy-policy" className="text-primary hover:underline">
                     Privacy Policy
-                  </a>
+                  </Link>
                   . We'll never share your information.
                 </p>
               </form>

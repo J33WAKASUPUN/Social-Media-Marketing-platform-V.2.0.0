@@ -8,7 +8,7 @@ export function RealCalendarPreview() {
     <div className="mt-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-3 px-1">
-        <span className="text-sm font-semibold">December 2024</span>
+        <span className="text-sm font-semibold">December 2025</span>
         <div className="flex gap-1">
           <button className="w-6 h-6 rounded hover:bg-muted flex items-center justify-center text-xs">
             ‹
