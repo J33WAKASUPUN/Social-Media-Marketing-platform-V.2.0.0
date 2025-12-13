@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Zap } from "lucide-react";
+import { ContactForm } from "./ContactForm"; // ✅ NEW IMPORT
 
 const footerLinks = {
   Product: ["Features", "Pricing", "Integrations", "Changelog", "Roadmap"],
@@ -35,7 +36,7 @@ export function Footer() {
               social media presence. Start your free trial today.
             </p>
             <motion.a
-              href="#pricing"
+              href="https://socialflow-51u9.onrender.com/register"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.98 }}
               className="btn-primary inline-flex items-center gap-2 text-lg animate-glow"
@@ -50,6 +51,9 @@ export function Footer() {
         </div>
       </section>
 
+      {/* ✅ NEW: Contact Form Section */}
+      <ContactForm />
+
       {/* Footer Content */}
       <div className="border-t border-border">
         <div className="container mx-auto px-4 sm:px-6 py-12 md:py-16">
@@ -60,7 +64,7 @@ export function Footer() {
             <img 
               src="/logo.png" 
               alt="SocialFlow" 
-              className="h-12 w-12"
+              className="h-11 w-11"
             />
             <span className="ml-0 text-xl font-bold bg-gradient-to-r from-violet-600 to-purple-500 bg-clip-text text-transparent transition-all duration-300">
               SocialFlow
