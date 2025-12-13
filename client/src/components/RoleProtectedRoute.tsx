@@ -5,7 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { Skeleton } from '@/components/ui/skeleton';
+import { BrandedLoader } from '@/components/BrandedLoader'; // ✅ NEW IMPORT
 
 interface RoleProtectedRouteProps {
   children: React.ReactNode;
@@ -25,17 +25,9 @@ export const RoleProtectedRoute: React.FC<RoleProtectedRouteProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Show loading while auth is being checked
+  // Show branded loader instead of gray skeletons
   if (authLoading || permissions.role === null) {
-    return (
-      <div className="flex min-h-[80vh] items-center justify-center p-6">
-        <div className="max-w-md w-full space-y-4">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
-      </div>
-    );
+    return <BrandedLoader />;
   }
 
   // If no permission required, allow access
