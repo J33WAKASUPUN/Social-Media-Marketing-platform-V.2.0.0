@@ -212,7 +212,7 @@ export default function TwoFactorVerify() {
                     ) : (
                       <>
                         <RefreshCw className="mr-2 h-4 w-4" />
-                        Resend code
+                        Send code
                       </>
                     )}
                   </Button>
