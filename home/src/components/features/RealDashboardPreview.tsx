@@ -5,7 +5,7 @@ const stats = [
   { label: "Total Posts", value: "2,847", trend: "+12.5%", icon: FileText, color: "violet" },
   { label: "Scheduled", value: "23", trend: "This week", icon: Calendar, color: "amber" },
   { label: "Published", value: "1,879", trend: "+8.3%", icon: TrendingUp, color: "emerald" },
-  { label: "Channels", value: "", trend: "+15.7%", icon: Users, color: "blue" },
+  { label: "Channels", value: "6", trend: "+15.7%", icon: Users, color: "blue" },
 ];
 
 const colorClasses = {
