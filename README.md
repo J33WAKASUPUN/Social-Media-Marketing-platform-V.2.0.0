@@ -784,8 +784,7 @@ xl: 1280px  // Large desktop
 ```
 HOME: https://socialflow-home.onrender.com/
 APP: https://socialflow-51u9.onrender.com
-API: https://socialflow-backend-api.duckdns.org
-Swagger: https://socialflow-backend-api.duckdns.org/api-docs
+
 ```
 
 ### **Authentication**
@@ -1299,6 +1298,6 @@ SOFTWARE.
 
 ⭐ Star this repo if you find it useful!
 
-[Home Website](https://socialflow-home.onrender.com) • [Live App](https://socialflow-51u9.onrender.com) • [API Docs](https://socialflow-backend-api.duckdns.org/api-docs) • [Report Bug](https://github.com/J33WAKASUPUN/Social-Media-Marketing-platform-V.2.0.0/issues) • [Request Feature](https://github.com/J33WAKASUPUN/Social-Media-Marketing-platform-V.2.0.0/issues)
+[Home Website](https://socialflow-home.onrender.com) • [Live App](https://socialflow-51u9.onrender.com) • [Report Bug](https://github.com/J33WAKASUPUN/Social-Media-Marketing-platform-V.2.0.0/issues) • [Request Feature](https://github.com/J33WAKASUPUN/Social-Media-Marketing-platform-V.2.0.0/issues)
 
 </div>
