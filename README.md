@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🚀 SocialFlow - Backend API
+# 🚀 SocialFlow
 
 **Enterprise-Grade Social Media Marketing Platform**
 
