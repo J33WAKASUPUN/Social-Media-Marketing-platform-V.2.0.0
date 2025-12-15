@@ -549,49 +549,6 @@ GET    /api/v1/whatsapp/messages         # Get message history
 GET    /api/v1/whatsapp/webhook          # Verify webhook
 POST   /api/v1/whatsapp/webhook          # Receive events
 ```
-
-### **Standard Response Format**
-
-#### **Success Response**
-
-```json
-{
-  "success": true,
-  "message": "Operation completed successfully",
-  "data": { ... }
-}
-```
-
-#### **Error Response**
-
-```json
-{
-  "success": false,
-  "message": "Error description",
-  "errors": [
-    {
-      "field": "email",
-      "message": "Invalid email format"
-    }
-  ]
-}
-```
-
-#### **Pagination**
-
-```json
-{
-  "success": true,
-  "data": [ ... ],
-  "pagination": {
-    "page": 1,
-    "limit": 20,
-    "total": 156,
-    "pages": 8
-  }
-}
-```
-
 ---
 
 ## 🔌 Platform Integrations
@@ -748,7 +705,7 @@ Steps:
 - GitHub: [@J33WAKASUPUN](https://github.com/J33WAKASUPUN)
 - Email: supunprabodha789@gmail.com
 - LinkedIn: [Jeewaka Supun](https://linkedin.com/in/jeewaka-supun)
-- Website: [SocialFlow](https://socialflow-51u9.onrender.com)
+- Website: [SocialFlow](https://socialflow-home.onrender.com)
 
 ---
 
