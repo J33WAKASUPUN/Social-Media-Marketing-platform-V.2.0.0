@@ -380,19 +380,11 @@
 
 ## 📚 API Documentation
 
-### **Interactive API Docs**
-
-Access the **Swagger UI** at:
-
-```
-https://socialflow-backend-api.duckdns.org/api-docs
-```
-
 ### **Base URL**
 
 ```
-Production: https://socialflow-backend-api.duckdns.org
-Frontend: https://socialflow-51u9.onrender.com
+HOME: https://socialflow-home.onrender.com/
+APP: https://socialflow-51u9.onrender.com
 ```
 
 ### **Authentication**
@@ -687,7 +679,7 @@ POST   /api/v1/whatsapp/webhook          # Receive events
 - ✅ **CCPA** - Data deletion requests
 - ✅ **Audit Logs** - Winston logging with rotation
 - ✅ **Data Retention** - 90-day log retention
-- ✅ **Privacy Policy** - Comprehensive documentation at [Privacy Policy](https://socialflow-51u9.onrender.com/privacy-policy)
+- ✅ **Privacy Policy** - Comprehensive documentation at [Privacy Policy](https://socialflow-home.onrender.com/privacy-policy)
 
 ---
 
@@ -704,157 +696,6 @@ POST   /api/v1/whatsapp/webhook          # Receive events
 - **Email**: SendGrid
 - **Domain**: socialflow-backend-api.duckdns.org
 - **SSL**: Let's Encrypt (Auto-renewal with Certbot)
-
-<!-- ### **Infrastructure Setup**
-
-#### **Server Specifications**
-
-```yaml
-OS: Ubuntu 22.04 LTS
-CPU: 4 cores
-RAM: 8GB
-Storage: 100GB SSD
-Firewall: UFW (Uncomplicated Firewall)
-```
-
-#### **Nginx Configuration**
-
-```nginx
-# /etc/nginx/sites-available/socialflow-api
-server {
-    listen 80;
-    server_name socialflow-backend-api.duckdns.org;
-    return 301 https://$server_name$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name socialflow-backend-api.duckdns.org;
-
-    # SSL Configuration
-    ssl_certificate /etc/letsencrypt/live/socialflow-backend-api.duckdns.org/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/socialflow-backend-api.duckdns.org/privkey.pem;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-
-    # Security Headers
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-
-    # Rate Limiting
-    limit_req_zone $binary_remote_addr zone=api_limit:10m rate=100r/m;
-    limit_req zone=api_limit burst=20 nodelay;
-
-    # Proxy Configuration
-    location / {
-        proxy_pass http://localhost:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-        
-        # Timeouts
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-    }
-
-    # Static Files
-    location /uploads {
-        alias /var/www/socialflow/uploads;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-    }
-}
-```
-
-#### **PM2 Configuration**
-
-```json
-// ecosystem.config.js
-module.exports = {
-  apps: [{
-    name: 'socialflow-api',
-    script: './src/server.js',
-    instances: 'max',
-    exec_mode: 'cluster',
-    autorestart: true,
-    watch: false,
-    max_memory_restart: '1G',
-    env: {
-      NODE_ENV: 'production',
-      PORT: 5000
-    },
-    error_file: './logs/pm2-error.log',
-    out_file: './logs/pm2-out.log',
-    log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-    merge_logs: true
-  }]
-}
-```
-
-#### **Firewall Configuration (UFW)**
-
-```bash
-# Allow SSH (important!)
-sudo ufw allow 22/tcp
-
-# Allow HTTP/HTTPS
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-
-# Allow MongoDB (if remote)
-sudo ufw allow from <trusted-ip> to any port 27017
-
-# Allow Redis (if remote)
-sudo ufw allow from <trusted-ip> to any port 6379
-
-# Enable firewall
-sudo ufw enable
-```
-
-#### **SSL Certificate (Let's Encrypt)**
-
-```bash
-# Install Certbot
-sudo apt install certbot python3-certbot-nginx
-
-# Obtain certificate
-sudo certbot --nginx -d socialflow-backend-api.duckdns.org
-
-# Auto-renewal (cron job)
-sudo crontab -e
-# Add: 0 12 * * * /usr/bin/certbot renew --quiet
-```
-
-### **Deployment Process**
-
-```bash
-# 1. Pull latest code
-git pull origin main
-
-# 2. Install dependencies
-npm install --production
-
-# 3. Run database migrations (if any)
-npm run migrate
-
-# 4. Restart PM2
-pm2 restart socialflow-api
-
-# 5. Reload Nginx
-sudo nginx -t && sudo systemctl reload nginx
-
-# 6. Check status
-pm2 status
-pm2 logs socialflow-api --lines 100
-``` -->
 
 ### **Monitoring**
 
