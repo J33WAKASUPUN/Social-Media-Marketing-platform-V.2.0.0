@@ -12,7 +12,7 @@
 
 ![SocialFlow Dashboard](https://raw.githubusercontent.com/J33WAKASUPUN/Social-Media-Marketing-platform-V.2.0.0/main/socialflowhomeinterface.png)
 
-**[Live Demo](https://socialflow-51u9.onrender.com)** • **[API Docs](https://socialflow-backend-api.duckdns.org/api-docs)** • **[Report Bug](https://github.com/J33WAKASUPUN/Social-Media-Marketing-platform-V.2.0.0/issues)**
+**[Live Demo](https://socialflow-51u9.onrender.com)** • **[Report Bug](https://github.com/J33WAKASUPUN/Social-Media-Marketing-platform-V.2.0.0/issues)**
 
 </div>
 
