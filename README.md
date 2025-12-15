@@ -5,6 +5,8 @@
 **Enterprise-Grade Social Media Marketing Platform**
 
 [![Node.js](https://img.shields.io/badge/Node.js-20.x-green.svg)](https://nodejs.org/)
+[![React](https://img.shields.io/badge/React-18.x-blue.svg)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 [![Express](https://img.shields.io/badge/Express-4.x-blue.svg)](https://expressjs.com/)
 [![MongoDB](https://img.shields.io/badge/MongoDB-7.x-green.svg)](https://www.mongodb.com/)
 [![Redis](https://img.shields.io/badge/Redis-7.x-red.svg)](https://redis.io/)
@@ -12,7 +14,7 @@
 
 ![SocialFlow Dashboard](https://raw.githubusercontent.com/J33WAKASUPUN/Social-Media-Marketing-platform-V.2.0.0/main/socialflowhomeinterface.png)
 
-**[Live Demo](https://socialflow-51u9.onrender.com)** • **[Report Bug](https://github.com/J33WAKASUPUN/Social-Media-Marketing-platform-V.2.0.0/issues)**
+**[Home Website](https://socialflow-home.onrender.com)** • **[Live App](https://socialflow-51u9.onrender.com)** • **[Report Bug](https://github.com/J33WAKASUPUN/Social-Media-Marketing-platform-V.2.0.0/issues)**
 
 </div>
 
@@ -23,7 +25,8 @@
 - [Overview](#-overview)
 - [Core Features](#-core-features)
 - [Tech Stack](#-tech-stack)
-- [Architecture](#-architecture)
+- [Frontend Architecture](#-frontend-architecture)
+- [Backend Architecture](#-backend-architecture)
 - [API Documentation](#-api-documentation)
 - [Platform Integrations](#-platform-integrations)
 - [Security Features](#-security-features)
@@ -34,7 +37,13 @@
 
 ## 🎯 Overview
 
-**SocialFlow Backend** is a robust, scalable REST API built with **Express.js** and **MongoDB** that powers a comprehensive social media management platform. It supports **6 major social platforms** with **OAuth 2.0 authentication**, **queue-based publishing**, **real-time analytics**, and **enterprise-grade security**.
+**SocialFlow** is a full-stack, enterprise-grade social media management platform consisting of three main components:
+
+1. **Home Website** ([socialflow-home.onrender.com](https://socialflow-home.onrender.com)) - Marketing landing page built with React + TypeScript
+2. **Main Application** ([socialflow-51u9.onrender.com](https://socialflow-51u9.onrender.com)) - Full-featured SPA for social media management
+3. **Backend API** ([socialflow-backend-api.duckdns.org](https://socialflow-backend-api.duckdns.org)) - RESTful API with Express.js
+
+The platform supports **6 major social platforms** with **OAuth 2.0 authentication**, **queue-based publishing**, **real-time analytics**, and **enterprise-grade security**.
 
 ### **Key Capabilities**
 
@@ -45,6 +54,7 @@
 - 📱 **Multi-Platform Support** - LinkedIn, Facebook, Instagram, Twitter, YouTube, WhatsApp
 - 🎨 **Media Management** - AWS S3 and Cloudinary integration for optimized media storage
 - 👥 **Team Collaboration** - Organizations, brands, and role-based permissions
+- 🎨 **Modern UI/UX** - Responsive design with dark mode, animations, and accessible components
 
 ---
 
@@ -223,7 +233,7 @@
 - ✅ **Audit Logs** - Winston logger with file rotation
 - ✅ **Error Tracking** - Structured error logging
 - ✅ **Session Security** - HTTP-only, secure cookies
-- ✅ **Privacy Policy** - Comprehensive privacy documentation available at [Privacy Policy](https://socialflow-51u9.onrender.com/privacy-policy)
+- ✅ **Privacy Policy** - Comprehensive privacy documentation available at [Privacy Policy](https://socialflow-home.onrender.com/privacy-policy)
 
 ### **10. Background Jobs & Automation**
 
@@ -245,6 +255,94 @@
 ---
 
 ## 🛠 Tech Stack
+
+### **Frontend (Home Website)**
+
+**Framework & Language**
+- **React 18.x** - Modern UI library with hooks
+- **TypeScript 5.x** - Type-safe development
+- **Vite 5.x** - Lightning-fast build tool
+
+**UI & Styling**
+- **Tailwind CSS 3.x** - Utility-first CSS framework
+- **shadcn/ui** - Beautifully designed components
+- **Framer Motion** - Production-ready animations
+- **Lucide React** - Beautiful icon library
+- **Plus Jakarta Sans** - Modern typography
+
+**Routing & State**
+- **React Router v6** - Client-side routing
+- **TanStack Query** - Server state management
+
+**Features**
+- ✅ **Responsive Design** - Mobile-first approach
+- ✅ **Dark Mode** - System preference detection
+- ✅ **Animations** - Smooth scroll & parallax effects
+- ✅ **SEO Optimized** - Meta tags & Open Graph
+- ✅ **Accessibility** - WCAG 2.1 AA compliant
+- ✅ **Performance** - Code splitting & lazy loading
+
+### **Frontend (Main Application)**
+
+**Framework & Language**
+- **React 18.x** - Modern UI library
+- **TypeScript 5.x** - Type-safe development
+- **Vite 5.x** - Fast build tooling
+
+**UI Framework**
+- **shadcn/ui** - Accessible component library
+- **Tailwind CSS 3.x** - Utility-first styling
+- **Radix UI** - Unstyled, accessible primitives
+- **Framer Motion** - Advanced animations
+
+**State Management**
+- **React Context API** - Global state (Auth, Brand, Organization, Theme, Tour)
+- **TanStack Query v4** - Server state & caching
+- **Custom Hooks** - Reusable business logic
+
+**Forms & Validation**
+- **React Hook Form** - Performant form library
+- **Zod** - TypeScript-first schema validation
+
+**Rich Media**
+- **React Markdown** - Markdown rendering
+- **React Syntax Highlighter** - Code highlighting
+- **React Player** - Video playback
+
+**Data Visualization**
+- **Recharts** - Composable charting library
+- **date-fns** - Modern date utility
+
+**Notifications & Feedback**
+- **Sonner** - Beautiful toast notifications
+- **React Hot Toast** - Backup toast system
+
+**File Handling**
+- **React Dropzone** - Drag & drop file upload
+
+**Routing**
+- **React Router v6** - Declarative routing
+- **Protected Routes** - Authentication guards
+- **Role-Based Routes** - Permission-based access
+
+**Development Tools**
+- **ESLint** - Code linting (Airbnb config)
+- **Prettier** - Code formatting
+- **TypeScript Strict Mode** - Type safety
+
+**Key Application Features**
+- ✅ **Dashboard** - Real-time analytics overview
+- ✅ **Post Composer** - Multi-platform content creation
+- ✅ **Calendar View** - Visual scheduling interface
+- ✅ **Media Library** - Organized asset management
+- ✅ **Analytics** - Detailed performance metrics
+- ✅ **Channel Management** - OAuth integration for 6 platforms
+- ✅ **WhatsApp Suite** - Inbox, templates, contacts, call logs
+- ✅ **Settings Hub** - Profile, security, team, theme
+- ✅ **Onboarding Tours** - Interactive guided tours
+- ✅ **Dark/Light Mode** - Theme persistence
+- ✅ **Responsive Sidebar** - Collapsible navigation
+- ✅ **Real-Time Notifications** - In-app alerts
 
 ### **Backend Framework**
 
@@ -312,7 +410,308 @@
 
 ---
 
-## 🏗 Architecture
+## 🎨 Frontend Architecture
+
+### **Home Website Structure**
+
+```
+home/
+├── src/
+│   ├── components/
+│   │   ├── Navbar.tsx           # Navigation with dark mode toggle
+│   │   ├── Hero.tsx             # Hero section with CTA
+│   │   ├── Features.tsx         # Feature showcase with animations
+│   │   ├── Platforms.tsx        # Supported platforms marquee
+│   │   ├── SocialProof.tsx      # Stats & testimonials
+│   │   ├── Pricing.tsx          # Pricing tiers
+│   │   ├── ContactForm.tsx      # Lead generation form
+│   │   ├── Footer.tsx           # Footer with links
+│   │   ├── ScrollToTop.tsx      # Auto-scroll on route change
+│   │   └── features/
+│   │       ├── RealDashboardPreview.tsx
+│   │       ├── RealAnalyticsChart.tsx
+│   │       ├── RealCalendarPreview.tsx
+│   │       └── RealMediaLibrary.tsx
+│   ├── pages/
+│   │   ├── Index.tsx            # Landing page
+│   │   ├── PrivacyPolicy.tsx    # GDPR-compliant privacy policy
+│   │   └── NotFound.tsx         # 404 page
+│   └── App.tsx                  # App root with routing
+└── public/
+    └── logo.png                 # Brand assets
+```
+
+**Home Website Features:**
+- ✅ Parallax scrolling effects
+- ✅ Animated feature cards
+- ✅ Responsive marquee for platforms
+- ✅ Interactive pricing toggle (monthly/yearly)
+- ✅ Contact form with validation
+- ✅ SEO-optimized meta tags
+- ✅ Lazy-loaded images
+- ✅ Smooth scroll to sections
+
+---
+
+### **Main Application Structure**
+
+```
+client/
+├── src/
+│   ├── pages/
+│   │   ├── Login.tsx            # Authentication
+│   │   ├── Register.tsx         # User registration
+│   │   ├── TwoFactorVerify.tsx  # 2FA verification
+│   │   ├── Dashboard.tsx        # Overview with metrics
+│   │   ├── Posts.tsx            # Post management
+│   │   ├── PostComposer.tsx     # Create/Edit posts
+│   │   ├── Calendar.tsx         # Visual scheduling
+│   │   ├── Analytics.tsx        # Performance metrics
+│   │   ├── Channels.tsx         # OAuth connections
+│   │   ├── Media.tsx            # Media library
+│   │   ├── Settings.tsx         # User settings hub
+│   │   ├── PrivacyPolicy.tsx    # Privacy documentation
+│   │   └── whatsapp/
+│   │       ├── Inbox.tsx        # Message management
+│   │       ├── Templates.tsx    # Template manager
+│   │       ├── Contacts.tsx     # Contact list
+│   │       └── CallLogs.tsx     # Call history
+│   ├── components/
+│   │   ├── AppSidebar.tsx       # Main navigation
+│   │   ├── AppHeader.tsx        # Top bar
+│   │   ├── BrandSelector.tsx    # Brand switcher
+│   │   ├── PostCard.tsx         # Post preview card
+│   │   ├── PlatformBadge.tsx    # Platform indicators
+│   │   ├── ViewPostDialog.tsx   # Post details modal
+│   │   ├── ProtectedRoute.tsx   # Auth guard
+│   │   ├── RoleProtectedRoute.tsx # Permission guard
+│   │   ├── ProfileSettings.tsx  # User profile
+│   │   ├── TwoFactorSettings.tsx # 2FA config
+│   │   ├── TrustedDevicesSettings.tsx # Device management
+│   │   ├── OrganizationSettings.tsx # Org management
+│   │   ├── BrandSettings.tsx    # Brand config
+│   │   ├── TeamSettings.tsx     # Team management
+│   │   ├── ThemeSettings.tsx    # Theme switcher
+│   │   ├── TourSettings.tsx     # Guided tours
+│   │   ├── WelcomeTourDialog.tsx # Onboarding
+│   │   ├── analytics/
+│   │   │   ├── OverviewTab.tsx
+│   │   │   ├── ChannelsTab.tsx
+│   │   │   ├── ContentTab.tsx
+│   │   │   ├── MediaTab.tsx
+│   │   │   └── WhatsAppAnalyticsSection.tsx
+│   │   ├── media/
+│   │   │   ├── MediaLibrary.tsx
+│   │   │   ├── MediaCard.tsx
+│   │   │   ├── UploadDialog.tsx
+│   │   │   ├── MediaPreviewDialog.tsx
+│   │   │   ├── EditMetadataDialog.tsx
+│   │   │   ├── FolderSidebar.tsx
+│   │   │   └── FolderManagementDialog.tsx
+│   │   ├── post/
+│   │   │   ├── PostEditor.tsx
+│   │   │   ├── MediaUploader.tsx
+│   │   │   ├── PlatformSelector.tsx
+│   │   │   ├── ScheduleManager.tsx
+│   │   │   └── PreviewPanel.tsx
+│   │   ├── whatsapp/
+│   │   │   ├── MessageBubble.tsx
+│   │   │   ├── ContactCard.tsx
+│   │   │   ├── TemplateCard.tsx
+│   │   │   ├── ContactDetailsPanel.tsx
+│   │   │   └── SendMessageDialog.tsx
+│   │   └── ui/           # shadcn/ui components (40+)
+│   ├── contexts/
+│   │   ├── AuthContext.tsx      # User authentication
+│   │   ├── OrganizationContext.tsx # Org state
+│   │   ├── BrandContext.tsx     # Brand state
+│   │   ├── ThemeContext.tsx     # Dark/light mode
+│   │   ├── TourContext.tsx      # Guided tours
+│   │   └── NotificationContext.tsx # Real-time alerts
+│   ├── services/
+│   │   ├── postApi.ts           # Post operations
+│   │   ├── channelApi.ts        # Channel management
+│   │   ├── mediaApi.ts          # Media operations
+│   │   ├── analyticsApi.ts      # Analytics data
+│   │   ├── brandApi.ts          # Brand operations
+│   │   ├── organizationApi.ts   # Org operations
+│   │   ├── notificationApi.ts   # Notifications
+│   │   ├── whatsappApi.ts       # WhatsApp operations
+│   │   ├── twoFactorApi.ts      # 2FA operations
+│   │   └── tourService.ts       # Tour management
+│   ├── hooks/
+│   │   ├── usePermissions.ts    # RBAC hook
+│   │   ├── use-mobile.tsx       # Responsive detection
+│   │   └── use-toast.ts         # Toast notifications
+│   ├── lib/
+│   │   ├── api.ts               # Axios instance
+│   │   ├── utils.ts             # Utility functions
+│   │   ├── sanitize.ts          # Input sanitization
+│   │   └── platformCapabilities.ts # Platform limits
+│   └── types/
+│       └── index.ts             # TypeScript interfaces
+└── public/
+    └── logo.png                 # App logo
+```
+
+### **Application Routes**
+
+```typescript
+Public Routes:
+  /                              # Login page
+  /register                      # Registration
+  /forgot-password               # Password recovery
+  /reset-password                # Password reset
+  /2fa-verify                    # 2FA verification
+  /google/callback               # OAuth callback
+  /privacy-policy                # Privacy policy
+
+Protected Routes (Require Auth):
+  /dashboard                     # Dashboard
+  /posts                         # Post list
+  /posts/new                     # Create post
+  /posts/edit/:id                # Edit post
+  /calendar                      # Calendar view
+  /analytics                     # Analytics
+  /channels                      # Channel management
+  /media                         # Media library
+  /whatsapp/inbox                # WhatsApp inbox
+  /whatsapp/templates            # WhatsApp templates
+  /whatsapp/contacts             # WhatsApp contacts
+  /whatsapp/call-logs            # WhatsApp calls
+  /settings                      # Settings hub
+```
+
+### **State Management Pattern**
+
+```typescript
+// Context Providers Hierarchy
+<ThemeProvider>
+  <QueryClientProvider>
+    <AuthProvider>
+      <OrganizationProvider>
+        <BrandProvider>
+          <NotificationProvider>
+            <TourProvider>
+              {/* App Router */}
+            </TourProvider>
+          </NotificationProvider>
+        </BrandProvider>
+      </OrganizationProvider>
+    </AuthProvider>
+  </QueryClientProvider>
+</ThemeProvider>
+```
+
+### **API Integration**
+
+```typescript
+// Example: API Service Layer
+// services/postApi.ts
+
+import api from '@/lib/api';
+
+export const postApi = {
+  getAll: (brandId: string) => 
+    api.get(`/api/v1/posts?brand=${brandId}`),
+  
+  create: (data: CreatePostData) => 
+    api.post('/api/v1/posts', data),
+  
+  update: (id: string, data: UpdatePostData) => 
+    api.patch(`/api/v1/posts/${id}`, data),
+  
+  schedule: (postId: string, schedules: Schedule[]) => 
+    api.post(`/api/v1/posts/${postId}/schedule`, { schedules }),
+  
+  delete: (id: string) => 
+    api.delete(`/api/v1/posts/${id}`)
+};
+
+// Usage in Component
+const { data, isLoading } = useQuery({
+  queryKey: ['posts', currentBrand?._id],
+  queryFn: () => postApi.getAll(currentBrand!._id),
+  enabled: !!currentBrand
+});
+```
+
+### **Component Design Patterns**
+
+**1. Compound Components (Settings)**
+```typescript
+<Tabs>
+  <TabsList>
+    <TabsTrigger value="profile">Profile</TabsTrigger>
+    <TabsTrigger value="security">Security</TabsTrigger>
+  </TabsList>
+  <TabsContent value="profile">
+    <ProfileSettings />
+  </TabsContent>
+  <TabsContent value="security">
+    <TwoFactorSettings />
+  </TabsContent>
+</Tabs>
+```
+
+**2. Render Props (Protected Routes)**
+```typescript
+<ProtectedRoute>
+  <RoleProtectedRoute requiredPermission="canCreatePosts">
+    <PostComposer />
+  </RoleProtectedRoute>
+</ProtectedRoute>
+```
+
+**3. Custom Hooks (Permissions)**
+```typescript
+const permissions = usePermissions();
+
+if (permissions.canCreatePosts) {
+  // Show create button
+}
+```
+
+### **Responsive Design**
+
+```typescript
+// Breakpoints (Tailwind)
+sm: 640px   // Mobile landscape
+md: 768px   // Tablet
+lg: 1024px  // Desktop
+xl: 1280px  // Large desktop
+2xl: 1400px // Extra large
+
+// Mobile-First Approach
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+  {/* Responsive grid */}
+</div>
+```
+
+### **Performance Optimizations**
+
+- ✅ **Code Splitting** - React.lazy() for route-based splitting
+- ✅ **Image Optimization** - Lazy loading with Intersection Observer
+- ✅ **Memoization** - React.memo() for expensive components
+- ✅ **Virtual Scrolling** - For large lists (media library)
+- ✅ **Debounced Search** - useDebounce hook for search inputs
+- ✅ **Optimistic Updates** - TanStack Query mutations
+- ✅ **Cache Management** - Smart invalidation strategies
+- ✅ **Bundle Analysis** - Vite build analyzer
+
+### **Accessibility Features**
+
+- ✅ **Keyboard Navigation** - Full keyboard support
+- ✅ **Screen Reader Support** - ARIA labels and roles
+- ✅ **Focus Management** - Visible focus indicators
+- ✅ **Color Contrast** - WCAG AA compliant
+- ✅ **Skip Links** - Skip to main content
+- ✅ **Form Validation** - Clear error messages
+- ✅ **Semantic HTML** - Proper heading hierarchy
+
+---
+
+## 🏗 Backend Architecture
 
 ### **System Design**
 
@@ -385,6 +784,8 @@
 ```
 HOME: https://socialflow-home.onrender.com/
 APP: https://socialflow-51u9.onrender.com
+API: https://socialflow-backend-api.duckdns.org
+Swagger: https://socialflow-backend-api.duckdns.org/api-docs
 ```
 
 ### **Authentication**
@@ -549,6 +950,7 @@ GET    /api/v1/whatsapp/messages         # Get message history
 GET    /api/v1/whatsapp/webhook          # Verify webhook
 POST   /api/v1/whatsapp/webhook          # Receive events
 ```
+
 ---
 
 ## 🔌 Platform Integrations
@@ -642,7 +1044,58 @@ POST   /api/v1/whatsapp/webhook          # Receive events
 
 ## 🚀 Deployment
 
-### **Production Environment**
+### **Frontend Deployment**
+
+#### **Home Website**
+- **Platform**: Render.com
+- **URL**: https://socialflow-home.onrender.com
+- **Build Command**: `npm run build`
+- **Start Command**: `npm run preview`
+- **Node Version**: 20.x
+- **Environment**: Production
+
+**Build Configuration:**
+```json
+{
+  "build": "vite build",
+  "preview": "vite preview --host 0.0.0.0 --port $PORT"
+}
+```
+
+**Features:**
+- ✅ **Automatic Deploys** - Git push to main branch
+- ✅ **CDN Distribution** - Global edge caching
+- ✅ **SSL Certificate** - Automatic HTTPS
+- ✅ **Custom Domain** - Domain mapping support
+- ✅ **Health Checks** - Automatic monitoring
+
+---
+
+#### **Main Application**
+- **Platform**: Render.com
+- **URL**: https://socialflow-51u9.onrender.com
+- **Build Command**: `npm run build`
+- **Start Command**: `npm run preview`
+- **Node Version**: 20.x
+- **Environment**: Production
+
+**Environment Variables:**
+```bash
+VITE_API_URL=https://socialflow-backend-api.duckdns.org
+VITE_APP_NAME=SocialFlow
+NODE_ENV=production
+```
+
+**Optimization:**
+- ✅ **Code Splitting** - Lazy-loaded routes
+- ✅ **Tree Shaking** - Unused code removal
+- ✅ **Minification** - Terser for JS, cssnano for CSS
+- ✅ **Asset Optimization** - Image compression
+- ✅ **Gzip Compression** - Reduced transfer size
+
+---
+
+### **Backend Deployment**
 
 - **Hosting**: Self-Hosted on Personal VM
 - **Web Server**: Nginx (Reverse Proxy + SSL/TLS Termination)
@@ -653,6 +1106,59 @@ POST   /api/v1/whatsapp/webhook          # Receive events
 - **Email**: SendGrid
 - **Domain**: socialflow-backend-api.duckdns.org
 - **SSL**: Let's Encrypt (Auto-renewal with Certbot)
+
+#### **Infrastructure Setup**
+
+**Server Specifications:**
+```yaml
+OS: Ubuntu 22.04 LTS
+CPU: 4 cores
+RAM: 8GB
+Storage: 100GB SSD
+Firewall: UFW (Uncomplicated Firewall)
+```
+
+**Nginx Configuration:**
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name socialflow-backend-api.duckdns.org;
+
+    ssl_certificate /etc/letsencrypt/live/socialflow-backend-api.duckdns.org/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/socialflow-backend-api.duckdns.org/privkey.pem;
+    
+    location / {
+        proxy_pass http://localhost:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+**PM2 Configuration:**
+```json
+{
+  "apps": [{
+    "name": "socialflow-api",
+    "script": "./src/server.js",
+    "instances": "max",
+    "exec_mode": "cluster",
+    "autorestart": true,
+    "max_memory_restart": "1G",
+    "env": {
+      "NODE_ENV": "production",
+      "PORT": 5000
+    }
+  }]
+}
+```
+
+---
 
 ### **Monitoring**
 
@@ -686,14 +1192,58 @@ Application Files:
 ```yaml
 Trigger: Push to main branch
 Steps:
-  1. Run tests (npm test)
-  2. Build Docker image
-  3. SSH to VM
-  4. Pull latest code
-  5. Install dependencies
-  6. Restart PM2
-  7. Health check
-  8. Rollback on failure
+  Frontend (Home):
+    1. Install dependencies
+    2. Run build
+    3. Deploy to Render
+    4. Purge CDN cache
+  
+  Frontend (App):
+    1. Install dependencies
+    2. Run TypeScript check
+    3. Run ESLint
+    4. Run build
+    5. Deploy to Render
+    6. Smoke tests
+  
+  Backend:
+    1. Run tests (npm test)
+    2. SSH to VM
+    3. Pull latest code
+    4. Install dependencies
+    5. Restart PM2
+    6. Health check
+    7. Rollback on failure
+```
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License**.
+
+```
+MIT License
+
+Copyright (c) 2025 Jeewaka Supun
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
 
 ---
@@ -711,6 +1261,19 @@ Steps:
 
 ## 🙏 Acknowledgments
 
+### **Frontend**
+- **React** - UI library
+- **Vite** - Build tool
+- **TypeScript** - Type safety
+- **Tailwind CSS** - Styling framework
+- **shadcn/ui** - Component library
+- **Radix UI** - Primitives
+- **Framer Motion** - Animations
+- **TanStack Query** - Data fetching
+- **React Router** - Routing
+- **Lucide** - Icons
+
+### **Backend**
 - **Express.js** - Web framework
 - **MongoDB** - Database
 - **Redis** - Caching and job queue
@@ -719,12 +1282,14 @@ Steps:
 - **SendGrid** - Email service
 - **AWS** - S3 storage
 - **Cloudinary** - Video optimization
+- **Nginx** - Web server and reverse proxy
+- **Let's Encrypt** - SSL certificates
+
+### **Platforms**
 - **Meta** - Facebook, Instagram, WhatsApp APIs
 - **LinkedIn** - LinkedIn API
 - **Twitter** - X (Twitter) API
 - **Google** - YouTube API
-- **Nginx** - Web server and reverse proxy
-- **Let's Encrypt** - SSL certificates
 
 ---
 
@@ -734,6 +1299,6 @@ Steps:
 
 ⭐ Star this repo if you find it useful!
 
-[Report Bug](https://github.com/J33WAKASUPUN/Social-Media-Marketing-platform-V.2.0.0/issues) • [Request Feature](https://github.com/J33WAKASUPUN/Social-Media-Marketing-platform-V.2.0.0/issues) • [API Docs](https://socialflow-backend-api.duckdns.org/api-docs)
+[Home Website](https://socialflow-home.onrender.com) • [Live App](https://socialflow-51u9.onrender.com) • [API Docs](https://socialflow-backend-api.duckdns.org/api-docs) • [Report Bug](https://github.com/J33WAKASUPUN/Social-Media-Marketing-platform-V.2.0.0/issues) • [Request Feature](https://github.com/J33WAKASUPUN/Social-Media-Marketing-platform-V.2.0.0/issues)
 
 </div>
