@@ -37,7 +37,7 @@ export default function PrivacyPolicy() {
             </div>
             <h1 className="section-heading mb-4">Privacy Policy</h1>
             <p className="text-muted-foreground">
-              Effective Date: January 1, 2024 • Last Updated: January 1, 2024
+              Effective Date: December 1, 2025 • Last Updated: December 1, 2025
             </p>
           </motion.div>
 
