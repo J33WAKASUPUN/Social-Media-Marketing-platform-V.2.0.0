@@ -1294,7 +1294,7 @@ SOFTWARE.
 
 <div align="center">
 
-**Built with ❤️ by [Jeewaka Supun](https://github.com/J33WAKASUPUN)**
+**Built with by [Jeewaka Supun](https://github.com/J33WAKASUPUN)**
 
 ⭐ Star this repo if you find it useful!
 

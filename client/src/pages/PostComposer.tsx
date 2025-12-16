@@ -29,6 +29,7 @@ import { PlatformWarnings } from '@/components/post/PlatformWarnings';
 import { PlatformBadge } from '@/components/PlatformBadge';
 import { MediaLibrary } from '@/components/media/MediaLibrary';
 import { cn } from '@/lib/utils';
+import { PublishingProgressDialog } from '@/components/post/PublishingProgressDialog';
 
 export default function PostComposer() {
   const navigate = useNavigate();
@@ -43,6 +44,10 @@ export default function PostComposer() {
   const [publishType, setPublishType] = useState<'draft' | 'now' | 'schedule'>('draft');
   const [scheduledDate, setScheduledDate] = useState('');
   const [previewImageIndex, setPreviewImageIndex] = useState(0);
+  const [showPublishDialog, setShowPublishDialog] = useState(false);
+  const [publishStatus, setPublishStatus] = useState<'publishing' | 'success' | 'error'>('publishing');
+  const [publishProgress, setPublishProgress] = useState(0);
+  const [publishMessage, setPublishMessage] = useState('');
   
   // Data
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -62,7 +67,7 @@ export default function PostComposer() {
     }
   }, [currentBrand]);
 
-  // ✅ FIX: Fetch library media when brand changes (for preview purposes)
+  // Fetch library media when brand changes (for preview purposes)
   useEffect(() => {
     if (currentBrand) {
       fetchLibraryMedia();
@@ -72,7 +77,7 @@ export default function PostComposer() {
   const fetchChannels = async () => {
     try {
       const response = await channelApi.getAll(currentBrand!._id);
-      // ✅ FILTER: Exclude WhatsApp channels (WhatsApp is for messaging, not post publishing)
+      // Exclude WhatsApp channels (WhatsApp is for messaging, not post publishing)
       const socialChannels = response.data.filter(
         (ch: Channel) => ch.connectionStatus === 'active' && ch.provider !== 'whatsapp'
       );
@@ -82,7 +87,7 @@ export default function PostComposer() {
     }
   };
 
-  // ✅ ADD: Fetch library media for preview
+  // Fetch library media for preview
   const fetchLibraryMedia = async () => {
     try {
       const response = await mediaApi.getAll({
@@ -230,150 +235,250 @@ export default function PostComposer() {
 
   const removeUploadedFile = (index: number) => setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   
-  // ✅ FIX: Define the removeLibraryMedia function properly
+  // Define the removeLibraryMedia function properly
   const removeLibraryMedia = (mediaId: string) => {
     setSelectedLibraryMedia(prev => prev.filter(id => id !== mediaId));
   };
 
   // --- Main Create Logic ---
-  const handleCreate = async () => {
-    if (!content.trim()) {
-      toast.error('Please enter content');
+const handleCreate = async () => {
+  if (!content.trim()) {
+    toast.error('Please enter content');
+    return;
+  }
+
+  if (publishType !== 'draft') {
+    if (!selectedChannel) {
+      toast.error('Please select a platform');
       return;
     }
+    if (publishType === 'schedule' && !scheduledDate) {
+      toast.error('Please select a date and time');
+      return;
+    }
+  }
 
-    if (publishType !== 'draft') {
-      if (!selectedChannel) {
-        toast.error('Please select a platform');
-        return;
-      }
-      if (publishType === 'schedule' && !scheduledDate) {
-        toast.error('Please select a date and time');
-        return;
-      }
+  try {
+    setLoading(true);
+    
+    // ✅ Show dialog ONLY for "Publish Now"
+    if (publishType === 'now') {
+      setShowPublishDialog(true);
+      setPublishStatus('publishing');
+      setPublishProgress(10); // Start with 10% to show immediate feedback
+    }
+    
+    // ✅ Simulate initial progress (10% -> 40%)
+    let progressInterval: NodeJS.Timeout | null = null;
+    if (publishType === 'now') {
+      progressInterval = setInterval(() => {
+        setPublishProgress(prev => {
+          if (prev >= 40) {
+            if (progressInterval) clearInterval(progressInterval);
+            return 40;
+          }
+          return prev + 5;
+        });
+      }, 200);
     }
 
-    try {
-      setLoading(true);
+    // Wait for initial progress animation
+    if (publishType === 'now') {
+      await new Promise(resolve => setTimeout(resolve, 800));
+      if (progressInterval) clearInterval(progressInterval);
+      setPublishProgress(40);
+    }
+
+    // 1. Upload new files if any
+    let uploadedMediaIds: string[] = [];
+    if (uploadedFiles.length > 0) {
+      if (publishType === 'now') setPublishProgress(45);
       
-      // 1. Upload new files if any
-      let uploadedMediaIds: string[] = [];
-      if (uploadedFiles.length > 0) {
-        const uploadResponse = await mediaApi.upload(uploadedFiles, {
-          brandId: currentBrand._id,
-          folder: 'Default',
-        });
-        uploadedMediaIds = uploadResponse.data.map((m: Media) => m._id);
-        console.log('✅ Uploaded new files:', uploadedMediaIds);
+      const uploadResponse = await mediaApi.upload(uploadedFiles, {
+        brandId: currentBrand._id,
+        folder: 'Default',
+      });
+      uploadedMediaIds = uploadResponse.data.map((m: Media) => m._id);
+      console.log('✅ Uploaded new files:', uploadedMediaIds);
+      
+      if (publishType === 'now') setPublishProgress(55);
+    }
+
+    // Combine library + uploaded
+    const allMediaIds = [...selectedLibraryMedia, ...uploadedMediaIds];
+
+    // 2. Build Schedules
+    let schedules: any[] = [];
+    
+    if (publishType === 'now') {
+      const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel)!;
+      const now = new Date();
+      const scheduledFor = new Date(now.getTime() - 2000).toISOString();
+      schedules.push({
+        channel: channel._id || (channel as any).id,
+        provider: channel.provider,
+        scheduledFor,
+      });
+      setPublishProgress(60);
+    } else if (publishType === 'schedule') {
+      const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel)!;
+      const scheduledFor = new Date(scheduledDate).toISOString();
+      
+      if (new Date(scheduledFor) <= new Date()) {
+        toast.error('Scheduled time must be in the future');
+        setLoading(false);
+        return;
       }
-
-      // Combine library + uploaded
-      const allMediaIds = [...selectedLibraryMedia, ...uploadedMediaIds];
-
-      // 2. Build Schedules
-      let schedules: any[] = [];
       
-      if (publishType === 'now') {
-        const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel)!;
-        // FIX: Use current time, not 10 seconds in future
-        const now = new Date();
-        // Set to 2 seconds ago to ensure immediate processing
-        const scheduledFor = new Date(now.getTime() - 2000).toISOString();
-        schedules.push({
-          channel: channel._id || (channel as any).id,
-          provider: channel.provider,
-          scheduledFor,
-        });
-      } else if (publishType === 'schedule') {
-        const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel)!;
-        const scheduledFor = new Date(scheduledDate).toISOString();
+      schedules.push({
+        channel: channel._id || (channel as any).id,
+        provider: channel.provider,
+        scheduledFor,
+      });
+    }
+
+    // 3. Create Payload
+    const postData: CreatePostData = {
+      brandId: currentBrand._id,
+      content,
+      hashtags,
+      mediaLibraryIds: allMediaIds,
+      schedules,
+      settings: { notifyOnPublish: true },
+    };
+
+    console.log('📤 Sending create payload:', postData);
+
+    if (publishType === 'now') setPublishProgress(70);
+    
+    const response = await postApi.create(postData);
+    
+    if (publishType === 'now') setPublishProgress(75);
+    
+    // ✅ For "Publish Now", poll for completion
+    if (publishType === 'now' && response.data?._id) {
+      const postId = response.data._id;
+      let attempts = 0;
+      const maxAttempts = 30; // 30 seconds max wait
+      
+      console.log('🔄 Starting polling for post:', postId);
+      
+      const checkStatus = async (): Promise<'published' | 'failed' | 'pending'> => {
+        try {
+          const statusResponse = await postApi.getById(postId);
+          const post = statusResponse.data;
+          
+          console.log(`📊 Poll attempt ${attempts + 1}: status = ${post.status}`);
+          
+          if (post.status === 'published') {
+            return 'published';
+          }
+          if (post.status === 'failed') {
+            const errorMsg = post.schedules?.[0]?.error || 'Publishing failed';
+            console.error('❌ Post failed:', errorMsg);
+            throw new Error(errorMsg);
+          }
+          return 'pending';
+        } catch (error) {
+          console.error('❌ Status check error:', error);
+          throw error;
+        }
+      };
+      
+      // Poll every second with progress updates
+      while (attempts < maxAttempts) {
+        attempts++;
         
-        if (new Date(scheduledFor) <= new Date()) {
-          toast.error('Scheduled time must be in the future');
+        // Increment progress (75% -> 95%)
+        const progressIncrement = 75 + Math.min(attempts * 0.7, 20);
+        setPublishProgress(Math.floor(progressIncrement));
+        
+        try {
+          const statusResult = await checkStatus();
+          
+          if (statusResult === 'published') {
+            console.log('✅ Post published successfully!');
+            setPublishProgress(100);
+            setPublishStatus('success');
+            setPublishMessage('Your post is now live on the platform!');
+            
+            // Auto-close after 3 seconds and navigate
+            setTimeout(() => {
+              setShowPublishDialog(false);
+              setLoading(false);
+              navigate('/posts');
+            }, 3000);
+            
+            return;
+          }
+        } catch (error: any) {
+          // If error during polling, show error state
+          setPublishProgress(100);
+          setPublishStatus('error');
+          setPublishMessage(error.message || 'Failed to publish post');
           setLoading(false);
           return;
         }
         
-        schedules.push({
-          channel: channel._id || (channel as any).id,
-          provider: channel.provider,
-          scheduledFor,
-        });
+        // Wait 1 second before next poll
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
-
-      // 3. Create Payload
-      const postData: CreatePostData = {
-        brandId: currentBrand._id,
-        content,
-        hashtags,
-        mediaLibraryIds: allMediaIds,
-        schedules,
-        settings: { notifyOnPublish: true },
-      };
-
-      console.log('📤 Sending create payload:', postData);
-
-      const response = await postApi.create(postData);
       
-      // FIX: For "Publish Now", poll for completion
-      if (publishType === 'now' && response.data?._id) {
-        const postId = response.data._id;
-        let attempts = 0;
-        const maxAttempts = 30; // 30 seconds max wait
-        
-        const checkStatus = async (): Promise<boolean> => {
-          try {
-            const statusResponse = await postApi.getById(postId);
-            const post = statusResponse.data;
-            
-            if (post.status === 'published') {
-              return true;
-            }
-            if (post.status === 'failed') {
-              throw new Error(post.schedules?.[0]?.error || 'Publishing failed');
-            }
-            return false;
-          } catch (error) {
-            console.error('Status check error:', error);
-            return false;
-          }
-        };
-        
-        // Poll every second
-        while (attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          attempts++;
-          
-          const isComplete = await checkStatus();
-          if (isComplete) {
-            toast.success('Post published successfully!');
-            navigate('/posts');
-            return;
-          }
-        }
-        
-        // If we get here, it's taking too long
-        toast.info('Post is being published. Check the Posts page for status.');
+      // If we get here, polling timed out
+      console.warn('⚠️ Polling timeout - post is still processing');
+      setPublishProgress(100);
+      setPublishStatus('success');
+      setPublishMessage('Post is being published. Check the Posts page for status.');
+      
+      setTimeout(() => {
+        setShowPublishDialog(false);
+        setLoading(false);
         navigate('/posts');
-        return;
-      }
+      }, 3000);
       
-      const successMessage = publishType === 'draft' 
-        ? 'Post saved as draft' 
-        : publishType === 'now'
-        ? 'Post is being published!'
-        : 'Post scheduled successfully';
-      
-      toast.success(successMessage);
-      navigate('/posts');
-      
-    } catch (error: any) {
-      console.error('❌ Create failed:', error);
-      toast.error(error.response?.data?.message || 'Failed to create post');
-    } finally {
-      setLoading(false);
+      return;
     }
-  };
+    
+    // For draft and schedule, show normal toast
+    const successMessage = publishType === 'draft' 
+      ? 'Post saved as draft' 
+      : 'Post scheduled successfully';
+    
+    toast.success(successMessage);
+    setLoading(false);
+    navigate('/posts');
+    
+  } catch (error: any) {
+    console.error('❌ Create failed:', error);
+    
+    if (publishType === 'now') {
+      setPublishProgress(100);
+      setPublishStatus('error');
+      setPublishMessage(error.response?.data?.message || 'Failed to publish post');
+    } else {
+      toast.error(error.response?.data?.message || 'Failed to create post');
+    }
+    setLoading(false);
+  }
+};
+
+// Dialog close handler
+const handlePublishDialogClose = () => {
+  if (publishStatus === 'publishing') {
+    // Don't allow closing during publishing
+    return;
+  }
+  
+  setShowPublishDialog(false);
+  
+  if (publishStatus === 'success') {
+    navigate('/posts');
+  } else if (publishStatus === 'error') {
+    // Reset state for retry
+    setPublishStatus('publishing');
+    setPublishProgress(0);
+  }
+};
 
   // Determine the exact media type filter
   const mediaTypeFilter = useMemo<'all' | 'image' | 'video'>(() => {
@@ -875,6 +980,13 @@ export default function PostComposer() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <PublishingProgressDialog
+        open={showPublishDialog}
+        status={publishStatus}
+        progress={publishProgress}
+        message={publishMessage}
+        onClose={handlePublishDialogClose}
+     />
     </div>
   );
 }

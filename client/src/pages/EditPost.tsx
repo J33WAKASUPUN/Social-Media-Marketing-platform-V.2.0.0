@@ -30,6 +30,7 @@ import { PlatformWarnings } from '@/components/post/PlatformWarnings';
 import { PlatformBadge } from '@/components/PlatformBadge';
 import { MediaLibrary } from '@/components/media/MediaLibrary';
 import { cn } from '@/lib/utils';
+import { PublishingProgressDialog } from '@/components/post/PublishingProgressDialog';
 
 export default function EditPost() {
   const { id } = useParams();
@@ -46,6 +47,10 @@ export default function EditPost() {
   const [publishType, setPublishType] = useState<'draft' | 'now' | 'schedule'>('draft');
   const [scheduledDate, setScheduledDate] = useState('');
   const [previewImageIndex, setPreviewImageIndex] = useState(0);
+  const [showPublishDialog, setShowPublishDialog] = useState(false);
+  const [publishStatus, setPublishStatus] = useState<'publishing' | 'success' | 'error'>('publishing');
+  const [publishProgress, setPublishProgress] = useState(0);
+  const [publishMessage, setPublishMessage] = useState('');
   
   // Data
   const [originalPost, setOriginalPost] = useState<any>(null);
@@ -53,10 +58,7 @@ export default function EditPost() {
   const [libraryMedia, setLibraryMedia] = useState<Media[]>([]);
   const [selectedLibraryMedia, setSelectedLibraryMedia] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
-  
-  // ✅ REMOVED: We don't need existingMediaUrls anymore
-  // We'll track everything through selectedLibraryMedia
-  
+    
   // UI
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   const [showWarnings, setShowWarnings] = useState(false);
@@ -287,144 +289,261 @@ export default function EditPost() {
   const removeLibraryMedia = (mediaId: string) => setSelectedLibraryMedia(prev => prev.filter(id => id !== mediaId));
 
   // --- Save & Update ---
-  const handleUpdate = async () => {
-    if (!currentBrand || !content.trim()) {
-      toast.error('Please enter some content');
+// Replace the handleUpdate function (lines 290-505) with this corrected version
+
+const handleUpdate = async () => {
+  if (!currentBrand || !content.trim()) {
+    toast.error('Please enter some content');
+    return;
+  }
+
+  // Validate based on publish type
+  if (publishType === 'now' || publishType === 'schedule') {
+    if (!selectedChannel) {
+      toast.error('Please select a platform');
       return;
     }
-
-    // ✅ VALIDATE BASED ON PUBLISH TYPE
-    if (publishType === 'now' || publishType === 'schedule') {
-      if (!selectedChannel) {
-        toast.error('Please select a platform');
-        return;
-      }
-      if (publishType === 'schedule' && !scheduledDate) {
-        toast.error('Please select a date and time');
-        return;
-      }
+    if (publishType === 'schedule' && !scheduledDate) {
+      toast.error('Please select a date and time');
+      return;
     }
+  }
 
-    try {
-      setSaving(true);
-      
-      // ✅ Upload new files if any
-      let uploadedMediaIds: string[] = [];
-      if (uploadedFiles.length > 0) {
-        const uploadResponse = await mediaApi.upload(uploadedFiles, {
-          brandId: currentBrand._id,
-          folder: 'Default',
+  try {
+    setSaving(true);
+    
+    // Show dialog only for "Publish Now"
+    if (publishType === 'now') {
+      setShowPublishDialog(true);
+      setPublishStatus('publishing');
+      setPublishProgress(10);
+    }
+    
+    // Simulate initial progress
+    let progressInterval: NodeJS.Timeout | null = null;
+    if (publishType === 'now') {
+      progressInterval = setInterval(() => {
+        setPublishProgress(prev => {
+          if (prev >= 40) {
+            if (progressInterval) clearInterval(progressInterval);
+            return 40;
+          }
+          return prev + 5;
         });
-        uploadedMediaIds = uploadResponse.data.map((m: Media) => m._id);
-        console.log('✅ Uploaded new files:', uploadedMediaIds);
-      }
-
-      // ✅ SIMPLIFIED: Combine all media IDs (existing library + new uploads)
-      const allMediaIds = [...selectedLibraryMedia, ...uploadedMediaIds];
-
-      // ✅ BUILD UPDATE DATA
-      const updates: any = {
-        content,
-        hashtags,
-        // Always send mediaLibraryIds (this replaces old media completely)
-        mediaLibraryIds: allMediaIds,
-      };
-
-      console.log('📤 Sending update:', {
-        publishType,
-        mediaLibraryIds: allMediaIds,
-        totalMedia: allMediaIds.length,
-        selectedChannel,
-        scheduledDate,
-      });
-
-      // ✅ CASE 1: SAVE AS DRAFT (No schedule)
-      if (publishType === 'draft') {
-        updates.schedules = [];
-        updates.status = 'draft';
-      }
-      // ✅ CASE 2: PUBLISH NOW
-      else if (publishType === 'now') {
-        if (!selectedChannel) {
-          toast.error('Please select a platform');
-          setSaving(false);
-          return;
-        }
-
-        const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel);
-        if (!channel) {
-          toast.error('Selected channel not found');
-          setSaving(false);
-          return;
-        }
-
-        const now = new Date();
-        const scheduledFor = new Date(now.getTime() + 10 * 1000).toISOString();
-        
-        updates.schedules = [{
-          channel: channel._id || (channel as any).id,
-          provider: channel.provider,
-          scheduledFor,
-        }];
-        // ✅ Don't set status here - let backend determine it
-      }
-      // ✅ CASE 3: SCHEDULE FOR LATER
-      else if (publishType === 'schedule') {
-        if (!selectedChannel) {
-          toast.error('Please select a platform');
-          setSaving(false);
-          return;
-        }
-        if (!scheduledDate) {
-          toast.error('Please select a date and time');
-          setSaving(false);
-          return;
-        }
-
-        const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel);
-        if (!channel) {
-          toast.error('Selected channel not found');
-          setSaving(false);
-          return;
-        }
-
-        const scheduledFor = new Date(scheduledDate).toISOString();
-        
-        // ✅ Validate scheduled time is in the future
-        if (new Date(scheduledFor) <= new Date()) {
-          toast.error('Scheduled time must be in the future');
-          setSaving(false);
-          return;
-        }
-        
-        updates.schedules = [{
-          channel: channel._id || (channel as any).id,
-          provider: channel.provider,
-          scheduledFor,
-        }];
-        // ✅ Don't set status here - let backend determine it
-      }
-
-      console.log('📤 Final update payload:', updates);
-
-      await postApi.update(id!, updates);
-      
-      const successMessage = publishType === 'draft' 
-        ? 'Post saved as draft' 
-        : publishType === 'now'
-        ? 'Post is being published!'
-        : 'Post scheduled successfully';
-      
-      toast.success(successMessage);
-      navigate('/posts');
-      
-    } catch (error: any) {
-      console.error('❌ Update failed:', error);
-      toast.error(error.response?.data?.message || 'Failed to update post');
-    } finally {
-      setSaving(false);
+      }, 200);
     }
-  };
+
+    if (publishType === 'now') {
+      await new Promise(resolve => setTimeout(resolve, 800));
+      if (progressInterval) clearInterval(progressInterval);
+      setPublishProgress(40);
+    }
+    
+    // Upload new files if any
+    let uploadedMediaIds: string[] = [];
+    if (uploadedFiles.length > 0) {
+      if (publishType === 'now') setPublishProgress(45);
+      
+      const uploadResponse = await mediaApi.upload(uploadedFiles, {
+        brandId: currentBrand._id,
+        folder: 'Default',
+      });
+      uploadedMediaIds = uploadResponse.data.map((m: Media) => m._id);
+      console.log('✅ Uploaded new files:', uploadedMediaIds);
+      
+      if (publishType === 'now') setPublishProgress(55);
+    }
+
+    // Combine all media IDs
+    const allMediaIds = [...selectedLibraryMedia, ...uploadedMediaIds];
+
+    // Build update data
+    const updates: any = {
+      content,
+      hashtags,
+      mediaLibraryIds: allMediaIds,
+    };
+
+    console.log('📤 Sending update:', {
+      publishType,
+      mediaLibraryIds: allMediaIds,
+      totalMedia: allMediaIds.length,
+      selectedChannel,
+      scheduledDate,
+    });
+
+    // CASE 1: SAVE AS DRAFT
+    if (publishType === 'draft') {
+      updates.schedules = [];
+      updates.status = 'draft';
+    }
+    // CASE 2: PUBLISH NOW
+    else if (publishType === 'now') {
+      const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel);
+      if (!channel) {
+        toast.error('Selected channel not found');
+        setSaving(false);
+        return;
+      }
+
+      const now = new Date();
+      const scheduledFor = new Date(now.getTime() - 2000).toISOString();
+      
+      updates.schedules = [{
+        channel: channel._id || (channel as any).id,
+        provider: channel.provider,
+        scheduledFor,
+      }];
+      
+      setPublishProgress(60);
+    }
+    // CASE 3: SCHEDULE FOR LATER
+    else if (publishType === 'schedule') {
+      const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel);
+      if (!channel) {
+        toast.error('Selected channel not found');
+        setSaving(false);
+        return;
+      }
+
+      const scheduledFor = new Date(scheduledDate).toISOString();
+      
+      if (new Date(scheduledFor) <= new Date()) {
+        toast.error('Scheduled time must be in the future');
+        setSaving(false);
+        return;
+      }
+      
+      updates.schedules = [{
+        channel: channel._id || (channel as any).id,
+        provider: channel.provider,
+        scheduledFor,
+      }];
+    }
+
+    console.log('📤 Final update payload:', updates);
+
+    if (publishType === 'now') setPublishProgress(70);
+    
+    await postApi.update(id!, updates);
+    
+    if (publishType === 'now') setPublishProgress(75);
+    
+    // For "Publish Now", poll for completion
+    if (publishType === 'now') {
+      let attempts = 0;
+      const maxAttempts = 30;
+      
+      console.log('🔄 Starting polling for post:', id);
+      
+      const checkStatus = async (): Promise<'published' | 'failed' | 'pending'> => {
+        try {
+          const statusResponse = await postApi.getById(id!);
+          const post = statusResponse.data;
+          
+          console.log(`📊 Poll attempt ${attempts + 1}: status = ${post.status}`);
+          
+          if (post.status === 'published') {
+            return 'published';
+          }
+          if (post.status === 'failed') {
+            const errorMsg = post.schedules?.[0]?.error || 'Publishing failed';
+            console.error('❌ Post failed:', errorMsg);
+            throw new Error(errorMsg);
+          }
+          return 'pending';
+        } catch (error) {
+          console.error('❌ Status check error:', error);
+          throw error;
+        }
+      };
+      
+      // Poll every second
+      while (attempts < maxAttempts) {
+        attempts++;
+        
+        const progressIncrement = 75 + Math.min(attempts * 0.7, 20);
+        setPublishProgress(Math.floor(progressIncrement));
+        
+        try {
+          const statusResult = await checkStatus();
+          
+          if (statusResult === 'published') {
+            console.log('✅ Post published successfully!');
+            setPublishProgress(100);
+            setPublishStatus('success');
+            setPublishMessage('Your updated post is now live!');
+            
+            setTimeout(() => {
+              setShowPublishDialog(false);
+              setSaving(false);
+              navigate('/posts');
+            }, 3000);
+            
+            return;
+          }
+        } catch (error: any) {
+          setPublishProgress(100);
+          setPublishStatus('error');
+          setPublishMessage(error.message || 'Failed to publish post');
+          setSaving(false);
+          return;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
+      // Timeout
+      console.warn('⚠️ Polling timeout');
+      setPublishProgress(100);
+      setPublishStatus('success');
+      setPublishMessage('Post is being published. Check the Posts page for status.');
+      
+      setTimeout(() => {
+        setShowPublishDialog(false);
+        setSaving(false);
+        navigate('/posts');
+      }, 3000);
+      
+      return;
+    }
+    
+    const successMessage = publishType === 'draft' 
+      ? 'Post saved as draft' 
+      : 'Post scheduled successfully';
+    
+    toast.success(successMessage);
+    setSaving(false);
+    navigate('/posts');
+    
+  } catch (error: any) {
+    console.error('❌ Update failed:', error);
+    
+    if (publishType === 'now') {
+      setPublishProgress(100);
+      setPublishStatus('error');
+      setPublishMessage(error.response?.data?.message || 'Failed to publish post');
+    } else {
+      toast.error(error.response?.data?.message || 'Failed to update post');
+    }
+    setSaving(false);
+  }
+};
+
+const handlePublishDialogClose = () => {
+  if (publishStatus === 'publishing') {
+    return; // Don't allow closing during publishing
+  }
+  
+  setShowPublishDialog(false);
+  
+  if (publishStatus === 'success') {
+    navigate('/posts');
+  } else if (publishStatus === 'error') {
+    setPublishStatus('publishing');
+    setPublishProgress(0);
+  }
+};
 
   // Determine the exact media type filter for the selected platform
   const mediaTypeFilter = useMemo<'all' | 'image' | 'video'>(() => {
@@ -936,6 +1055,13 @@ export default function EditPost() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <PublishingProgressDialog
+        open={showPublishDialog}
+        status={publishStatus}
+        progress={publishProgress}
+        message={publishMessage}
+        onClose={handlePublishDialogClose}
+      />
     </div>
   );
 }
