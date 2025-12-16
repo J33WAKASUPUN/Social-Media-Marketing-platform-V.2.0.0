@@ -138,7 +138,9 @@ export function TrustedDevicesSettings() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
+                            <div className="p-2 rounded-full bg-indigo-100 dark:bg-indigo-900/30">
+                              <Shield className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                            </div>
                 Trusted Devices
               </CardTitle>
               <CardDescription>

@@ -19,8 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Upload, Trash2, CheckCircle2, XCircle, Lock, AlertCircle, Eye, EyeOff, Check, X } from 'lucide-react';
-import { toast } from 'sonner';
+import { Upload, Trash2, CheckCircle2, XCircle, Lock, AlertCircle, Eye, EyeOff, Check, X, AlertTriangle } from 'lucide-react';import { toast } from 'sonner';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils'; // Make sure you have this utility
 
@@ -35,6 +34,7 @@ export const ProfileSettings: React.FC = () => {
   const [showBackupConfirm, setShowBackupConfirm] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
 
   // Profile form state
   const [profileData, setProfileData] = useState({
@@ -200,15 +200,20 @@ export const ProfileSettings: React.FC = () => {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    try {
-      await api.delete('/auth/account');
-      toast.success('Account deleted successfully');
-      await logout();
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to delete account');
-    }
-  };
+const handleDeleteAccount = async () => {
+  if (deleteConfirmation !== 'DELETE MY ACCOUNT') {
+    toast.error('Please type the confirmation text exactly as shown');
+    return;
+  }
+
+  try {
+    await api.delete('/auth/account');
+    toast.success('Account deleted successfully');
+    await logout();
+  } catch (error: any) {
+    toast.error(error.response?.data?.message || 'Failed to delete account');
+  }
+};
 
   if (!user) return null;
 
@@ -607,38 +612,64 @@ export const ProfileSettings: React.FC = () => {
               Once you delete your account, there is no going back. All your organizations,
               brands, posts, and data will be permanently deleted.
             </p>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive">
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Account
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete your account
-                    and remove all your data from our servers including:
-                    <ul className="mt-2 list-inside list-disc">
-                      <li>All organizations you own</li>
-                      <li>All brands and their posts</li>
-                      <li>All connected social media channels</li>
-                      <li>All media files and analytics data</li>
-                    </ul>
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDeleteAccount}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Yes, Delete My Account
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+<AlertDialog>
+  <AlertDialogTrigger asChild>
+    <Button variant="destructive">
+      <Trash2 className="mr-2 h-4 w-4" />
+      Delete Account
+    </Button>
+  </AlertDialogTrigger>
+  <AlertDialogContent className="max-w-md">
+    <AlertDialogHeader>
+      <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+        <AlertCircle className="h-5 w-5" />
+        Permanently Delete Account?
+      </AlertDialogTitle>
+      <AlertDialogDescription asChild>
+        <div className="space-y-4">
+          <p>
+            This action <strong className="text-destructive">cannot be undone</strong>. This will permanently delete your account
+            and remove all your data from our servers including:
+          </p>
+          <ul className="list-disc pl-6 space-y-1 text-sm">
+            <li>All organizations you own</li>
+            <li>All brands and their posts</li>
+            <li>All connected social media channels</li>
+            <li>All media files and analytics data</li>
+          </ul>
+
+          {/* Confirmation Input */}
+          <Alert variant="destructive" className="mt-4">
+            
+            <AlertDescription>
+              <p className="font-semibold mb-3">To confirm deletion, please type: DELETE MY ACCOUNT</p>
+              <Input
+                placeholder="Type here to confirm..."
+                value={deleteConfirmation}
+                onChange={(e) => setDeleteConfirmation(e.target.value)}
+                className="mt-2"
+                autoComplete="off"
+              />
+            </AlertDescription>
+          </Alert>
+        </div>
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel onClick={() => setDeleteConfirmation('')}>
+        Cancel
+      </AlertDialogCancel>
+      <AlertDialogAction
+        onClick={handleDeleteAccount}
+        disabled={deleteConfirmation !== 'DELETE MY ACCOUNT'}
+        className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <Trash2 className="mr-2 h-4 w-4" />
+        Permanently Delete
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
           </div>
         </CardContent>
       </Card>

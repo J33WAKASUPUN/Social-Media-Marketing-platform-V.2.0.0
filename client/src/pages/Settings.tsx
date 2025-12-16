@@ -2,12 +2,13 @@ import { PageHeader } from "@/components/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProfileSettings } from "@/components/ProfileSettings";
 import { TwoFactorSettings } from "@/components/TwoFactorSettings";
-import { TrustedDevicesSettings } from "@/components/TrustedDevicesSettings"; // ✅ NEW
+import { TrustedDevicesSettings } from "@/components/TrustedDevicesSettings";
 import { OrganizationSettings } from "@/components/OrganizationSettings";
 import { BrandSettings } from "@/components/BrandSettings";
 import { TeamSettings } from "@/components/TeamSettings";
 import { ThemeSettings } from "@/components/ThemeSettings";
 import { TourSettings } from '@/components/TourSettings';
+import { PrivacyPolicyCard } from "@/components/PrivacyPolicyCard";
 import { Button } from "@/components/ui/button"; 
 import { 
   UserCircle, 
@@ -36,10 +37,10 @@ const Settings = () => {
              <RefreshCw className="h-4 w-4" />
              Refresh
            </Button>
-           <Button variant="outline" size="sm" className="hidden md:flex gap-2">
+           {/* <Button variant="outline" size="sm" className="hidden md:flex gap-2">
              <Download className="h-4 w-4" />
              Export
-           </Button>
+           </Button> */}
         </div>
       </div>
 
@@ -49,7 +50,7 @@ const Settings = () => {
               
               <TabsTrigger 
                 value="profile" 
-                data-tour="settings-profile" // ✅ Added
+                data-tour="settings-profile"
                 className="w-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm py-2.5 rounded-lg transition-all flex items-center justify-center"
               >
                 <UserCircle className="h-4 w-4 mr-2" />
@@ -58,7 +59,7 @@ const Settings = () => {
               
               <TabsTrigger 
                 value="security" 
-                data-tour="settings-security" // ✅ Added
+                data-tour="settings-security"
                 className="w-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm py-2.5 rounded-lg transition-all flex items-center justify-center"
               >
                 <Shield className="h-4 w-4 mr-2" />
@@ -67,7 +68,7 @@ const Settings = () => {
               
               <TabsTrigger 
                 value="appearance" 
-                data-tour="settings-appearance" // ✅ Added
+                data-tour="settings-appearance"
                 className="w-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm py-2.5 rounded-lg transition-all flex items-center justify-center"
               >
                 <Palette className="h-4 w-4 mr-2" />
@@ -76,7 +77,7 @@ const Settings = () => {
               
               <TabsTrigger 
                 value="organization" 
-                data-tour="settings-organization" // ✅ Added
+                data-tour="settings-organization"
                 className="w-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm py-2.5 rounded-lg transition-all flex items-center justify-center"
               >
                 <Building2 className="h-4 w-4 mr-2" />
@@ -85,7 +86,7 @@ const Settings = () => {
               
               <TabsTrigger 
                 value="brands" 
-                data-tour="settings-brands" // ✅ Added
+                data-tour="settings-brands"
                 className="w-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm py-2.5 rounded-lg transition-all flex items-center justify-center"
               >
                 <Tag className="h-4 w-4 mr-2" />
@@ -94,7 +95,7 @@ const Settings = () => {
               
               <TabsTrigger 
                 value="team" 
-                data-tour="settings-team" // ✅ Added
+                data-tour="settings-team"
                 className="w-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm py-2.5 rounded-lg transition-all flex items-center justify-center"
               >
                 <Users className="h-4 w-4 mr-2" />
@@ -103,7 +104,7 @@ const Settings = () => {
               
               <TabsTrigger 
                 value="tours"
-                data-tour="settings-tours" // ✅ Added
+                data-tour="settings-tours"
                 className="w-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm py-2.5 rounded-lg transition-all flex items-center justify-center"
               >
                 <GraduationCap className="h-4 w-4 mr-2" />
@@ -119,6 +120,7 @@ const Settings = () => {
               <div className="space-y-6">
                 <TwoFactorSettings />
                 <TrustedDevicesSettings />
+                <PrivacyPolicyCard />
               </div>
             </TabsContent>
             <TabsContent value="appearance"><ThemeSettings /></TabsContent>
