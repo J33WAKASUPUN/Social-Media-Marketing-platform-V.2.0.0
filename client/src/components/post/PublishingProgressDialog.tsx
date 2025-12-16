@@ -1,4 +1,4 @@
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Loader2, AlertCircle } from 'lucide-react';
@@ -9,7 +9,7 @@ interface PublishingProgressDialogProps {
   status: 'publishing' | 'success' | 'error';
   progress: number;
   message?: string;
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 export function PublishingProgressDialog({
@@ -19,30 +19,25 @@ export function PublishingProgressDialog({
   message,
   onClose,
 }: PublishingProgressDialogProps) {
-  
-  // Handle the open change logic safely
-  const handleOpenChange = (isOpen: boolean) => {
-    // If trying to close (isOpen is false)
-    if (!isOpen) {
-      // Only allow closing if status is NOT publishing
-      if (status !== 'publishing') {
-        onClose();
-      }
-      // If publishing, ignore the close attempt (effectively blocking it)
-    }
-  };
-
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={status === 'success' || status === 'error' ? onClose : undefined}>
       <DialogContent 
-        className="sm:max-w-md [&>button]:hidden" /* CSS trick to hide the X close button */
+        className="sm:max-w-md" 
+        hideClose={status === 'publishing'}
         onPointerDownOutside={(e) => status === 'publishing' && e.preventDefault()}
         onEscapeKeyDown={(e) => status === 'publishing' && e.preventDefault()}
       >
+        {/* ✅ ADD VISUALLY HIDDEN TITLE FOR ACCESSIBILITY */}
+        <DialogTitle className="sr-only">
+          {status === 'publishing' && 'Publishing Post'}
+          {status === 'success' && 'Post Published Successfully'}
+          {status === 'error' && 'Publishing Failed'}
+        </DialogTitle>
+
         <div className="flex flex-col items-center justify-center py-8 px-4 space-y-6">
           {/* Status Icon */}
           <div className={cn(
-            "w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300",
+            "w-20 h-20 rounded-full flex items-center justify-center",
             status === 'publishing' && "bg-violet-100 dark:bg-violet-900/30",
             status === 'success' && "bg-green-100 dark:bg-green-900/30",
             status === 'error' && "bg-red-100 dark:bg-red-900/30"
@@ -51,10 +46,10 @@ export function PublishingProgressDialog({
               <Loader2 className="h-10 w-10 text-violet-600 dark:text-violet-400 animate-spin" />
             )}
             {status === 'success' && (
-              <CheckCircle className="h-10 w-10 text-green-600 dark:text-green-400 animate-in zoom-in" />
+              <CheckCircle className="h-10 w-10 text-green-600 dark:text-green-400" />
             )}
             {status === 'error' && (
-              <AlertCircle className="h-10 w-10 text-red-600 dark:text-red-400 animate-in zoom-in" />
+              <AlertCircle className="h-10 w-10 text-red-600 dark:text-red-400" />
             )}
           </div>
 
@@ -71,39 +66,37 @@ export function PublishingProgressDialog({
               {status === 'error' && 'Publishing Failed'}
             </h2>
             
-            <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-              {status === 'publishing' && 'Please wait while we process your media and publish to the platform.'}
-              {status === 'success' && (message || 'Your post is now live.')}
-              {status === 'error' && (message || 'Something went wrong.')}
+            <p className="text-sm text-muted-foreground">
+              {status === 'publishing' && 'Please wait while we publish your post to the platform'}
+              {status === 'success' && (message || 'Your post has been published and is now live')}
+              {status === 'error' && (message || 'Failed to publish your post. Please try again.')}
             </p>
           </div>
 
-          {/* Progress Bar */}
+          {/* Progress Bar (only show during publishing) */}
           {status === 'publishing' && (
-            <div className="w-full space-y-2 animate-in fade-in">
+            <div className="w-full space-y-2">
               <Progress value={progress} className="h-2" />
-              <div className="flex justify-between text-xs text-muted-foreground px-1">
-                <span>{progress}%</span>
-                <span>
-                  {progress < 30 && 'Preparing...'}
-                  {progress >= 30 && progress < 60 && 'Uploading media...'}
-                  {progress >= 60 && 'Finalizing...'}
-                </span>
-              </div>
+              <p className="text-xs text-center text-muted-foreground">
+                {progress < 30 && 'Preparing your content...'}
+                {progress >= 30 && progress < 60 && 'Uploading media...'}
+                {progress >= 60 && progress < 90 && 'Publishing to platform...'}
+                {progress >= 90 && 'Finalizing...'}
+              </p>
             </div>
           )}
 
-          {/* Action Button */}
+          {/* Action Button (only show on success/error) */}
           {(status === 'success' || status === 'error') && (
             <Button
               onClick={onClose}
               className={cn(
-                "w-full animate-in fade-in slide-in-from-bottom-4",
-                status === 'success' && "bg-green-600 hover:bg-green-700 text-white",
-                status === 'error' && "bg-red-600 hover:bg-red-700 text-white"
+                "w-full",
+                status === 'success' && "bg-green-600 hover:bg-green-700",
+                status === 'error' && "bg-red-600 hover:bg-red-700"
               )}
             >
-              {status === 'success' ? 'View Post' : 'Close'}
+              {status === 'success' ? 'View Posts' : 'Try Again'}
             </Button>
           )}
         </div>

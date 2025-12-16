@@ -307,23 +307,18 @@ const handleUpdate = async () => {
     }
   }
 
-  // ✅ FIXED: Store publishType in a const to prevent state timing issues
   const currentPublishType = publishType;
   
   try {
     setSaving(true);
     
-    // Show dialog only for "Publish Now"
     if (currentPublishType === 'now') {
       setShowPublishDialog(true);
       setPublishStatus('publishing');
       setPublishProgress(10);
-      
-      // ✅ FIXED: Add a small delay to ensure dialog renders
       await new Promise(resolve => setTimeout(resolve, 100));
     }
     
-    // Simulate initial progress
     let progressInterval: NodeJS.Timeout | null = null;
     if (currentPublishType === 'now') {
       progressInterval = setInterval(() => {
@@ -341,7 +336,6 @@ const handleUpdate = async () => {
       setPublishProgress(40);
     }
     
-    // Upload new files if any
     let uploadedMediaIds: string[] = [];
     if (uploadedFiles.length > 0) {
       if (currentPublishType === 'now') setPublishProgress(45);
@@ -356,10 +350,8 @@ const handleUpdate = async () => {
       if (currentPublishType === 'now') setPublishProgress(55);
     }
 
-    // Combine all media IDs
     const allMediaIds = [...selectedLibraryMedia, ...uploadedMediaIds];
 
-    // Build update data
     const updates: any = {
       content,
       hashtags,
@@ -374,12 +366,10 @@ const handleUpdate = async () => {
       scheduledDate,
     });
 
-    // CASE 1: SAVE AS DRAFT
     if (currentPublishType === 'draft') {
       updates.schedules = [];
       updates.status = 'draft';
     }
-    // CASE 2: PUBLISH NOW
     else if (currentPublishType === 'now') {
       const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel);
       if (!channel) {
@@ -403,7 +393,6 @@ const handleUpdate = async () => {
       
       setPublishProgress(60);
     }
-    // CASE 3: SCHEDULE FOR LATER
     else if (currentPublishType === 'schedule') {
       const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel);
       if (!channel) {
@@ -431,29 +420,54 @@ const handleUpdate = async () => {
 
     if (currentPublishType === 'now') setPublishProgress(70);
     
-    await postApi.update(id!, updates);
+    // ✅ FIX: Get the updated post with NEW schedule IDs
+    const updateResponse = await postApi.update(id!, updates);
+    const updatedPost = updateResponse.data;
     
     if (currentPublishType === 'now') setPublishProgress(75);
     
-    // For "Publish Now", poll for completion
+    // ✅ FIX: For "Publish Now", poll using the NEW schedule ID from the response
     if (currentPublishType === 'now') {
+      // Get the first schedule from the updated post (it will be the newly created one)
+      const newSchedule = updatedPost.schedules?.[0];
+      
+      if (!newSchedule) {
+        console.error('❌ No schedule found in updated post');
+        setPublishProgress(100);
+        setPublishStatus('error');
+        setPublishMessage('Failed to create schedule');
+        setSaving(false);
+        return;
+      }
+      
+      const newScheduleId = newSchedule._id;
+      console.log('🔄 Starting polling with NEW schedule ID:', newScheduleId);
+      
       let attempts = 0;
       const maxAttempts = 30;
       
-      console.log('🔄 Starting polling for post:', id);
+      setPublishProgress(80);
       
       const checkStatus = async (): Promise<'published' | 'failed' | 'pending'> => {
         try {
           const statusResponse = await postApi.getById(id!);
           const post = statusResponse.data;
           
-          console.log(`📊 Poll attempt ${attempts + 1}: status = ${post.status}`);
+          // Find the specific schedule we're tracking
+          const schedule = post.schedules.find(s => s._id === newScheduleId);
           
-          if (post.status === 'published') {
+          if (!schedule) {
+            console.error('❌ Schedule not found in post:', newScheduleId);
+            throw new Error('Schedule not found');
+          }
+          
+          console.log(`📊 Poll attempt ${attempts + 1}: schedule status = ${schedule.status}, post status = ${post.status}`);
+          
+          if (schedule.status === 'published' || post.status === 'published') {
             return 'published';
           }
-          if (post.status === 'failed') {
-            const errorMsg = post.schedules?.[0]?.error || 'Publishing failed';
+          if (schedule.status === 'failed' || post.status === 'failed') {
+            const errorMsg = schedule.error || 'Publishing failed';
             console.error('❌ Post failed:', errorMsg);
             throw new Error(errorMsg);
           }
@@ -464,7 +478,6 @@ const handleUpdate = async () => {
         }
       };
       
-      // Poll every second
       while (attempts < maxAttempts) {
         attempts++;
         
@@ -499,7 +512,6 @@ const handleUpdate = async () => {
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
-      // Timeout
       console.warn('⚠️ Polling timeout');
       setPublishProgress(100);
       setPublishStatus('success');
