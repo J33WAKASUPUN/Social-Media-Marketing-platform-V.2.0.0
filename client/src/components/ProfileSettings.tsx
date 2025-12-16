@@ -283,7 +283,7 @@ const handleDeleteAccount = async () => {
                 {uploadingAvatar ? 'Uploading...' : 'Change Avatar'}
               </Button>
               <p className="mt-2 text-xs text-muted-foreground">
-                JPG, PNG or WEBP. Max 2MB.
+                JPG, PNG or WEBP. Size: 1024x1024. Max 2MB.
               </p>
             </div>
           </div>
