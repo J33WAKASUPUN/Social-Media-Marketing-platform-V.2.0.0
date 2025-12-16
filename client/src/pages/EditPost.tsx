@@ -288,9 +288,7 @@ export default function EditPost() {
   const removeUploadedFile = (index: number) => setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   const removeLibraryMedia = (mediaId: string) => setSelectedLibraryMedia(prev => prev.filter(id => id !== mediaId));
 
-  // --- Save & Update ---
-// Replace the handleUpdate function (lines 290-505) with this corrected version
-
+// --- Save & Update ---
 const handleUpdate = async () => {
   if (!currentBrand || !content.trim()) {
     toast.error('Please enter some content');
@@ -309,19 +307,25 @@ const handleUpdate = async () => {
     }
   }
 
+  // ✅ FIXED: Store publishType in a const to prevent state timing issues
+  const currentPublishType = publishType;
+  
   try {
     setSaving(true);
     
     // Show dialog only for "Publish Now"
-    if (publishType === 'now') {
+    if (currentPublishType === 'now') {
       setShowPublishDialog(true);
       setPublishStatus('publishing');
       setPublishProgress(10);
+      
+      // ✅ FIXED: Add a small delay to ensure dialog renders
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
     
     // Simulate initial progress
     let progressInterval: NodeJS.Timeout | null = null;
-    if (publishType === 'now') {
+    if (currentPublishType === 'now') {
       progressInterval = setInterval(() => {
         setPublishProgress(prev => {
           if (prev >= 40) {
@@ -331,9 +335,7 @@ const handleUpdate = async () => {
           return prev + 5;
         });
       }, 200);
-    }
-
-    if (publishType === 'now') {
+      
       await new Promise(resolve => setTimeout(resolve, 800));
       if (progressInterval) clearInterval(progressInterval);
       setPublishProgress(40);
@@ -342,7 +344,7 @@ const handleUpdate = async () => {
     // Upload new files if any
     let uploadedMediaIds: string[] = [];
     if (uploadedFiles.length > 0) {
-      if (publishType === 'now') setPublishProgress(45);
+      if (currentPublishType === 'now') setPublishProgress(45);
       
       const uploadResponse = await mediaApi.upload(uploadedFiles, {
         brandId: currentBrand._id,
@@ -351,7 +353,7 @@ const handleUpdate = async () => {
       uploadedMediaIds = uploadResponse.data.map((m: Media) => m._id);
       console.log('✅ Uploaded new files:', uploadedMediaIds);
       
-      if (publishType === 'now') setPublishProgress(55);
+      if (currentPublishType === 'now') setPublishProgress(55);
     }
 
     // Combine all media IDs
@@ -365,7 +367,7 @@ const handleUpdate = async () => {
     };
 
     console.log('📤 Sending update:', {
-      publishType,
+      publishType: currentPublishType,
       mediaLibraryIds: allMediaIds,
       totalMedia: allMediaIds.length,
       selectedChannel,
@@ -373,16 +375,20 @@ const handleUpdate = async () => {
     });
 
     // CASE 1: SAVE AS DRAFT
-    if (publishType === 'draft') {
+    if (currentPublishType === 'draft') {
       updates.schedules = [];
       updates.status = 'draft';
     }
     // CASE 2: PUBLISH NOW
-    else if (publishType === 'now') {
+    else if (currentPublishType === 'now') {
       const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel);
       if (!channel) {
         toast.error('Selected channel not found');
         setSaving(false);
+        if (currentPublishType === 'now') {
+          setPublishStatus('error');
+          setPublishMessage('Selected channel not found');
+        }
         return;
       }
 
@@ -398,7 +404,7 @@ const handleUpdate = async () => {
       setPublishProgress(60);
     }
     // CASE 3: SCHEDULE FOR LATER
-    else if (publishType === 'schedule') {
+    else if (currentPublishType === 'schedule') {
       const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel);
       if (!channel) {
         toast.error('Selected channel not found');
@@ -423,14 +429,14 @@ const handleUpdate = async () => {
 
     console.log('📤 Final update payload:', updates);
 
-    if (publishType === 'now') setPublishProgress(70);
+    if (currentPublishType === 'now') setPublishProgress(70);
     
     await postApi.update(id!, updates);
     
-    if (publishType === 'now') setPublishProgress(75);
+    if (currentPublishType === 'now') setPublishProgress(75);
     
     // For "Publish Now", poll for completion
-    if (publishType === 'now') {
+    if (currentPublishType === 'now') {
       let attempts = 0;
       const maxAttempts = 30;
       
@@ -508,7 +514,7 @@ const handleUpdate = async () => {
       return;
     }
     
-    const successMessage = publishType === 'draft' 
+    const successMessage = currentPublishType === 'draft' 
       ? 'Post saved as draft' 
       : 'Post scheduled successfully';
     
@@ -519,7 +525,7 @@ const handleUpdate = async () => {
   } catch (error: any) {
     console.error('❌ Update failed:', error);
     
-    if (publishType === 'now') {
+    if (currentPublishType === 'now') {
       setPublishProgress(100);
       setPublishStatus('error');
       setPublishMessage(error.response?.data?.message || 'Failed to publish post');

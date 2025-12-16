@@ -240,7 +240,7 @@ export default function PostComposer() {
     setSelectedLibraryMedia(prev => prev.filter(id => id !== mediaId));
   };
 
-  // --- Main Create Logic ---
+// --- Main Create Logic ---
 const handleCreate = async () => {
   if (!content.trim()) {
     toast.error('Please enter content');
@@ -258,19 +258,25 @@ const handleCreate = async () => {
     }
   }
 
+  // ✅ FIXED: Store publishType in a const to prevent state timing issues
+  const currentPublishType = publishType;
+
   try {
     setLoading(true);
     
     // ✅ Show dialog ONLY for "Publish Now"
-    if (publishType === 'now') {
+    if (currentPublishType === 'now') {
       setShowPublishDialog(true);
       setPublishStatus('publishing');
-      setPublishProgress(10); // Start with 10% to show immediate feedback
+      setPublishProgress(10);
+      
+      // ✅ FIXED: Add a small delay to ensure dialog renders
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
     
     // ✅ Simulate initial progress (10% -> 40%)
     let progressInterval: NodeJS.Timeout | null = null;
-    if (publishType === 'now') {
+    if (currentPublishType === 'now') {
       progressInterval = setInterval(() => {
         setPublishProgress(prev => {
           if (prev >= 40) {
@@ -280,10 +286,7 @@ const handleCreate = async () => {
           return prev + 5;
         });
       }, 200);
-    }
-
-    // Wait for initial progress animation
-    if (publishType === 'now') {
+      
       await new Promise(resolve => setTimeout(resolve, 800));
       if (progressInterval) clearInterval(progressInterval);
       setPublishProgress(40);
@@ -292,7 +295,7 @@ const handleCreate = async () => {
     // 1. Upload new files if any
     let uploadedMediaIds: string[] = [];
     if (uploadedFiles.length > 0) {
-      if (publishType === 'now') setPublishProgress(45);
+      if (currentPublishType === 'now') setPublishProgress(45);
       
       const uploadResponse = await mediaApi.upload(uploadedFiles, {
         brandId: currentBrand._id,
@@ -301,7 +304,7 @@ const handleCreate = async () => {
       uploadedMediaIds = uploadResponse.data.map((m: Media) => m._id);
       console.log('✅ Uploaded new files:', uploadedMediaIds);
       
-      if (publishType === 'now') setPublishProgress(55);
+      if (currentPublishType === 'now') setPublishProgress(55);
     }
 
     // Combine library + uploaded
@@ -310,7 +313,7 @@ const handleCreate = async () => {
     // 2. Build Schedules
     let schedules: any[] = [];
     
-    if (publishType === 'now') {
+    if (currentPublishType === 'now') {
       const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel)!;
       const now = new Date();
       const scheduledFor = new Date(now.getTime() - 2000).toISOString();
@@ -320,7 +323,7 @@ const handleCreate = async () => {
         scheduledFor,
       });
       setPublishProgress(60);
-    } else if (publishType === 'schedule') {
+    } else if (currentPublishType === 'schedule') {
       const channel = channels.find(ch => (ch._id || (ch as any).id) === selectedChannel)!;
       const scheduledFor = new Date(scheduledDate).toISOString();
       
@@ -349,14 +352,14 @@ const handleCreate = async () => {
 
     console.log('📤 Sending create payload:', postData);
 
-    if (publishType === 'now') setPublishProgress(70);
+    if (currentPublishType === 'now') setPublishProgress(70);
     
     const response = await postApi.create(postData);
     
-    if (publishType === 'now') setPublishProgress(75);
+    if (currentPublishType === 'now') setPublishProgress(75);
     
     // ✅ For "Publish Now", poll for completion
-    if (publishType === 'now' && response.data?._id) {
+    if (currentPublishType === 'now' && response.data?._id) {
       const postId = response.data._id;
       let attempts = 0;
       const maxAttempts = 30; // 30 seconds max wait
@@ -440,7 +443,7 @@ const handleCreate = async () => {
     }
     
     // For draft and schedule, show normal toast
-    const successMessage = publishType === 'draft' 
+    const successMessage = currentPublishType === 'draft' 
       ? 'Post saved as draft' 
       : 'Post scheduled successfully';
     
@@ -451,7 +454,7 @@ const handleCreate = async () => {
   } catch (error: any) {
     console.error('❌ Create failed:', error);
     
-    if (publishType === 'now') {
+    if (currentPublishType === 'now') {
       setPublishProgress(100);
       setPublishStatus('error');
       setPublishMessage(error.response?.data?.message || 'Failed to publish post');
