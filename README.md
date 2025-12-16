@@ -37,13 +37,7 @@
 
 ## 🎯 Overview
 
-**SocialFlow** is a full-stack, enterprise-grade social media management platform consisting of three main components:
-
-1. **Home Website** ([socialflow-home.onrender.com](https://socialflow-home.onrender.com)) - Marketing landing page built with React + TypeScript
-2. **Main Application** ([socialflow-51u9.onrender.com](https://socialflow-51u9.onrender.com)) - Full-featured SPA for social media management
-3. **Backend API** ([socialflow-backend-api.duckdns.org](https://socialflow-backend-api.duckdns.org)) - RESTful API with Express.js
-
-The platform supports **6 major social platforms** with **OAuth 2.0 authentication**, **queue-based publishing**, **real-time analytics**, and **enterprise-grade security**.
+**SocialFlow** is a full-stack, enterprise-grade social media management platform. The platform supports **6 major social platforms** with **OAuth 2.0 authentication**, **queue-based publishing**, **real-time analytics**, and **enterprise-grade security**.
 
 ### **Key Capabilities**
 
