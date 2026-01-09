@@ -73,49 +73,51 @@ All colors MUST be HSL.
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  .dark {
-    --background: 240 10% 8%;
-    --foreground: 0 0% 95%;
+.dark {
+    /* -- Site's Dark Theme Base Colors -- */
+    --background: 225 25% 7%;
+    --foreground: 210 40% 98%;
 
-    --card: 240 10% 12%;
-    --card-foreground: 0 0% 95%;
+    --card: 225 20% 10%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 240 10% 12%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 225 20% 10%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 263 70% 58%;
+    --primary: 263 70% 55%;
     --primary-foreground: 0 0% 100%;
-    --primary-light: 246 65% 75%;
-    --primary-dark: 263 55% 55%;
+    /* Retained logic for light/dark variants based on new primary */
+    --primary-light: 263 70% 65%;
+    --primary-dark: 263 70% 45%;
 
-    --secondary: 263 55% 55%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 225 15% 15%;
+    --secondary-foreground: 210 40% 98%;
 
-    /* Changed from Pink (316) to Deep Violet (263) for dark mode hover */
-    --accent: 263 40% 20%;
-    --accent-foreground: 246 65% 85%;
+    --accent: 225 15% 18%;
+    --accent-foreground: 210 40% 98%;
 
-    --success: 158 64% 52%;
+    --success: 160 84% 39%;
     --warning: 38 92% 50%;
 
-    --muted: 240 10% 18%;
-    --muted-foreground: 240 5% 65%;
+    --muted: 225 15% 15%;
+    --muted-foreground: 215 20% 65%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 240 10% 18%;
-    --input: 240 10% 18%;
-    --ring: 246 65% 65%;
+    --border: 225 15% 18%;
+    --input: 225 15% 18%;
+    --ring: 263 70% 55%;
 
-    --sidebar-background: 240 10% 12%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 246 65% 65%;
+    /* -- Sidebar Variables (Updated to match Site Theme) -- */
+    --sidebar-background: 225 20% 10%; /* Matches card/popover for slight contrast or use 225 25% 7% for blend */
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 263 70% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 263 40% 20%;
-    --sidebar-accent-foreground: 246 65% 85%;
-    --sidebar-border: 240 10% 18%;
-    --sidebar-ring: 246 65% 65%;
+    --sidebar-accent: 225 15% 18%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 225 15% 18%;
+    --sidebar-ring: 263 70% 55%;
   }
 }
 
