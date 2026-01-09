@@ -38,7 +38,7 @@ import WhatsAppTemplates from '@/pages/whatsapp/Templates';
 import WhatsAppContacts from '@/pages/whatsapp/Contacts';
 import WhatsAppCallLogs from '@/pages/whatsapp/CallLogs';
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
-
+import TermsOfService from "@/pages/TermsOfService";
 
 const queryClient = new QueryClient();
 
@@ -79,6 +79,7 @@ const App = () => (
                       <Route path="/google/callback" element={<GoogleCallback />} />
                       <Route path="/2fa-verify" element={<TwoFactorVerify />} />
                       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                      <Route path="/terms-of-service" element={<TermsOfService />} />
 
                       {/* Protected Routes - Require Authentication */}
                       <Route

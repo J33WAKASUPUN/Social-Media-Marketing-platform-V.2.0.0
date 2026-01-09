@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Sparkles, Check, X, AlertTriangle, Shield } from "lucide-react"; // ✅ Added Shield
 import { cn } from "@/lib/utils";
+import { FileText } from "lucide-react";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -21,8 +22,6 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [registrationComplete, setRegistrationComplete] = useState(false);
-  
-  // ✅ NEW: Privacy Policy Agreement
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
 
   // Password validation
@@ -35,6 +34,7 @@ export default function Register() {
 
   const isPasswordValid = Object.values(passwordValidation).every(Boolean);
   const passwordsMatch = password === confirmPassword && confirmPassword !== "";
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,9 +49,13 @@ export default function Register() {
       return;
     }
 
-    // ✅ NEW: Check privacy policy agreement
     if (!agreedToPrivacy) {
       toast.error("Please read and agree to the Privacy Policy");
+      return;
+    }
+
+    if (!agreedToTerms) {
+      toast.error("Please read and agree to the Terms of Service");
       return;
     }
 
@@ -70,9 +74,13 @@ export default function Register() {
   };
 
   const handleGoogleSignup = () => {
-    // ✅ NEW: Check privacy policy for Google signup too
     if (!agreedToPrivacy) {
       toast.error("Please read and agree to the Privacy Policy before signing up with Google");
+      return;
+    }
+
+    if (!agreedToTerms) {
+      toast.error("Please read and agree to the Terms of Service before signing up with Google");
       return;
     }
     
@@ -336,7 +344,7 @@ export default function Register() {
               )}
             </div>
 
-            {/* ✅ NEW: Privacy Policy Agreement */}
+            {/* Privacy Policy Agreement */}
             <div className="space-y-3 pt-2">
               <div className="flex items-start gap-3 p-4 rounded-lg border-2 bg-muted/30 hover:bg-muted/50 transition-colors">
                 <Checkbox
@@ -362,6 +370,35 @@ export default function Register() {
                   </Label>
                   <p className="text-xs text-muted-foreground mt-1">
                     We collect and process your data as described in our privacy policy.
+                  </p>
+                </div>
+              </div>
+
+              {/* Terms of Service Agreement */}
+              <div className="flex items-start gap-3 p-4 rounded-lg border-2 bg-muted/30 hover:bg-muted/50 transition-colors">
+                <Checkbox
+                  id="terms-of-service"
+                  checked={agreedToTerms}
+                  onCheckedChange={(checked) => setAgreedToTerms(!!checked)}
+                  className="mt-1"
+                />
+                <div className="flex-1">
+                  <Label
+                    htmlFor="terms-of-service"
+                    className="text-sm font-medium cursor-pointer leading-relaxed"
+                  >
+                    I have read and agree to the{' '}
+                    <Link
+                      to="/terms-of-service"
+                      className="text-violet-600 hover:text-violet-700 underline font-semibold inline-flex items-center gap-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Terms of Service
+                      <FileText className="h-3.5 w-3.5" />
+                    </Link>
+                  </Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    You must accept our terms to use SocialFlow.
                   </p>
                 </div>
               </div>
