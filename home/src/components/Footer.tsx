@@ -136,23 +136,22 @@ export function Footer() {
           </div>
 
           {/* Bottom */}
-          <div className="mt-12 pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} SocialFlow. All rights reserved.
-            </p>
-            <div className="flex items-center gap-6">
-              {/* Use Link component for Privacy Policy */}
-              <Link to="/privacy-policy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Privacy Policy
-              </Link>
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Terms
-              </a>
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Support
-              </a>
-            </div>
-          </div>
+<div className="mt-12 pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
+  <p className="text-sm text-muted-foreground">
+    © {new Date().getFullYear()} SocialFlow. All rights reserved.
+  </p>
+  <div className="flex items-center gap-6">
+    <Link to="/privacy-policy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+      Privacy Policy
+    </Link>
+    <Link to="/terms-of-service" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+      Terms of Service
+    </Link>
+    <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+      Support
+    </a>
+  </div>
+</div>
         </div>
       </div>
     </footer>

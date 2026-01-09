@@ -7,12 +7,13 @@ const navLinks = [
   { label: "Features", href: "#features" },
   { label: "Platforms", href: "#platforms" },
   { label: "Pricing", href: "#pricing" },
-  { label: "Contact", href: "#contact" }, // ✅ ADDED BACK
+  { label: "Contact", href: "#contact" },
   { label: "Privacy Policy", href: "/privacy-policy" },
+  { label: "Terms of Service", href: "/terms-of-service" },
 ];
 
 // ✅ YOUR APP URL
-const APP_URL = "https://socialflow-51u9.onrender.com";
+const APP_URL = "https://socialflow.app.innovior.lk";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);

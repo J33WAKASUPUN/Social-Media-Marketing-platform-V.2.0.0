@@ -195,8 +195,8 @@ export default function PrivacyPolicy() {
                   If you have questions or comments about this policy, you may contact us at:
                 </p>
                 <div className="bg-muted/50 rounded-lg p-4 space-y-1">
-                  <p className="text-sm"><strong>Email:</strong> <a href="mailto:support@socialflow.com" className="text-violet-600 hover:underline">support@socialflow.com</a></p>
-                  <p className="text-sm"><strong>Website:</strong> <a href="https://socialflow-home.onrender.com" target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:underline">https://socialflow.com</a></p>
+                  <p className="text-sm"><strong>Email:</strong> <a href="mailto:dev@innovior.lk" className="text-violet-600 hover:underline">support@socialflow.com</a></p>
+                  <p className="text-sm"><strong>Website:</strong> <a href="https://socialflow.innovior.lk" target="_blank" rel="noopener noreferrer" className="text-violet-600 hover:underline">https://socialflow.com</a></p>
                 </div>
               </section>
             </div>
