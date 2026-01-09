@@ -86,7 +86,6 @@ All colors MUST be HSL.
 
     --primary: 263 70% 55%;
     --primary-foreground: 0 0% 100%;
-    /* Retained logic for light/dark variants based on new primary */
     --primary-light: 263 70% 65%;
     --primary-dark: 263 70% 45%;
 
@@ -102,15 +101,16 @@ All colors MUST be HSL.
     --muted: 225 15% 15%;
     --muted-foreground: 215 20% 65%;
 
-    --destructive: 0 62% 30%;
-    --destructive-foreground: 210 40% 98%;
+    /* -- App's Original "Old" Red -- */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
     --border: 225 15% 18%;
     --input: 225 15% 18%;
     --ring: 263 70% 55%;
 
     /* -- Sidebar Variables (Updated to match Site Theme) -- */
-    --sidebar-background: 225 20% 10%; /* Matches card/popover for slight contrast or use 225 25% 7% for blend */
+    --sidebar-background: 225 20% 10%;
     --sidebar-foreground: 210 40% 98%;
     --sidebar-primary: 263 70% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
