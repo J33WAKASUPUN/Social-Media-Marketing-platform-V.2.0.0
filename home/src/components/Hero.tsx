@@ -61,7 +61,7 @@ export function Hero() {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card mb-6"
           >
             <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
-            <span className="text-sm text-muted-foreground">Now with AI-powered scheduling</span>
+            <span className="text-sm text-muted-foreground">Plan content, track performance, grow faster</span>
           </motion.div>
 
           {/* Headline */}

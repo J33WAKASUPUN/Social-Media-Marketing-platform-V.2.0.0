@@ -342,14 +342,14 @@ export default function PrivacyPolicy() {
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
                     <h3 className="font-semibold mb-2">Email</h3>
-                    <a href="mailto:support@socialflow.com" className="text-primary hover:underline">
-                      support@socialflow.com
+                    <a href="mailto:dev@innovior.lk" className="text-primary hover:underline">
+                      dev@innovior.lk
                     </a>
                   </div>
                   <div>
                     <h3 className="font-semibold mb-2">Website</h3>
-                    <a href="https://socialflow.com" target="_blank" className="text-primary hover:underline">
-                      https://socialflow.com
+                    <a href="https://socialflow.innovior.lk" target="_blank" className="text-primary hover:underline">
+                      https://socialflow.innovior.lk
                     </a>
                   </div>
                 </div>
