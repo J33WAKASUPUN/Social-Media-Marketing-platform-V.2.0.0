@@ -8,7 +8,7 @@ import { BrandSettings } from "@/components/BrandSettings";
 import { TeamSettings } from "@/components/TeamSettings";
 import { ThemeSettings } from "@/components/ThemeSettings";
 import { TourSettings } from '@/components/TourSettings';
-import { PrivacyPolicyCard } from "@/components/PrivacyPolicyCard";
+// import { PrivacyPolicyCard } from "@/components/PrivacyPolicyCard";
 import { Button } from "@/components/ui/button"; 
 import { 
   UserCircle, 
@@ -120,7 +120,7 @@ const Settings = () => {
               <div className="space-y-6">
                 <TwoFactorSettings />
                 <TrustedDevicesSettings />
-                <PrivacyPolicyCard />
+                {/* <PrivacyPolicyCard /> */}
               </div>
             </TabsContent>
             <TabsContent value="appearance"><ThemeSettings /></TabsContent>
