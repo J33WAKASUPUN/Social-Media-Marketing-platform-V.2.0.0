@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBrand } from '@/contexts/BrandContext';
-import { PageHeader } from '@/components/PageHeader';
+// import { PageHeader } from '@/components/PageHeader'; // Removed as it wasn't used in your snippet
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'; // ✅ ADDED
 import {
   ChatList,
   MessageList,
@@ -20,11 +21,10 @@ import { toast } from 'sonner';
 import {
   MessageCircle,
   AlertCircle,
+  CheckCircle, // ✅ ADDED
   Send,
   Info,
-  Filter,
   Users,
-  Search,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -39,6 +39,7 @@ export default function WhatsAppInbox() {
   const [messages, setMessages] = useState<WhatsAppMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState<NodeJS.Timeout | null>(null);
 
   // WhatsApp channel
   const [whatsappChannel, setWhatsappChannel] = useState<Channel | null>(null);
@@ -78,7 +79,6 @@ export default function WhatsAppInbox() {
       const whatsappCh = channelsRes.data.find((ch) => ch.provider === 'whatsapp');
 
       if (!whatsappCh) {
-        // Don't navigate, just set loading to false
         setLoading(false);
         return;
       }
@@ -153,6 +153,48 @@ export default function WhatsAppInbox() {
     }
   };
 
+  // ✅ POLLING LOGIC (Kept from your code)
+  useEffect(() => {
+    if (selectedContact && currentBrand) {
+      // Initial load
+      loadMessages(selectedContact);
+
+      // Poll for new messages every 5 seconds
+      const interval = setInterval(() => {
+        loadMessages(selectedContact);
+      }, 5000);
+
+      setAutoRefreshInterval(interval);
+
+      // Cleanup
+      return () => {
+        if (interval) clearInterval(interval);
+      };
+    } else {
+      // Clear interval if no contact selected
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        setAutoRefreshInterval(null);
+      }
+    }
+  }, [selectedContact?._id, currentBrand?._id]);
+
+  // ✅ 24-HOUR CHECK LOGIC (Kept from your code)
+  const canSendFreeFormMessage = (contact: WhatsAppContact): boolean => {
+    if (!contact.lastMessageSentAt) return false;
+    
+    const lastMessage = messages.find(
+      (m) => m.direction === 'inbound' && m.from === contact.phone
+    );
+    
+    if (!lastMessage) return false;
+    
+    const lastMessageTime = new Date(lastMessage.timestamp);
+    const hoursSinceLastMessage = (Date.now() - lastMessageTime.getTime()) / (1000 * 60 * 60);
+    
+    return hoursSinceLastMessage < 24;
+  };
+
   const handleContactSelect = (contact: WhatsAppContact) => {
     setSelectedContact(contact);
     loadMessages(contact);
@@ -160,14 +202,17 @@ export default function WhatsAppInbox() {
   };
 
   const handleSendText = async (text: string) => {
-    if (!selectedContact || !currentBrand) return;
+    if (!selectedContact || !currentBrand || !whatsappChannel) return;
 
     try {
       setSending(true);
-      await whatsappApi.sendMessage(currentBrand._id, {
-        to: selectedContact.phone,
-        type: 'text',
+
+      // Use sendText with phone number
+      await whatsappApi.sendText({
+        channelId: whatsappChannel._id,
+        recipientIds: [selectedContact._id], // Send by contact ID
         text,
+        previewUrl: text.includes('http'),
       });
 
       // Reload messages
@@ -270,7 +315,6 @@ export default function WhatsAppInbox() {
     );
   }
 
-  // ✅ CHANGED: Show empty state instead of navigating
   if (!whatsappChannel) {
     return (
       <WhatsAppEmptyState
@@ -339,32 +383,48 @@ export default function WhatsAppInbox() {
         <div className="flex-1 flex flex-col">
           {selectedContact ? (
             <>
-              {/* Contact Header */}
-              <div className="border-b p-4 bg-card flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-green-600 text-white flex items-center justify-center font-semibold">
-                    {selectedContact.name
-                      .split(' ')
-                      .map((n) => n[0])
-                      .join('')
-                      .toUpperCase()
-                      .slice(0, 2)}
+              {/* ✅ NEW: Message Header with Status */}
+              <div className="border-b p-4 bg-card">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="bg-green-600 text-white">
+                        {selectedContact.name.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="font-semibold">{selectedContact.name}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedContact.phone}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold">{selectedContact.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedContact.phone}
-                    </p>
-                  </div>
-                </div>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowContactDetails(true)}
-                >
-                  <Info className="h-4 w-4" />
-                </Button>
+                  {/* ✅ NEW: 24-Hour Window Indicator */}
+                  {canSendFreeFormMessage(selectedContact) ? (
+                    <div className="flex items-center gap-2 text-green-600">
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="text-sm font-medium">
+                        Can send messages
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-amber-600">
+                      <AlertCircle className="h-4 w-4" />
+                      <span className="text-sm font-medium">
+                        Templates only
+                      </span>
+                    </div>
+                  )}
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowContactDetails(true)}
+                  >
+                    <Info className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
               {/* Messages */}
@@ -374,12 +434,36 @@ export default function WhatsAppInbox() {
                 currentUserPhone={whatsappChannel.providerData?.phoneNumber}
               />
 
-              {/* Input */}
-              <MessageInput
-                onSendText={handleSendText}
-                onSendMedia={handleSendMedia}
-                disabled={sending}
-              />
+              {/* ✅ NEW: Input with conditional warning */}
+              {canSendFreeFormMessage(selectedContact) ? (
+                <MessageInput
+                  onSendText={handleSendText}
+                  onSendMedia={handleSendMedia}
+                  disabled={sending}
+                />
+              ) : (
+                <div className="border-t p-4 bg-card">
+                  <Alert className="mb-3">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                      <strong>24-Hour Window Expired:</strong> You can only send approved templates.
+                      Free-form messages are available after the customer messages you.
+                    </AlertDescription>
+                  </Alert>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      setSelectedTemplate(templates[0]); // Select first template by default
+                      setShowSendTemplate(true);
+                    }}
+                    disabled={templates.length === 0}
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    Send Template Message
+                  </Button>
+                </div>
+              )}
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
@@ -400,7 +484,6 @@ export default function WhatsAppInbox() {
             contact={selectedContact}
             onClose={() => setShowContactDetails(false)}
             onEdit={(contact) => {
-              // Navigate to edit contact
               navigate(`/whatsapp/contacts?edit=${contact._id}`);
             }}
           />

@@ -178,46 +178,115 @@ export const whatsappApi = {
   /**
    * Send template message
    */
-  sendTemplate: async (data: {
-    channelId: string;
-    templateName: string;
-    languageCode?: string;
-    recipientIds: string[];
-    components?: any[];
-  }) => {
-    const response = await api.post<ApiResponse<{
-      results: Array<{
-        recipient: string;
-        success: boolean;
-        messageId?: string;
-        error?: string;
-      }>;
-      summary: {
-        total: number;
-        success: number;
-        failed: number;
-      };
-    }>>('/whatsapp/send-template', data);
-    return response.data;
-  },
+sendTemplate: async (brandId: string, data: {
+  channelId: string;
+  templateName: string;
+  languageCode?: string;
+  recipientIds: string[];
+  components?: any[];
+}) => {
+  const payload = {
+    channelId: data.channelId,
+    templateName: data.templateName,
+    languageCode: data.languageCode || 'en',
+    recipientIds: Array.isArray(data.recipientIds) ? data.recipientIds : [data.recipientIds],
+    components: data.components || [],
+  };
+
+  const response = await api.post<ApiResponse<{
+    results: Array<{
+      recipient: string;
+      success: boolean;
+      messageId?: string;
+      error?: string;
+    }>;
+    summary: {
+      total: number;
+      success: number;
+      failed: number;
+    };
+  }>>('/whatsapp/send-template', payload);
+  
+  return response.data;
+},
+
+/**
+ * Send text message (unified method for Inbox)
+ */
+sendMessage: async (brandId: string, data: {
+  to: string;
+  type: 'text';
+  text: string;
+}) => {
+  // Get WhatsApp channel for this brand
+  const channelsRes = await api.get<ApiResponse<any>>('/channels', {
+    params: { brandId },
+  });
+  
+  const whatsappChannel = channelsRes.data.data.find(
+    (ch: any) => ch.provider === 'whatsapp' && ch.connectionStatus === 'active'
+  );
+
+  if (!whatsappChannel) {
+    throw new Error('No active WhatsApp channel found');
+  }
+
+  // Use sendText API
+  const response = await api.post<ApiResponse<{
+    results: Array<{
+      recipient: string;
+      success: boolean;
+      messageId?: string;
+      error?: string;
+    }>;
+  }>>('/whatsapp/send-text', {
+    channelId: whatsappChannel._id,
+    recipientIds: [data.to], // Send by phone number directly
+    text: data.text,
+  });
+
+  return response.data;
+},
+
+/**
+ * Send media message (unified method for Inbox)
+ */
+sendMediaMessage: async (brandId: string, formData: FormData) => {
+  // For now, this would need file upload support
+  // We'll use the sendMedia endpoint with URL
+  throw new Error('Media upload not yet implemented. Use Media Library URLs instead.');
+},
 
   // ============================================
   // MESSAGE HISTORY
   // ============================================
   
-  /**
-   * Get message history
-   */
-  getMessages: async (filters: {
-    brandId?: string;
-    phoneNumberId?: string;
-    type?: 'text' | 'image' | 'video' | 'audio' | 'document' | 'template' | 'call';
-    limit?: number;
-    page?: number;
-  }) => {
-    const response = await api.get<PaginatedResponse<WhatsAppMessage>>('/whatsapp/messages', {
-      params: filters,
-    });
-    return response.data;
-  },
+/**
+ * Get message history
+ */
+getMessages: async (brandId: string, filters?: {
+  phoneNumberId?: string;
+  contactPhone?: string;
+  type?: 'text' | 'image' | 'video' | 'audio' | 'document' | 'template' | 'call';
+  limit?: number;
+  page?: number;
+}) => {
+  const params: Record<string, any> = { 
+    brandId 
+  };
+
+  if (filters) {
+    if (filters.phoneNumberId) params.phoneNumberId = filters.phoneNumberId;
+    if (filters.contactPhone) params.contactPhone = filters.contactPhone;
+    if (filters.type) params.type = filters.type;
+    if (filters.limit) params.limit = filters.limit;
+    if (filters.page) params.page = filters.page;
+  }
+
+  const response = await api.get<PaginatedResponse<WhatsAppMessage>>('/whatsapp/messages', {
+    params,
+  });
+  
+  return response.data;
+},
 };
