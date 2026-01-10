@@ -30,6 +30,7 @@ import { PlatformBadge } from '@/components/PlatformBadge';
 import { MediaLibrary } from '@/components/media/MediaLibrary';
 import { cn } from '@/lib/utils';
 import { PublishingProgressDialog } from '@/components/post/PublishingProgressDialog';
+import { AIOptimizeButton } from '@/components/post-composer/AIOptimizeButton';
 
 export default function PostComposer() {
   const navigate = useNavigate();
@@ -553,7 +554,21 @@ const handlePublishDialogClose = () => {
 
                 {/* 2. TEXT AREA */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium text-gray-700 dark:text-foreground">Content</Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium text-gray-700 dark:text-foreground">
+                      Content
+                    </Label>
+                    {/* AI OPTIMIZE BUTTON */}
+                    {selectedPlatform && (
+                      <AIOptimizeButton
+                        content={content}
+                        platform={selectedPlatform}
+                        onOptimized={(optimized) => setContent(optimized)}
+                        disabled={loading}
+                        brandId={currentBrand._id}
+                      />
+                    )}
+                  </div>
                   <div className="relative">
                     <Textarea
                       ref={contentTextareaRef}

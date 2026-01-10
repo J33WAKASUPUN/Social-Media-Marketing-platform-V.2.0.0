@@ -40,6 +40,7 @@ import NotFound from "@/pages/NotFound";
 // import WhatsAppCallLogs from '@/pages/whatsapp/CallLogs';
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
+import AIChat from "@/pages/AIChat";
 
 const queryClient = new QueryClient();
 
@@ -253,6 +254,20 @@ const App = () => (
                           </ProtectedRoute>
                         }
                       />
+
+                      {/* AI Chat - Require Editor+ (canCreatePosts) */}
+                      <Route
+                       path="/ai-chat"
+                       element={
+                         <ProtectedRoute>
+                           <RoleProtectedRoute requiredPermission="canCreatePosts">
+                             <MainLayout>
+                               <AIChat />
+                             </MainLayout>
+                           </RoleProtectedRoute>
+                         </ProtectedRoute>
+                        }
+                       />
 
                       {/* 404 */}
                       <Route path="*" element={<NotFound />} />

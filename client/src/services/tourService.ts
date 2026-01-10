@@ -145,6 +145,16 @@ const allWelcomeTourSteps: TourStep[] = [
     requiredPermission: 'canViewMedia',
   },
   {
+    element: '[data-tour="menu-ai-chat"]',
+    popover: {
+      title: '✨ AI Assistant',
+      description: '<p>Chat with AI to:</p><ul class="list-disc pl-4 mt-2 space-y-1"><li>Generate content ideas</li><li>Write social media posts</li><li>Get marketing advice</li><li>Optimize your content strategy</li></ul><p class="mt-2"><strong>Note:</strong> Available to Editors, Managers, and Owners.</p>',
+      side: 'right',
+      align: 'start',
+    },
+    requiredPermission: 'canCreatePosts',
+  },
+  {
     element: '[data-tour="menu-settings"]',
     popover: {
       title: '⚙️ Settings',

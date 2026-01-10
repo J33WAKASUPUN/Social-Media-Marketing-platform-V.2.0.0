@@ -14,6 +14,7 @@ import {
   Users,
   Phone,
   ChevronDown,
+  Sparkles,
 } from "lucide-react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
@@ -123,6 +124,13 @@ const menuItems = [
     icon: Image,
     requiredPermission: 'canViewMedia',
     tourId: "menu-media"
+  },
+  { 
+    title: "Content Assistant", 
+    url: "/ai-chat", 
+    icon: Sparkles,
+    requiredPermission: 'canCreatePosts', // Editor, Manager, Owner only
+    tourId: "menu-ai-chat"
   },
   { 
     title: "Settings", 
