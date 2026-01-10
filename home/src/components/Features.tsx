@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { LayoutDashboard, BarChart3, Calendar, MessageCircle, Image, Users } from "lucide-react";
+import { LayoutDashboard, BarChart3, Calendar, Sparkles, Image, Users } from "lucide-react"; // ✅ CHANGED: MessageCircle → Sparkles
 import { RealDashboardPreview } from "./features/RealDashboardPreview";
 import { RealAnalyticsChart } from "./features/RealAnalyticsChart";
 import { RealCalendarPreview } from "./features/RealCalendarPreview";
@@ -78,39 +78,40 @@ export function Features() {
             </div>
           </motion.div>
 
-          {/* Row 2: WhatsApp + Team Collaboration - 50/50 */}
+          {/* ✅ UPDATED: Row 2: AI Assistant + Team Collaboration - 50/50 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-            {/* WhatsApp Integration */}
+            {/* ✅ NEW: AI Content Assistant */}
             <motion.div
               variants={itemVariants}
               whileHover={{ y: -5, transition: { duration: 0.2 } }}
-              className="card-glass group p-6 border-emerald-500/30 hover:border-emerald-500/50 bg-emerald-500/5 relative overflow-hidden"
+              className="card-glass group p-6 border-violet-500/30 hover:border-violet-500/50 bg-gradient-to-br from-violet-500/5 to-purple-500/5 relative overflow-hidden"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
               
               <div className="relative z-10">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-gradient-to-br from-emerald-600 to-green-600 shadow-lg">
-                  <MessageCircle className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-gradient-to-br from-violet-600 to-purple-600 shadow-lg">
+                  <Sparkles className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="text-xl font-semibold mb-2">WhatsApp Integration</h3>
-                <p className="text-muted-foreground mb-4">Connect directly with customers via WhatsApp Business API</p>
+                <h3 className="text-xl font-semibold mb-2">AI Content Assistant</h3>
+                <p className="text-muted-foreground mb-4">Powered by Google Gemini AI to supercharge your content creation</p>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    <span className="text-muted-foreground">Automated messaging</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                    <span className="text-muted-foreground">AI-powered post optimization</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    <span className="text-muted-foreground">Contact management</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                    <span className="text-muted-foreground">Smart content generation</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    <span className="text-muted-foreground">Template messages</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                    <span className="text-muted-foreground">Conversation-based brainstorming</span>
                   </div>
                 </div>
                 <div className="mt-4 flex items-center gap-2">
-                  <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
-                    1,200+ businesses connected
+                  <span className="px-3 py-1 rounded-full bg-gradient-to-r from-violet-500/20 to-purple-500/20 text-violet-600 dark:text-violet-400 text-xs font-semibold flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3" />
+                    Powered by Gemini AI
                   </span>
                 </div>
               </div>
@@ -120,27 +121,27 @@ export function Features() {
             <motion.div
               variants={itemVariants}
               whileHover={{ y: -5, transition: { duration: 0.2 } }}
-              className="card-glass group p-6 border-violet-500/30 hover:border-violet-500/50 bg-violet-500/5 relative overflow-hidden"
+              className="card-glass group p-6 border-blue-500/30 hover:border-blue-500/50 bg-blue-500/5 relative overflow-hidden"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
               
               <div className="relative z-10">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-gradient-to-br from-violet-600 to-purple-600 shadow-lg">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-gradient-to-br from-blue-600 to-cyan-600 shadow-lg">
                   <Users className="w-6 h-6 text-white" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Team Collaboration</h3>
                 <p className="text-muted-foreground mb-4">Work together with role-based permissions and approval workflows</p>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm">
-                    <div className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                     <span className="text-muted-foreground">Role-based access control</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <div className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                     <span className="text-muted-foreground">Approval workflows</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
-                    <div className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                     <span className="text-muted-foreground">Activity tracking</span>
                   </div>
                 </div>
@@ -149,7 +150,7 @@ export function Features() {
                     {["JD", "MK", "SA"].map((initials, i) => (
                       <div
                         key={i}
-                        className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-purple-600 border-2 border-card flex items-center justify-center text-xs font-semibold text-white shadow-lg"
+                        className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 border-2 border-card flex items-center justify-center text-xs font-semibold text-white shadow-lg"
                       >
                         {initials}
                       </div>
