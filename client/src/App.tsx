@@ -33,10 +33,11 @@ import Channels from "@/pages/Channels";
 import Media from "@/pages/Media";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
-import WhatsAppInbox from '@/pages/whatsapp/Inbox';
-import WhatsAppTemplates from '@/pages/whatsapp/Templates';
-import WhatsAppContacts from '@/pages/whatsapp/Contacts';
-import WhatsAppCallLogs from '@/pages/whatsapp/CallLogs';
+// ❌ TEMPORARILY DISABLED: WhatsApp Pages (Coming in v2.1)
+// import WhatsAppInbox from '@/pages/whatsapp/Inbox';
+// import WhatsAppTemplates from '@/pages/whatsapp/Templates';
+// import WhatsAppContacts from '@/pages/whatsapp/Contacts';
+// import WhatsAppCallLogs from '@/pages/whatsapp/CallLogs';
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 
@@ -177,8 +178,8 @@ const App = () => (
                         }
                       />
 
-                      {/* ✅ ADDED: WhatsApp Routes (Require canConnectChannels) */}
-                      <Route
+                      {/* ❌ TEMPORARILY DISABLED: WhatsApp Routes (Coming in v2.1) */}
+                      {/* <Route
                         path="/whatsapp/inbox"
                         element={
                           <ProtectedRoute>
@@ -225,7 +226,7 @@ const App = () => (
                             </RoleProtectedRoute>
                           </ProtectedRoute>
                         }
-                      />
+                      /> */}
 
                       {/* Media Library - Require canViewMedia */}
                       <Route

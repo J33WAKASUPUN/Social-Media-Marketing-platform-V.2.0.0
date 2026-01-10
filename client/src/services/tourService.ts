@@ -108,31 +108,32 @@ const allWelcomeTourSteps: TourStep[] = [
     },
     requiredPermission: 'canConnectChannels',
   },
-  // ✅ FIXED: WhatsApp Step with special handling
-  {
-    element: '[data-tour="menu-whatsapp"]',
-    popover: {
-      title: '💬 WhatsApp Business',
-      description: '<p>Manage your WhatsApp Business messaging:</p><ul class="list-disc pl-4 mt-2 space-y-1"><li><strong>Inbox:</strong> Chat with customers</li><li><strong>Templates:</strong> Pre-approved message templates</li><li><strong>Contacts:</strong> Manage customer database</li><li><strong>Call Logs:</strong> Track call history</li></ul>',
-      side: 'right',
-      align: 'start',
-    },
-    requiredPermission: 'isManager',
-    // ✅ Open the collapsible menu before highlighting
-    onBeforeHighlight: () => {
-      const whatsappButton = document.querySelector('[data-tour="menu-whatsapp"]') as HTMLElement;
-      if (whatsappButton) {
-        // Check if it's collapsed
-        const isCollapsed = whatsappButton.getAttribute('data-state') === 'closed';
-        if (isCollapsed) {
-          // Click to open
-          whatsappButton.click();
-          // Wait for animation
-          return new Promise(resolve => setTimeout(resolve, 300));
-        }
-      }
-    },
-  },
+  // WhatsApp Step with special handling
+  // ❌ DISABLED: WhatsApp Tour Step (Coming in v2.1)
+  // {
+  //   element: '[data-tour="menu-whatsapp"]',
+  //   popover: {
+  //     title: '💬 WhatsApp Business',
+  //     description: '<p>Manage your WhatsApp Business messaging:</p><ul class="list-disc pl-4 mt-2 space-y-1"><li><strong>Inbox:</strong> Chat with customers</li><li><strong>Templates:</strong> Pre-approved message templates</li><li><strong>Contacts:</strong> Manage customer database</li><li><strong>Call Logs:</strong> Track call history</li></ul>',
+  //     side: 'right',
+  //     align: 'start',
+  //   },
+  //   requiredPermission: 'isManager',
+  //   // Open the collapsible menu before highlighting
+  //   onBeforeHighlight: () => {
+  //     const whatsappButton = document.querySelector('[data-tour="menu-whatsapp"]') as HTMLElement;
+  //     if (whatsappButton) {
+  //       // Check if it's collapsed
+  //       const isCollapsed = whatsappButton.getAttribute('data-state') === 'closed';
+  //       if (isCollapsed) {
+  //         // Click to open
+  //         whatsappButton.click();
+  //         // Wait for animation
+  //         return new Promise(resolve => setTimeout(resolve, 300));
+  //       }
+  //     }
+  //   },
+  // },
   {
     element: '[data-tour="menu-media"]',
     popover: {

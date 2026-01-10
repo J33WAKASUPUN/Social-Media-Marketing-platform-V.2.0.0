@@ -26,12 +26,13 @@ import { channelApi } from "@/services/channelApi";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-// ✅ Import your extracted Tab components
+// Tab components
 import { OverviewTab } from "@/components/analytics/OverviewTab";
 import { ChannelsTab } from "@/components/analytics/ChannelsTab";
 import { ContentTab } from "@/components/analytics/ContentTab";
 import { MediaTab } from "@/components/analytics/MediaTab";
-import { WhatsAppAnalyticsSection } from "@/components/analytics/WhatsAppAnalyticsSection";
+// ❌ TEMPORARILY DISABLED: WhatsApp Analytics (Coming in v2.1)
+// import { WhatsAppAnalyticsSection } from "@/components/analytics/WhatsAppAnalyticsSection";
 
 import type { Post, Channel } from "@/types";
 
@@ -92,12 +93,12 @@ export default function Analytics() {
   }, [channels]);
 
   // 2. Check if WhatsApp is connected and user has access
-  const hasWhatsAppAccess = useMemo(() => {
-    // ✅ Only managers and owners can access WhatsApp analytics
-    const hasRole = permissions.isManager || permissions.isOwner;
-    const hasWhatsAppChannel = channels.some(c => c.provider === 'whatsapp');
-    return hasRole && hasWhatsAppChannel;
-  }, [permissions, channels]);
+  // ❌ DISABLED: WhatsApp access check
+  // const hasWhatsAppAccess = useMemo(() => {
+  //   const hasRole = permissions.isManager || permissions.isOwner;
+  //   const hasWhatsAppChannel = channels.some(c => c.provider === 'whatsapp');
+  //   return hasRole && hasWhatsAppChannel;
+  // }, [permissions, channels]);
 
   // 3. Calculate Best Posting Days
   const topPostingDays = useMemo(() => {
@@ -384,12 +385,13 @@ export default function Analytics() {
             )}
 
             {/* ✅ WhatsApp Tab - Only show for Manager/Owner with WhatsApp connected */}
-            {hasWhatsAppAccess && (
+            {/* ❌ DISABLED: WhatsApp Tab */}
+            {/* {hasWhatsAppAccess && (
               <TabsTrigger value="whatsapp" className="gap-2 py-2 data-[state=active]:text-[#25D366]">
                 <MessageCircle className="h-4 w-4" />
                 <span className="hidden sm:inline">WhatsApp</span>
               </TabsTrigger>
-            )}
+            )} */}
 
             <TabsTrigger value="content" className="gap-2 py-2">
               <FileText className="h-4 w-4" />
@@ -429,11 +431,12 @@ export default function Analytics() {
           </TabsContent>
 
           {/* 3. WhatsApp Tab - Only rendered if user has access */}
-          {hasWhatsAppAccess && (
+          {/* ❌ DISABLED: WhatsApp Analytics Tab */}
+          {/* {hasWhatsAppAccess && (
             <TabsContent value="whatsapp" className="space-y-6 animate-in fade-in-50">
               <WhatsAppAnalyticsSection brandId={currentBrand._id} />
             </TabsContent>
-          )}
+          )} */}
 
           {/* 4. Content Tab */}
           <TabsContent value="content" className="space-y-6 animate-in fade-in-50">

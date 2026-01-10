@@ -84,39 +84,39 @@ const menuItems = [
     requiredPermission: 'canConnectChannels',
     tourId: "menu-channels"
   },
-  // WhatsApp Nested Menu
-  {
-    title: "WhatsApp",
-    icon: MessageCircle,
-    requiredPermission: 'canConnectChannels',
-    tourId: "menu-whatsapp",
-    children: [
-      { 
-        title: "Inbox", 
-        url: "/whatsapp/inbox", 
-        icon: MessageSquare,
-        tourId: "menu-whatsapp-inbox"
-      },
-      { 
-        title: "Templates", 
-        url: "/whatsapp/templates", 
-        icon: FileText,
-        tourId: "menu-whatsapp-templates"
-      },
-      { 
-        title: "Contacts", 
-        url: "/whatsapp/contacts", 
-        icon: Users,
-        tourId: "menu-whatsapp-contacts"
-      },
-      { 
-        title: "Call Logs", 
-        url: "/whatsapp/calls", 
-        icon: Phone,
-        tourId: "menu-whatsapp-calls"
-      },
-    ]
-  },
+  // ❌ TEMPORARILY DISABLED: WhatsApp Feature (Coming in v2.1)
+  // {
+  //   title: "WhatsApp",
+  //   icon: MessageCircle,
+  //   requiredPermission: 'canConnectChannels',
+  //   tourId: "menu-whatsapp",
+  //   children: [
+  //     { 
+  //       title: "Inbox", 
+  //       url: "/whatsapp/inbox", 
+  //       icon: MessageSquare,
+  //       tourId: "menu-whatsapp-inbox"
+  //     },
+  //     { 
+  //       title: "Templates", 
+  //       url: "/whatsapp/templates", 
+  //       icon: FileText,
+  //       tourId: "menu-whatsapp-templates"
+  //     },
+  //     { 
+  //       title: "Contacts", 
+  //       url: "/whatsapp/contacts", 
+  //       icon: Users,
+  //       tourId: "menu-whatsapp-contacts"
+  //     },
+  //     { 
+  //       title: "Call Logs", 
+  //       url: "/whatsapp/calls", 
+  //       icon: Phone,
+  //       tourId: "menu-whatsapp-calls"
+  //     },
+  //   ]
+  // },
   { 
     title: "Media Library", 
     url: "/media", 

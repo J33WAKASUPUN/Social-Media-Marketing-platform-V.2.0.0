@@ -70,12 +70,13 @@ const SUPPORTED_PLATFORMS: Array<{
     description: 'Upload and share video content with your audience',
     requiresOAuth: true,
   },
-  {
-    id: 'whatsapp',
-    name: 'WhatsApp Business',
-    description: 'Enable with your audience. Send messages and templates to your customers',
-    requiresOAuth: false,
-  },
+  // ❌ DISABLED: WhatsApp (Coming in v2.1)
+  // {
+  //   id: 'whatsapp',
+  //   name: 'WhatsApp Business',
+  //   description: 'Enable with your audience. Send messages and templates to your customers',
+  //   requiresOAuth: false,
+  // },
 ];
 
 export default function Channels() {
