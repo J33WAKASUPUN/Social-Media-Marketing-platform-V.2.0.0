@@ -111,7 +111,7 @@ export function Features() {
                 <div className="mt-4 flex items-center gap-2">
                   <span className="px-3 py-1 rounded-full bg-gradient-to-r from-violet-500/20 to-purple-500/20 text-violet-600 dark:text-violet-400 text-xs font-semibold flex items-center gap-1.5">
                     <Sparkles className="w-3 h-3" />
-                    Powered by Gemini AI
+                    Powered by Llama 3.1
                   </span>
                 </div>
               </div>
