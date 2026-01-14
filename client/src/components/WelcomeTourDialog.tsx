@@ -23,17 +23,28 @@ export const WelcomeTourDialog: React.FC = () => {
   };
 
   return (
-    <Dialog open={shouldShowWelcomeTour} onOpenChange={(open) => !open && dismissWelcomeTour()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader className="text-center">
-          <div className="mx-auto w-16 h-16 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
-            <Sparkles className="h-8 w-8 text-white" />
-          </div>
-          <DialogTitle className="text-2xl">Welcome to SocialFlow! 🎉</DialogTitle>
-          <DialogDescription className="text-base mt-2">
-            Ready to take control of your social media? Let us show you around!
-          </DialogDescription>
-        </DialogHeader>
+<Dialog open={shouldShowWelcomeTour} onOpenChange={(open) => !open && dismissWelcomeTour()}>
+  <DialogContent className="sm:max-w-md">
+    {/* Added 'flex-col items-center' to center the entire header vertically */}
+    <DialogHeader className="flex flex-col items-center text-center">
+      
+      {/* Logo Section */}
+      <div className="flex items-center justify-center gap-2 mb-4">
+        <img 
+          src="/logo.png"   /* Ensure your image is in the public folder */
+          alt="SocialFlow" 
+          className="h-12 w-12" /* Increased slightly for better visibility in modal */
+        />
+        {/* <span className="text-xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+          SocialFlow
+        </span> */}
+      </div>
+
+      <DialogTitle className="text-2xl">Welcome to SocialFlow!</DialogTitle>
+      <DialogDescription className="text-base mt-2">
+        Ready to take control of your social media? Let us show you around!
+      </DialogDescription>
+    </DialogHeader>
 
         <div className="py-4">
           <div className="space-y-3">

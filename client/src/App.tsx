@@ -31,6 +31,7 @@ import Calendar from "@/pages/Calendar";
 import Analytics from "@/pages/Analytics";
 import Channels from "@/pages/Channels";
 import Media from "@/pages/Media";
+import Notifications from "@/pages/Notifications";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
 // ❌ TEMPORARILY DISABLED: WhatsApp Pages (Coming in v2.1)
@@ -90,6 +91,18 @@ const App = () => (
                           <ProtectedRoute>
                             <MainLayout>
                               <Dashboard />
+                            </MainLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      {/* NOTIFICATIONS ROUTE */}
+                      <Route
+                        path="/notifications"
+                        element={
+                          <ProtectedRoute>
+                            <MainLayout>
+                              <Notifications />
                             </MainLayout>
                           </ProtectedRoute>
                         }
