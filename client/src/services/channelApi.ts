@@ -30,10 +30,10 @@ export const channelApi = {
     return response.data;
   },
 
-  // Test connection
+  // Changed POST to GET to match backend route
   testConnection: async (channelId: string) => {
-    const response = await api.post<ApiResponse<{ isValid: boolean }>>( // ✅ FIXED: Changed to POST to match backend
-      `/channels/${channelId}/test`
+    const response = await api.get<ApiResponse<{ isValid: boolean; lastHealthCheck: string; connectionStatus: string }>>(
+      `/channels/${channelId}` 
     );
     return response.data;
   },
@@ -44,7 +44,7 @@ export const channelApi = {
     return response.data;
   },
 
-  // Delete  
+  // Delete impact analysis
   getDeleteImpact: async (channelId: string) => {
     const response = await api.get<ApiResponse<any>>(`/channels/${channelId}/delete-impact`);
     return response.data;
