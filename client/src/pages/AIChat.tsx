@@ -614,6 +614,7 @@ export default function AIChat() {
                     className="min-h-[40px] max-h-[200px] resize-none py-3 [&::-webkit-scrollbar]:hidden"
                     disabled={sending}
                   />
+                  <br/>
                   <Button
                     onClick={handleSendMessage}
                     disabled={!message.trim() || sending}
@@ -668,6 +669,7 @@ export default function AIChat() {
                     className="min-h-[40px] max-h-[200px] resize-none py-3 [&::-webkit-scrollbar]:hidden"
                     disabled={sending}
                   />
+                  <br/>
                   <Button
                     onClick={handleSendMessage}
                     disabled={!message.trim() || sending}
