@@ -146,6 +146,20 @@ export default function AIChat() {
     scrollToBottom();
   }, [selectedConversation?.messages, sending]);
 
+  // 3. Auto-resize textarea based on content
+  useEffect(() => {
+    if (textareaRef.current) {
+      // Reset height to auto to get the correct scrollHeight for shrinking
+      textareaRef.current.style.height = 'auto';
+      
+      const scrollHeight = textareaRef.current.scrollHeight;
+      // Cap height at 200px (stops expanding after this point)
+      const newHeight = Math.min(scrollHeight, 200); 
+      
+      textareaRef.current.style.height = `${newHeight}px`;
+    }
+  }, [message]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -587,9 +601,26 @@ export default function AIChat() {
               </ScrollArea>
               
               <div className="border-t p-4">
-                <div className="flex gap-2">
-                  <Textarea ref={textareaRef} placeholder="Ask me anything..." value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyPress} rows={3} className="resize-none" disabled={sending} />
-                  <Button onClick={handleSendMessage} disabled={!message.trim() || sending} className="bg-violet-600 hover:bg-violet-700 h-auto px-6">{sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}</Button>
+                {/* CHANGED: items-end -> items-center to center button relative to height */}
+                <div className="flex gap-2 items-center">
+                  <Textarea
+                    ref={textareaRef}
+                    placeholder="Ask me anything..."
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    rows={1}
+                    // CHANGED: Added [&::-webkit-scrollbar]:hidden to remove scrollbar visuals
+                    className="min-h-[40px] max-h-[200px] resize-none py-3 [&::-webkit-scrollbar]:hidden"
+                    disabled={sending}
+                  />
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={!message.trim() || sending}
+                    className="bg-violet-600 hover:bg-violet-700 h-10 w-10 p-0 shrink-0 rounded-lg flex items-center justify-center"
+                  >
+                    {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                  </Button>
                 </div>
               </div>
             </>
@@ -624,9 +655,26 @@ export default function AIChat() {
               </div>
 
               <div className="w-full max-w-2xl">
-                <div className="flex gap-2">
-                  <Textarea ref={textareaRef} placeholder="Start chatting with AI..." value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyPress} rows={3} className="resize-none" disabled={sending} />
-                  <Button onClick={handleSendMessage} disabled={!message.trim() || sending} className="bg-violet-600 hover:bg-violet-700 h-auto px-6">{sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}</Button>
+                {/* CHANGED: items-end -> items-center */}
+                <div className="flex gap-2 items-center">
+                  <Textarea
+                    ref={textareaRef}
+                    placeholder="Start chatting with AI..."
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    rows={1}
+                    // CHANGED: Added [&::-webkit-scrollbar]:hidden
+                    className="min-h-[40px] max-h-[200px] resize-none py-3 [&::-webkit-scrollbar]:hidden"
+                    disabled={sending}
+                  />
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={!message.trim() || sending}
+                    className="bg-violet-600 hover:bg-violet-700 h-10 w-10 p-0 shrink-0 rounded-lg flex items-center justify-center"
+                  >
+                    {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                  </Button>
                 </div>
               </div>
             </div>
