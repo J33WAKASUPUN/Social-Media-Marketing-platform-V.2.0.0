@@ -1,202 +1,76 @@
 /* ============================================
-   DRIVER.JS CUSTOM STYLES FOR SOCIALFLOW
+   DRIVER.JS MINIMAL DARK MODE SUPPORT
+   Only overrides colors, keeps default structure
    ============================================ */
 
-/* Override default driver.js styles */
-.driver-popover.socialflow-tour-popover {
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
-  border: 1px solid hsl(var(--border));
-  border-radius: 12px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  max-width: 360px;
-  padding: 0;
+/* 1. Popover Background & Text */
+.driver-popover {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--card-foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  /* Optional: keeps your shadow preference if desired, otherwise remove */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important; 
 }
 
-/* Popover arrow */
-.driver-popover.socialflow-tour-popover .driver-popover-arrow {
-  border-color: hsl(var(--background));
+/* 2. Title & Description Text */
+.driver-popover-title {
+  color: hsl(var(--card-foreground)) !important;
 }
 
-.driver-popover.socialflow-tour-popover .driver-popover-arrow-side-left {
-  border-left-color: hsl(var(--background));
+.driver-popover-description {
+  color: hsl(var(--muted-foreground)) !important;
 }
 
-.driver-popover.socialflow-tour-popover .driver-popover-arrow-side-right {
-  border-right-color: hsl(var(--background));
+/* 3. Arrows (Must match the card background color) */
+.driver-popover-arrow-side-left.driver-popover-arrow {
+  border-left-color: hsl(var(--card)) !important;
 }
 
-.driver-popover.socialflow-tour-popover .driver-popover-arrow-side-top {
-  border-top-color: hsl(var(--background));
+.driver-popover-arrow-side-right.driver-popover-arrow {
+  border-right-color: hsl(var(--card)) !important;
 }
 
-.driver-popover.socialflow-tour-popover .driver-popover-arrow-side-bottom {
-  border-bottom-color: hsl(var(--background));
+.driver-popover-arrow-side-top.driver-popover-arrow {
+  border-top-color: hsl(var(--card)) !important;
 }
 
-/* Title styling */
-.driver-popover.socialflow-tour-popover .driver-popover-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: hsl(var(--foreground));
-  padding: 16px 16px 8px 16px;
-  margin: 0;
-  border-bottom: none;
+.driver-popover-arrow-side-bottom.driver-popover-arrow {
+  border-bottom-color: hsl(var(--card)) !important;
 }
 
-/* Description styling */
-.driver-popover.socialflow-tour-popover .driver-popover-description {
-  font-size: 0.875rem;
-  color: hsl(var(--muted-foreground));
-  padding: 0 16px 16px 16px;
-  line-height: 1.6;
+/* 4. Close Button */
+.driver-popover-close-btn {
+  color: hsl(var(--muted-foreground)) !important;
 }
 
-.driver-popover.socialflow-tour-popover .driver-popover-description p {
-  margin: 0 0 8px 0;
+.driver-popover-close-btn:hover {
+  color: hsl(var(--foreground)) !important;
 }
 
-.driver-popover.socialflow-tour-popover .driver-popover-description p:last-child {
-  margin-bottom: 0;
+/* 5. Buttons (Ensure visibility in Dark Mode) */
+.driver-popover-prev-btn,
+.driver-popover-next-btn {
+  /* You can leave this out if you want strict defaults, 
+     but standard buttons might look jarring in dark mode without this */
+  background-color: hsl(var(--muted)) !important; 
+  color: hsl(var(--foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  text-shadow: none !important; /* Removes default text-shadow */
 }
 
-.driver-popover.socialflow-tour-popover .driver-popover-description ul {
-  margin: 8px 0;
-  padding-left: 0;
-  list-style: none;
+.driver-popover-next-btn {
+  /* Keeps the "primary" look for the Next button */
+  background-color: hsl(280 60% 60%) !important; 
+  color: #ffffff !important;
+  border: none !important;
 }
 
-.driver-popover.socialflow-tour-popover .driver-popover-description li {
-  margin: 4px 0;
-}
-
-/* Progress bar */
-.driver-popover.socialflow-tour-popover .driver-popover-progress-text {
-  font-size: 0.75rem;
-  color: hsl(var(--muted-foreground));
-  padding: 0 16px;
-  margin-bottom: 12px;
-}
-
-/* Footer with buttons */
-.driver-popover.socialflow-tour-popover .driver-popover-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 16px;
-  border-top: 1px solid hsl(var(--border));
-  background: hsl(var(--muted) / 0.3);
-  border-radius: 0 0 12px 12px;
-  gap: 8px;
-}
-
-/* Navigation buttons */
-.driver-popover.socialflow-tour-popover .driver-popover-navigation-btns {
-  display: flex;
-  gap: 8px;
-}
-
-.driver-popover.socialflow-tour-popover .driver-popover-prev-btn,
-.driver-popover.socialflow-tour-popover .driver-popover-next-btn {
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
-}
-
-.driver-popover.socialflow-tour-popover .driver-popover-prev-btn {
-  background: hsl(var(--secondary));
-  color: hsl(var(--secondary-foreground));
-}
-
-.driver-popover.socialflow-tour-popover .driver-popover-prev-btn:hover {
-  background: hsl(var(--secondary) / 0.8);
-}
-
-.driver-popover.socialflow-tour-popover .driver-popover-next-btn {
-  background: linear-gradient(135deg, hsl(262, 83%, 58%) 0%, hsl(280, 65%, 60%) 100%);
-  color: white;
-}
-
-.driver-popover.socialflow-tour-popover .driver-popover-next-btn:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-
-/* Close button */
-.driver-popover.socialflow-tour-popover .driver-popover-close-btn {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  background: hsl(var(--muted));
-  color: hsl(var(--muted-foreground));
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 1.25rem;
-  line-height: 1;
-}
-
-.driver-popover.socialflow-tour-popover .driver-popover-close-btn:hover {
-  background: hsl(var(--destructive));
-  color: hsl(var(--destructive-foreground));
-}
-
-/* Overlay */
+/* 6. Dark Mode Specifics (Overlay) */
+/* Keeps the reduced opacity you preferred */
 .driver-overlay {
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(2px);
+  background-color: rgba(0, 0, 0, 0.5) !important;
 }
 
-/* Highlighted element */
-.driver-active-element {
-  z-index: 10000 !important;
-}
-
-/* Dark mode adjustments */
-.dark .driver-popover.socialflow-tour-popover {
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5),
-              0 0 0 1px hsl(var(--border));
-}
-
-/* Animation */
-.driver-popover.socialflow-tour-popover {
-  animation: popoverFadeIn 0.3s ease-out;
-}
-
-@keyframes popoverFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-/* Mobile responsive */
-@media (max-width: 640px) {
-  .driver-popover.socialflow-tour-popover {
-    max-width: calc(100vw - 32px);
-    margin: 16px;
-  }
-
-  .driver-popover.socialflow-tour-popover .driver-popover-footer {
-    flex-direction: column;
-  }
-
-  .driver-popover.socialflow-tour-popover .driver-popover-navigation-btns {
-    width: 100%;
-    justify-content: space-between;
-  }
+.dark .driver-overlay {
+  background-color: rgba(0, 0, 0, 0.6) !important;
 }

@@ -10,6 +10,8 @@ import {
   UserPermissions,
 } from '@/services/tourService';
 import { usePermissions } from '@/hooks/usePermissions';
+import 'driver.js/dist/driver.css';
+import '@/styles/tour.css';
 
 interface TourContextType {
   startTour: (tourId: TourId) => void;
