@@ -42,7 +42,7 @@ export const PLATFORM_CAPABILITIES: Record<Platform, PlatformCapability> = {
     },
     warnings: [
       '⚠️ To edit or delete this post, visit LinkedIn directly',
-      '✅ Full support for text, images, and videos during publishing',
+      '✅ Full support for text, images, and videos',
     ],
   },
 
@@ -66,7 +66,7 @@ export const PLATFORM_CAPABILITIES: Record<Platform, PlatformCapability> = {
     },
     warnings: [
       '⚠️ To edit or delete this post, visit Facebook directly',
-      '✅ Supports text, images, and videos',
+      '✅ Full support for text, images, and videos',
     ],
   },
 
@@ -76,7 +76,7 @@ export const PLATFORM_CAPABILITIES: Record<Platform, PlatformCapability> = {
     supports: {
       text: true,
       images: true,
-      videos: true,
+      videos: false, // ❌ Disabled
       multipleImages: true,
       update: false, // ❌ Disabled
       delete: false, // ❌ Disabled
@@ -84,13 +84,13 @@ export const PLATFORM_CAPABILITIES: Record<Platform, PlatformCapability> = {
     limits: {
       maxTextLength: 2200,
       maxImages: 10,
-      maxVideos: 1,
-      maxVideoSize: '100MB',
-      videoDuration: '60 seconds (Reels)',
+      maxVideos: 0,
+      maxVideoSize: 'N/A',
+      videoDuration: 'N/A',
     },
     warnings: [
       '⚠️ To edit or delete this post, visit Instagram directly',
-      '✅ Supports photos, carousels, and Reels',
+      '✅ Supports photos and carousels',
     ],
   },
 
@@ -112,8 +112,8 @@ export const PLATFORM_CAPABILITIES: Record<Platform, PlatformCapability> = {
       maxVideoSize: 'N/A',
     },
     warnings: [
-      '⚠️ TEXT ONLY - No images or videos (free API)',
       '⚠️ To edit or delete this tweet, visit Twitter/X directly',
+      '⚠️ TEXT ONLY - No images or videos (free API)',
     ],
   },
 
@@ -136,8 +136,8 @@ export const PLATFORM_CAPABILITIES: Record<Platform, PlatformCapability> = {
       videoDuration: '12 hours',
     },
     warnings: [
-      '⚠️ VIDEOS ONLY - YouTube does not support text-only posts',
       '⚠️ To edit or delete this video, visit YouTube Studio directly',
+      '⚠️ VIDEOS ONLY - YouTube does not support text-only posts',
     ],
   },
 };

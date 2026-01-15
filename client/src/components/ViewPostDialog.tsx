@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Calendar,
   Clock,
@@ -26,7 +25,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
-  Play,
 } from 'lucide-react';
 import { PlatformBadge } from './PlatformBadge';
 import { Post } from '@/services/postApi';
@@ -81,6 +79,7 @@ const getPlatformPostUrl = (platform: string, platformPostId: string): string =>
     case 'twitter':
       return `https://twitter.com/i/status/${platformPostId}`;
     case 'instagram':
+      // Fallback only if backend URL is missing
       return `https://www.instagram.com/p/${platformPostId}/`;
     case 'youtube':
       return `https://www.youtube.com/watch?v=${platformPostId}`;
@@ -112,7 +111,8 @@ export function ViewPostDialog({
     .map(s => ({
       platform: s.channel.provider,
       displayName: s.channel.displayName,
-      postUrl: getPlatformPostUrl(s.channel.provider, s.platformPostId!),
+      // Use s.platformUrl if available
+      postUrl: s.platformUrl || getPlatformPostUrl(s.channel.provider, s.platformPostId!),
       publishedAt: s.publishedAt,
     })) || [];
 
@@ -182,7 +182,6 @@ export function ViewPostDialog({
                   Media
                 </h3>
                 <div className="relative aspect-video rounded-lg overflow-hidden bg-muted group border dark:border-border">
-                  {/* VIDEO OR IMAGE */}
                   {isVideo ? (
                     <video
                       key={mediaUrls[currentImageIndex]}

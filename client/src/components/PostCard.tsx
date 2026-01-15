@@ -80,13 +80,16 @@ const getPlatformPostUrl = (platform: string, platformPostId: string, username?:
     case 'linkedin':
       return `https://www.linkedin.com/feed/update/${platformPostId}`;
     case 'facebook':
+      // Facebook IDs often have underscores (PageID_PostID) that need converting
       return `https://www.facebook.com/${platformPostId.replace('_', '/posts/')}`;
     case 'twitter':
+    case 'x':
       if (username) {
         return `https://twitter.com/${username.replace('@', '')}/status/${platformPostId}`;
       }
       return `https://twitter.com/i/status/${platformPostId}`;
     case 'instagram':
+      // This is the fallback only if backend url is missing
       return `https://www.instagram.com/p/${platformPostId}/`;
     case 'youtube':
       return `https://www.youtube.com/watch?v=${platformPostId}`;
@@ -114,14 +117,17 @@ export const PostCard = ({ post, onRemoveFromHistory, onEdit, onCancel }: PostCa
   const mediaUrls = post.mediaUrls || [];
   const isVideo = post.mediaType === 'video';
   
-  const platformsWithUrls = post.schedules?.map(s => ({
-    platform: s.channel.provider,
-    displayName: s.channel.displayName,
-    platformPostId: s.platformPostId,
-    platformUsername: s.channel.platformUsername,
-    status: s.status,
-    postUrl: s.platformPostId ? getPlatformPostUrl(s.channel.provider, s.platformPostId, s.channel.platformUsername) : null,
-  })) || [];
+const platformsWithUrls = post.schedules?.map(s => ({
+  platform: s.channel.provider,
+  displayName: s.channel.displayName,
+  platformPostId: s.platformPostId,
+  platformUsername: s.channel.platformUsername,
+  status: s.status,
+  
+  // 1. Try to use the URL provided by the backend first (Perfect for Instagram)
+  // 2. If that doesn't exist, fall back to generating it manually (Perfect for others)
+  postUrl: s.platformUrl || (s.platformPostId ? getPlatformPostUrl(s.channel.provider, s.platformPostId, s.channel.platformUsername) : null),
+})) || [];
 
   const publishedPlatforms = platformsWithUrls.filter(p => p.status === 'published' && p.platformPostId);
 
