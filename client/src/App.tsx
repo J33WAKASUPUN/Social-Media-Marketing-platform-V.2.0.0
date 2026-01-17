@@ -42,6 +42,7 @@ import NotFound from "@/pages/NotFound";
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import TermsOfService from "@/pages/TermsOfService";
 import AIChat from "@/pages/AIChat";
+import VerifyEmail from "@/pages/VerifyEmail";
 
 const queryClient = new QueryClient();
 
@@ -79,6 +80,7 @@ const App = () => (
                       <Route path="/register" element={<Register />} />
                       <Route path="/forgot-password" element={<ForgotPassword />} />
                       <Route path="/reset-password" element={<ResetPassword />} />
+                      <Route path="/verify-email" element={<VerifyEmail />} />
                       <Route path="/google/callback" element={<GoogleCallback />} />
                       <Route path="/2fa-verify" element={<TwoFactorVerify />} />
                       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
