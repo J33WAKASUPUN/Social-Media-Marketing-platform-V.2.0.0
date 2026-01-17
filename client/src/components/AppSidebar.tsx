@@ -428,7 +428,7 @@ export function AppSidebar() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              <AlertTriangle className="h-5 w-5 text-red-600" />
               Confirm Logout
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -441,7 +441,7 @@ export function AppSidebar() {
               onClick={handleConfirmLogout}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              <LogOut className="h-4 w-4 mr-2" />
+              <LogOut className="h-4 w-4 mr-1" />
               Logout
             </AlertDialogAction>
           </AlertDialogFooter>
