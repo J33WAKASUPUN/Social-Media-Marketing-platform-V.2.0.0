@@ -15,6 +15,7 @@ import {
   Phone,
   ChevronDown,
   Sparkles,
+  AlertTriangle,
 } from "lucide-react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
@@ -45,6 +46,16 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -152,8 +163,13 @@ export function AppSidebar() {
   const [whatsappOpen, setWhatsappOpen] = useState(
     location.pathname.startsWith('/whatsapp')
   );
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
-  const handleLogout = async () => {
+  const handleLogoutClick = () => {
+    setShowLogoutDialog(true);
+  };
+
+  const handleConfirmLogout = async () => {
     await logout();
     navigate("/login");
   };
@@ -214,7 +230,6 @@ export function AppSidebar() {
                             <TooltipTrigger asChild>
                               <CollapsibleTrigger asChild>
                                 <SidebarMenuButton
-                                  // ✅ FIX: Moved data-tour HERE so driver.js finds the actual button
                                   data-tour={item.tourId} 
                                   className={cn(
                                     "group relative w-full",
@@ -246,7 +261,6 @@ export function AppSidebar() {
                               </CollapsibleTrigger>
                             </TooltipTrigger>
                             
-                            {/* Tooltip shows when collapsed */}
                             {isCollapsed && (
                               <TooltipContent 
                                 side="right" 
@@ -258,7 +272,6 @@ export function AppSidebar() {
                             )}
                           </Tooltip>
 
-                          {/* Submenu */}
                           <CollapsibleContent className={isCollapsed ? "hidden" : ""}>
                             <SidebarMenuSub>
                               {item.children.map((subItem) => {
@@ -298,7 +311,6 @@ export function AppSidebar() {
                           <SidebarMenuButton
                             asChild
                             isActive={active}
-                            // ✅ FIX: Ensure data-tour is here for standard items
                             data-tour={item.tourId}
                             className={cn(
                               "group relative",
@@ -396,7 +408,7 @@ export function AppSidebar() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={handleLogout}
+                      onClick={handleLogoutClick}
                     >
                       <LogOut className="h-4 w-4" />
                     </Button>
@@ -410,6 +422,31 @@ export function AppSidebar() {
           </div>
         </SidebarFooter>
       </Sidebar>
+
+      {/* LOGOUT CONFIRMATION DIALOG */}
+      <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Confirm Logout
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to log out? You'll need to sign in again to access your account.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmLogout}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </TooltipProvider>
   );
 }
