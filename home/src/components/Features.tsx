@@ -93,7 +93,7 @@ export function Features() {
                   <Sparkles className="w-6 h-6 text-white" />
                 </div>
                 <h3 className="text-xl font-semibold mb-2">AI Content Assistant</h3>
-                <p className="text-muted-foreground mb-4">Powered by Llama AI to supercharge your content creation</p>
+                <p className="text-muted-foreground mb-4">Powered by AI to supercharge your content creation</p>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm">
                     <div className="w-1.5 h-1.5 rounded-full bg-violet-500" />
