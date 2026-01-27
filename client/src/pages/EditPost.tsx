@@ -660,7 +660,7 @@ const handlePublishDialogClose = () => {
                     <Textarea
                       ref={contentTextareaRef}
                       placeholder={selectedPlatform ? `Write for ${selectedPlatform}...` : "What do you want to share?"}
-                      className="min-h-[200px] resize-none text-base p-4 border-gray-200 dark:border-border focus-visible:ring-violet-500 bg-background"
+                      className="min-h-[200px] resize-none text-base p-4 pr-2 custom-scrollbar border-gray-200 dark:border-border focus-visible:ring-violet-500 bg-background"
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
                       maxLength={maxChars}

@@ -576,7 +576,7 @@ const handlePublishDialogClose = () => {
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
                       rows={6}
-                      className="resize-none pr-16 text-base focus:border-violet-500 focus:ring-violet-500 bg-background"
+                      className="min-h-[200px] resize-none text-base p-4 pr-2 custom-scrollbar border-gray-200 dark:border-border focus-visible:ring-violet-500 bg-background"
                       maxLength={maxChars}
                       disabled={loading}
                     />

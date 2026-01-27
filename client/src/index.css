@@ -162,3 +162,32 @@ All colors MUST be HSL.
     box-shadow: var(--shadow-elevated);
   }
 }
+
+/* --- Modern Floating Scrollbar --- */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  /* Initial subtle color using your muted-foreground variable */
+  background-color: hsl(var(--muted-foreground) / 0.3) !important;
+  border-radius: 20px !important;
+  border: 2px solid transparent !important;
+  background-clip: content-box !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  /* Active color using your primary violet brand color */
+  background-color: hsl(var(--primary)) !important;
+}
+
+/* Firefox Support */
+.custom-scrollbar {
+  scrollbar-width: thin !important;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent !important;
+}
