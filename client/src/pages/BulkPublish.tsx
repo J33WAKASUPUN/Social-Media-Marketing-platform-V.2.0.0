@@ -97,6 +97,10 @@ export default function BulkPublish() {
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const pollingCountRef = useRef<number>(0);
 
+  // Track enabled platforms (users can toggle these)
+  const [enabledPlatforms, setEnabledPlatforms] = useState<string[]>([]);
+
+
   // Load content types on mount
   useEffect(() => {
     loadContentTypes();
@@ -249,9 +253,15 @@ export default function BulkPublish() {
       );
       setAvailableChannels(response.data);
       
-      // Auto-assign first channel for each platform
+      // Auto-enable only platforms that have connected channels
+      const connectedPlatforms = response.data.targetPlatforms.filter(
+        platform => (response.data.channels[platform]?.length || 0) > 0
+      );
+      setEnabledPlatforms(connectedPlatforms);
+      
+      // Auto-assign first channel for each connected platform
       const autoAssignments: ChannelAssignmentType[] = [];
-      for (const platform of response.data.targetPlatforms) {
+      for (const platform of connectedPlatforms) {
         const platformChannels = response.data.channels[platform];
         if (platformChannels && platformChannels.length > 0) {
           autoAssignments.push({
@@ -271,10 +281,37 @@ export default function BulkPublish() {
   const handleContentTypeSelect = (type: ContentType) => {
     setSelectedContentType(type);
     setChannelAssignments([]);
+    setEnabledPlatforms([]);
     setSelectedLibraryMedia([]);
     setUploadedFiles([]);
     setIsOptimized(false);
     setOptimizedContent({});
+  };
+
+    const handlePlatformToggle = (platform: string, enabled: boolean) => {
+    setEnabledPlatforms(prev => {
+      if (enabled) {
+        // Enable platform and auto-assign first channel
+        const platformChannels = availableChannels?.channels[platform];
+        if (platformChannels && platformChannels.length > 0) {
+          // Add channel assignment if not exists
+          const hasAssignment = channelAssignments.some(a => a.platform === platform);
+          if (!hasAssignment) {
+            setChannelAssignments(prevAssignments => [
+              ...prevAssignments,
+              { platform, channel: platformChannels[0]._id }
+            ]);
+          }
+        }
+        return [...prev, platform];
+      } else {
+        // Disable platform and remove assignment
+        setChannelAssignments(prevAssignments => 
+          prevAssignments.filter(a => a.platform !== platform)
+        );
+        return prev.filter(p => p !== platform);
+      }
+    });
   };
 
   const handleChannelAssignmentChange = (platform: string, channelId: string) => {
@@ -287,7 +324,16 @@ export default function BulkPublish() {
       }
       return [...prev, { platform, channel: channelId }];
     });
+    
+    // Ensure platform is enabled when channel is selected
+    if (!enabledPlatforms.includes(platform)) {
+      setEnabledPlatforms(prev => [...prev, platform]);
+    }
   };
+
+    const activeAssignments = useMemo(() => {
+    return channelAssignments.filter(a => enabledPlatforms.includes(a.platform));
+  }, [channelAssignments, enabledPlatforms]);
 
   const handleHashtagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && hashtagInput.trim()) {
@@ -412,20 +458,13 @@ export default function BulkPublish() {
       return;
     }
 
-    if (channelAssignments.length === 0) {
-      toast.error('Please assign at least one channel');
+    // ✅ UPDATED: Check active assignments instead of all platforms
+    if (activeAssignments.length === 0) {
+      toast.error('Please enable at least one platform and assign a channel');
       return;
     }
 
-    // Check if all required platforms have assignments
-    const requiredPlatforms = availableChannels?.targetPlatforms || [];
-    const assignedPlatforms = channelAssignments.map(a => a.platform);
-    const missingPlatforms = requiredPlatforms.filter(p => !assignedPlatforms.includes(p));
-    
-    if (missingPlatforms.length > 0) {
-      toast.error(`Please assign channels for: ${missingPlatforms.join(', ')}`);
-      return;
-    }
+    // ✅ REMOVED: Strict check for all platforms - now optional
 
     if (publishType === 'scheduled' && !scheduledDate) {
       toast.error('Please select a scheduled date and time');
@@ -452,7 +491,7 @@ export default function BulkPublish() {
       setIsPublishing(true);
       setShowProgressDialog(true);
 
-      // ✅ Upload new files first if any
+      // Upload new files first if any
       let uploadedMediaIds: string[] = [];
       if (uploadedFiles.length > 0) {
         console.log('📤 Uploading files first...');
@@ -467,15 +506,20 @@ export default function BulkPublish() {
       // Combine library + uploaded media IDs
       const allMediaIds = [...selectedLibraryMedia, ...uploadedMediaIds];
 
-      console.log('📤 Creating bulk post with hashtags:', hashtags);
+      console.log('📤 Creating bulk post with:', {
+        hashtags,
+        enabledPlatforms,
+        activeAssignments: activeAssignments.length,
+      });
 
+      // ✅ UPDATED: Only send active assignments
       const response = await bulkPublishApi.create({
         brandId: currentBrand._id,
         contentType: selectedContentType,
         content,
         hashtags,
         mediaLibraryIds: allMediaIds,
-        channelAssignments,
+        channelAssignments: activeAssignments, // ✅ Only enabled platforms
         publishType,
         scheduledFor: publishType === 'scheduled' ? scheduledDate : undefined,
         settings: {
@@ -490,7 +534,7 @@ export default function BulkPublish() {
       if (publishType === 'now') {
         startPolling(response.data._id);
       } else {
-        toast.success('Bulk post scheduled successfully!');
+        toast.success(`Bulk post scheduled to ${activeAssignments.length} platforms!`);
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to create bulk post');
@@ -544,12 +588,13 @@ export default function BulkPublish() {
   // Check if ready to publish
   const canPublish = useMemo(() => {
     if (!selectedContentType || !content.trim()) return false;
-    if (channelAssignments.length === 0) return false;
+    if (activeAssignments.length === 0) return false;
     if (selectedContentType === 'text-image' && totalMediaCount === 0) return false;
     if (selectedContentType === 'text-video' && totalMediaCount === 0) return false;
     if (publishType === 'scheduled' && !scheduledDate) return false;
     return true;
-  }, [selectedContentType, content, channelAssignments, totalMediaCount, publishType, scheduledDate]);
+  }, [selectedContentType, content, activeAssignments, totalMediaCount, publishType, scheduledDate]);
+
 
   if (!currentBrand) {
     return (
@@ -617,10 +662,15 @@ export default function BulkPublish() {
                 <div className="flex items-center justify-center h-6 w-6 rounded-full bg-primary text-primary-foreground text-sm font-bold">
                   2
                 </div>
-                Assign Channels
+                Select Platforms & Channels
               </CardTitle>
               <CardDescription>
-                Select which account to use for each platform.
+                Toggle platforms on/off and select which account to use for each. 
+                <span className="text-primary font-medium ml-1">
+                  {activeAssignments.length > 0 
+                    ? `Publishing to ${activeAssignments.length} platform${activeAssignments.length !== 1 ? 's' : ''}`
+                    : 'No platforms selected'}
+                </span>
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -635,6 +685,8 @@ export default function BulkPublish() {
                   availableChannels={availableChannels}
                   assignments={channelAssignments}
                   onAssignmentChange={handleChannelAssignmentChange}
+                  onPlatformToggle={handlePlatformToggle}
+                  enabledPlatforms={enabledPlatforms}
                 />
               )}
             </CardContent>
@@ -860,6 +912,9 @@ export default function BulkPublish() {
                 <CardTitle className="flex items-center gap-2">
                   <Layers className="h-5 w-5" />
                   Platform Previews
+                  <Badge variant="secondary" className="ml-2">
+                    {activeAssignments.length} selected
+                  </Badge>
                 </CardTitle>
                 <CardDescription>
                   See how your content will appear on each platform. Click the eye icon to view/edit full content.
@@ -867,16 +922,16 @@ export default function BulkPublish() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-                  {availableChannels?.targetPlatforms.map((platform) => {
+                  {/* Only show enabled platforms */}
+                  {enabledPlatforms.map((platform) => {
                     const assignment = channelAssignments.find(a => a.platform === platform);
-                    const channel = availableChannels.channels[platform]?.find(
+                    const channel = availableChannels?.channels[platform]?.find(
                       c => c._id === assignment?.channel
                     );
                     
                     // Get platform content with hashtags
                     const platformContent = optimizedContent[platform];
                     const displayContent = platformContent?.content || content;
-                    // Always use the user's hashtags
                     const displayHashtags = hashtags;
 
                     if (!channel) return null;
@@ -966,25 +1021,28 @@ export default function BulkPublish() {
                     ) : publishType === 'now' ? (
                       <>
                         <Send className="h-4 w-4 mr-2" />
-                        Publish to {channelAssignments.length} Platforms
+                        Publish to {activeAssignments.length} Platform{activeAssignments.length !== 1 ? 's' : ''}
                       </>
                     ) : (
                       <>
                         <Calendar className="h-4 w-4 mr-2" />
-                        Schedule Post
+                        Schedule to {activeAssignments.length} Platform{activeAssignments.length !== 1 ? 's' : ''}
                       </>
                     )}
                   </Button>
                 </div>
               </div>
 
-              {/* Summary */}
+              {/* Summary - UPDATED */}
               {canPublish && (
                 <div className="mt-4 pt-4 border-t">
                   <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Layers className="h-4 w-4" />
-                      {channelAssignments.length} platforms
+                      {activeAssignments.length} platform{activeAssignments.length !== 1 ? 's' : ''}
+                      <span className="text-xs text-muted-foreground">
+                        ({enabledPlatforms.join(', ')})
+                      </span>
                     </span>
                     <span className="flex items-center gap-1">
                       <FileText className="h-4 w-4" />
@@ -1010,7 +1068,7 @@ export default function BulkPublish() {
         )}
       </div>
 
-      {/* ✅ Media Library Dialog - Same as PostComposer */}
+      {/* Media Library Dialog - Same as PostComposer */}
       <Dialog open={showMediaLibrary} onOpenChange={setShowMediaLibrary}>
         <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
           <DialogHeader>
