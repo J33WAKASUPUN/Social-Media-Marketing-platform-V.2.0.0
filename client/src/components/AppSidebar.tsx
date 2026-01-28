@@ -15,6 +15,8 @@ import {
   Phone,
   ChevronDown,
   Sparkles,
+  PlusCircle,
+  Layers,
   AlertTriangle,
 } from "lucide-react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
@@ -68,33 +70,28 @@ const menuItems = [
     requiredPermission: null,
     tourId: "menu-dashboard"
   },
-  { 
-    title: "Submission History", 
-    url: "/posts", 
-    icon: FileText,
-    requiredPermission: 'canViewPosts',
-    tourId: "menu-posts"
-  },
-  { 
-    title: "Calendar", 
-    url: "/calendar", 
-    icon: Calendar,
-    requiredPermission: 'canViewPosts',
-    tourId: "menu-calendar"
-  },
-  { 
-    title: "Analytics", 
-    url: "/analytics", 
-    icon: BarChart3,
-    requiredPermission: 'canViewAnalytics',
-    tourId: "menu-analytics"
-  },
-  { 
-    title: "Channels", 
-    url: "/channels", 
-    icon: Share2,
-    requiredPermission: 'canConnectChannels',
-    tourId: "menu-channels"
+  // ✅ Create Post with children
+  {
+    title: "Create Post",
+    icon: PlusCircle,
+    requiredPermission: 'canCreatePosts',
+    tourId: "menu-create-post",
+    children: [
+      { 
+        title: "Single Post", 
+        url: "/posts/new", 
+        icon: FileText,
+        description: "Create for one platform",
+        tourId: "menu-single-post"
+      },
+      { 
+        title: "Bulk Post", 
+        url: "/bulk-publish/new", 
+        icon: Layers,
+        description: "Create for multiple platforms",
+        tourId: "menu-bulk-post"
+      },
+    ]
   },
   // ❌ TEMPORARILY DISABLED: WhatsApp Feature (Coming in v2.1)
   // {
@@ -130,6 +127,34 @@ const menuItems = [
   //   ]
   // },
   { 
+    title: "Submission History", 
+    url: "/posts", 
+    icon: FileText,
+    requiredPermission: 'canViewPosts',
+    tourId: "menu-posts"
+  },
+  { 
+    title: "Calendar", 
+    url: "/calendar", 
+    icon: Calendar,
+    requiredPermission: 'canViewPosts',
+    tourId: "menu-calendar"
+  },
+  { 
+    title: "Analytics", 
+    url: "/analytics", 
+    icon: BarChart3,
+    requiredPermission: 'canViewAnalytics',
+    tourId: "menu-analytics"
+  },
+  { 
+    title: "Channels", 
+    url: "/channels", 
+    icon: Share2,
+    requiredPermission: 'canConnectChannels',
+    tourId: "menu-channels"
+  },
+  { 
     title: "Media Library", 
     url: "/media", 
     icon: Image,
@@ -140,7 +165,7 @@ const menuItems = [
     title: "Content Assistant", 
     url: "/ai-chat", 
     icon: Sparkles,
-    requiredPermission: 'canCreatePosts', // Editor, Manager, Owner only
+    requiredPermission: 'canCreatePosts',
     tourId: "menu-ai-chat"
   },
   { 
@@ -160,8 +185,9 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
 
-  const [whatsappOpen, setWhatsappOpen] = useState(
-    location.pathname.startsWith('/whatsapp')
+  // ✅ ADD: State for Create Post submenu
+  const [createPostOpen, setCreatePostOpen] = useState(
+    location.pathname.startsWith('/posts/new') || location.pathname.startsWith('/bulk-publish')
   );
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
@@ -213,16 +239,18 @@ export function AppSidebar() {
                   const Icon = item.icon;
 
                   // ==========================
-                  // 1. NESTED MENU (WhatsApp)
+                  // 1. NESTED MENU (Create Post)
                   // ==========================
                   if (item.children) {
-                    const isParentActive = location.pathname.startsWith('/whatsapp');
+                    const isParentActive = item.children.some(child => 
+                      location.pathname.startsWith(child.url)
+                    );
                     
                     return (
                       <Collapsible
                         key={item.title}
-                        open={whatsappOpen}
-                        onOpenChange={setWhatsappOpen}
+                        open={createPostOpen}
+                        onOpenChange={setCreatePostOpen}
                         className="group/collapsible"
                       >
                         <SidebarMenuItem>
@@ -246,13 +274,13 @@ export function AppSidebar() {
                                       <>
                                         <span className={cn(
                                           "transition-colors flex-1 text-left truncate",
-                                          isParentActive && "font-medium"
+                                          isParentActive ? "text-foreground font-medium" : "text-muted-foreground group-hover:text-foreground"
                                         )}>
                                           {item.title}
                                         </span>
                                         <ChevronDown className={cn(
-                                          "ml-auto h-4 w-4 shrink-0 transition-transform",
-                                          whatsappOpen && "rotate-180"
+                                          "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                                          createPostOpen && "rotate-180"
                                         )} />
                                       </>
                                     )}
@@ -260,42 +288,58 @@ export function AppSidebar() {
                                 </SidebarMenuButton>
                               </CollapsibleTrigger>
                             </TooltipTrigger>
-                            
                             {isCollapsed && (
                               <TooltipContent 
                                 side="right" 
-                                sideOffset={10} 
-                                className="z-[100] bg-popover text-popover-foreground border shadow-md font-medium"
+                                sideOffset={10}
+                                className="z-[100] bg-popover text-popover-foreground border shadow-md"
                               >
-                                {item.title}
+                                <p className="font-medium">{item.title}</p>
+                                <div className="mt-2 space-y-1">
+                                  {item.children.map(child => (
+                                    <NavLink
+                                      key={child.url}
+                                      to={child.url}
+                                      className="block text-sm text-muted-foreground hover:text-foreground py-1"
+                                    >
+                                      {child.title}
+                                    </NavLink>
+                                  ))}
+                                </div>
                               </TooltipContent>
                             )}
                           </Tooltip>
+                        </SidebarMenuItem>
 
-                          <CollapsibleContent className={isCollapsed ? "hidden" : ""}>
+                        {!isCollapsed && (
+                          <CollapsibleContent>
                             <SidebarMenuSub>
-                              {item.children.map((subItem) => {
-                                const SubIcon = subItem.icon;
-                                const isSubActive = location.pathname === subItem.url;
+                              {item.children.map((child) => {
+                                const ChildIcon = child.icon;
+                                const childActive = isActive(child.url);
+                                
                                 return (
-                                  <SidebarMenuSubItem key={subItem.url}>
+                                  <SidebarMenuSubItem key={child.url}>
                                     <SidebarMenuSubButton
                                       asChild
-                                      isActive={isSubActive}
-                                      onClick={() => navigate(subItem.url)}
-                                      className="cursor-pointer"
+                                      className={cn(
+                                        childActive && "bg-accent text-accent-foreground"
+                                      )}
                                     >
-                                      <div className="flex items-center gap-2">
-                                        <SubIcon className="h-4 w-4" />
-                                        <span>{subItem.title}</span>
-                                      </div>
+                                      <NavLink to={child.url} data-tour={child.tourId}>
+                                        <ChildIcon className={cn(
+                                          "h-4 w-4 mr-2",
+                                          childActive ? "text-primary" : "text-muted-foreground"
+                                        )} />
+                                        <span>{child.title}</span>
+                                      </NavLink>
                                     </SidebarMenuSubButton>
                                   </SidebarMenuSubItem>
                                 );
                               })}
                             </SidebarMenuSub>
                           </CollapsibleContent>
-                        </SidebarMenuItem>
+                        )}
                       </Collapsible>
                     );
                   }
@@ -310,44 +354,32 @@ export function AppSidebar() {
                         <TooltipTrigger asChild>
                           <SidebarMenuButton
                             asChild
-                            isActive={active}
                             data-tour={item.tourId}
-                            className={cn(
-                              "group relative",
-                              active && "bg-accent text-accent-foreground"
-                            )}
+                            className={cn(active && "bg-accent text-accent-foreground")}
                           >
-                            <NavLink to={item.url!} className="flex items-center gap-3">
+                            <NavLink to={item.url!}>
                               <Icon className={cn(
                                 "h-5 w-5 shrink-0 transition-colors",
                                 active ? "text-primary" : "text-muted-foreground group-hover:text-primary"
                               )} />
-                              
                               {!isCollapsed && (
-                                <>
-                                  <span className={cn(
-                                    "transition-colors truncate",
-                                    active && "font-medium"
-                                  )}>
-                                    {item.title}
-                                  </span>
-                                  {active && (
-                                    <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-primary" />
-                                  )}
-                                </>
+                                <span className={cn(
+                                  "transition-colors",
+                                  active ? "text-foreground font-medium" : "text-muted-foreground group-hover:text-foreground"
+                                )}>
+                                  {item.title}
+                                </span>
                               )}
                             </NavLink>
                           </SidebarMenuButton>
                         </TooltipTrigger>
-                        
                         {isCollapsed && (
                           <TooltipContent 
                             side="right" 
-                            sideOffset={10} 
-                            collisionPadding={10}
-                            className="z-[100] bg-popover text-popover-foreground border shadow-md font-medium"
+                            sideOffset={10}
+                            className="z-[100] bg-popover text-popover-foreground border shadow-md"
                           >
-                            {item.title}
+                            <p>{item.title}</p>
                           </TooltipContent>
                         )}
                       </Tooltip>
