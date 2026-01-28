@@ -191,3 +191,14 @@ All colors MUST be HSL.
   scrollbar-width: thin !important;
   scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent !important;
 }
+
+/* Hide default scrollbars on elements using our custom logic */
+.custom-scrollbar {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: thin !important;      /* Firefox */
+}
+
+/* Ensure no "piling up" of white space in Webkit */
+.custom-scrollbar::-webkit-scrollbar-corner {
+  background: transparent !important;
+}

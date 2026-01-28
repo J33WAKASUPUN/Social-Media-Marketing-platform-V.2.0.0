@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -7,12 +7,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ContentTypeSelector } from '@/components/bulk-publish/ContentTypeSelector';
-import { ChannelAssignment } from '@/components/bulk-publish/ChannelAssignment';
-import { PlatformPreviewCard } from '@/components/bulk-publish/PlatformPreviewCard';
-import { BulkPublishProgressDialog } from '@/components/bulk-publish/BulkPublishProgressDialog';
+import { ContentTypeSelector } from '@/components/ContentTypeSelector';
+import { ChannelAssignment } from '@/components/ChannelAssignment';
+import { PlatformPreviewCard } from '@/components/PlatformPreviewCard';
+import { BulkPublishProgressDialog } from '@/components/BulkPublishProgressDialog';
 import { MediaLibrarySelector } from '@/components/media/MediaLibrarySelector';
 import { useBrand } from '@/contexts/BrandContext';
 import { 
@@ -37,7 +36,6 @@ import {
   X,
   Plus,
   Calendar,
-  ArrowRight,
   CheckCircle2,
   Layers,
   FileText,
@@ -84,6 +82,10 @@ export default function BulkPublish() {
   const [loadingContentTypes, setLoadingContentTypes] = useState(true);
   const [loadingChannels, setLoadingChannels] = useState(false);
 
+  // Polling ref
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingCountRef = useRef<number>(0);
+
   // Load content types on mount
   useEffect(() => {
     loadContentTypes();
@@ -101,6 +103,97 @@ export default function BulkPublish() {
     setIsOptimized(false);
     setOptimizedContent({});
   }, [content]);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    };
+  }, []);
+
+  // ✅ IMPROVED: Poll for bulk post status updates
+  const pollBulkPostStatus = useCallback(async (bulkPostId: string) => {
+    try {
+      pollingCountRef.current += 1;
+      console.log(`📊 Polling attempt #${pollingCountRef.current} for bulk post:`, bulkPostId);
+      
+      const response = await bulkPublishApi.getById(bulkPostId);
+      const updatedBulkPost = response.data;
+      
+      console.log('📊 Poll response:', {
+        status: updatedBulkPost.status,
+        stats: updatedBulkPost.stats,
+        results: updatedBulkPost.publishResults?.map(r => ({ 
+          platform: r.platform, 
+          status: r.status 
+        }))
+      });
+      
+      setCurrentBulkPost(updatedBulkPost);
+
+      // ✅ Check if publishing is complete
+      const isComplete = ['completed', 'partial', 'failed', 'cancelled'].includes(updatedBulkPost.status);
+      
+      // ✅ Also check if all results are done (backup check)
+      const allResultsDone = updatedBulkPost.publishResults?.every(
+        r => ['published', 'failed', 'cancelled'].includes(r.status)
+      );
+      
+      if (isComplete || allResultsDone) {
+        console.log('✅ Publishing complete, stopping polling');
+        
+        // Stop polling
+        if (pollingRef.current) {
+          clearInterval(pollingRef.current);
+          pollingRef.current = null;
+        }
+
+        // Show appropriate toast
+        if (updatedBulkPost.status === 'completed' || updatedBulkPost.stats.successCount === updatedBulkPost.stats.totalPlatforms) {
+          toast.success(`Successfully published to ${updatedBulkPost.stats.successCount} platforms!`);
+        } else if (updatedBulkPost.status === 'partial' || (updatedBulkPost.stats.successCount > 0 && updatedBulkPost.stats.failedCount > 0)) {
+          toast.warning(`Published to ${updatedBulkPost.stats.successCount}/${updatedBulkPost.stats.totalPlatforms} platforms`);
+        } else if (updatedBulkPost.status === 'failed' || updatedBulkPost.stats.failedCount === updatedBulkPost.stats.totalPlatforms) {
+          toast.error('Publishing failed. Please try again.');
+        }
+      }
+    } catch (error: any) {
+      console.error('Polling error:', error);
+    }
+  }, []);
+
+  // ✅ IMPROVED: Start polling function
+  const startPolling = useCallback((bulkPostId: string) => {
+    // Reset polling count
+    pollingCountRef.current = 0;
+    
+    // Clear any existing polling
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+    }
+
+    console.log('🔄 Starting polling for bulk post:', bulkPostId);
+
+    // Poll immediately
+    pollBulkPostStatus(bulkPostId);
+
+    // Then poll every 2 seconds
+    pollingRef.current = setInterval(() => {
+      pollBulkPostStatus(bulkPostId);
+    }, 2000);
+
+    // ✅ Auto-stop polling after 3 minutes (safety net)
+    setTimeout(() => {
+      if (pollingRef.current) {
+        console.log('⏰ Polling timeout reached, stopping...');
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    }, 180000);
+  }, [pollBulkPostStatus]);
 
   const loadContentTypes = async () => {
     try {
@@ -167,8 +260,9 @@ export default function BulkPublish() {
   const handleHashtagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && hashtagInput.trim()) {
       e.preventDefault();
+      // ✅ Remove # if user types it
       const newTag = hashtagInput.trim().replace(/^#/, '');
-      if (!hashtags.includes(newTag)) {
+      if (newTag && !hashtags.includes(newTag)) {
         setHashtags([...hashtags, newTag]);
       }
       setHashtagInput('');
@@ -190,10 +284,19 @@ export default function BulkPublish() {
       const response = await bulkPublishApi.optimizeContent(
         content,
         selectedContentType,
-        hashtags
+        hashtags // ✅ Pass hashtags to optimization
       );
       
-      setOptimizedContent(response.data.platformContent);
+      // ✅ Merge hashtags into optimized content
+      const optimizedWithHashtags: Record<string, PlatformContent> = {};
+      for (const [platform, platformContent] of Object.entries(response.data.platformContent)) {
+        optimizedWithHashtags[platform] = {
+          ...platformContent,
+          hashtags: hashtags, // ✅ Ensure hashtags are preserved
+        };
+      }
+      
+      setOptimizedContent(optimizedWithHashtags);
       setIsOptimized(true);
       toast.success('Content optimized for all platforms!');
     } catch (error: any) {
@@ -201,6 +304,17 @@ export default function BulkPublish() {
     } finally {
       setIsOptimizing(false);
     }
+  };
+
+  // ✅ Handle content change from preview card edit
+  const handlePlatformContentChange = (platform: string, newContent: string) => {
+    setOptimizedContent(prev => ({
+      ...prev,
+      [platform]: {
+        ...prev[platform],
+        content: newContent,
+      },
+    }));
   };
 
   const handlePublish = async () => {
@@ -260,11 +374,13 @@ export default function BulkPublish() {
       setIsPublishing(true);
       setShowProgressDialog(true);
 
+      console.log('📤 Creating bulk post with hashtags:', hashtags);
+
       const response = await bulkPublishApi.create({
         brandId: currentBrand._id,
         contentType: selectedContentType,
         content,
-        hashtags,
+        hashtags, // ✅ Ensure hashtags are sent
         mediaLibraryIds: selectedMedia,
         channelAssignments,
         publishType,
@@ -277,7 +393,10 @@ export default function BulkPublish() {
 
       setCurrentBulkPost(response.data);
       
-      if (publishType === 'scheduled') {
+      // Start polling for status updates (only for immediate publish)
+      if (publishType === 'now') {
+        startPolling(response.data._id);
+      } else {
         toast.success('Bulk post scheduled successfully!');
       }
     } catch (error: any) {
@@ -289,6 +408,12 @@ export default function BulkPublish() {
   };
 
   const handleProgressDialogClose = () => {
+    // Stop polling when dialog closes
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+    
     setShowProgressDialog(false);
     
     if (currentBulkPost?.status === 'completed' || currentBulkPost?.status === 'partial') {
@@ -453,25 +578,33 @@ export default function BulkPublish() {
                     <Hash className="h-4 w-4" />
                     Hashtags
                   </label>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {hashtags.map((tag) => (
-                      <Badge key={tag} variant="secondary" className="gap-1">
-                        #{tag}
-                        <button
-                          onClick={() => removeHashtag(tag)}
-                          className="ml-1 hover:text-destructive"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
+                  {/* ✅ Show hashtags as badges */}
+                  {hashtags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {hashtags.map((tag) => (
+                        <Badge key={tag} variant="secondary" className="gap-1 text-primary">
+                          #{tag}
+                          <button
+                            onClick={() => removeHashtag(tag)}
+                            className="ml-1 hover:text-destructive rounded-full"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                   <Input
                     value={hashtagInput}
                     onChange={(e) => setHashtagInput(e.target.value)}
                     onKeyDown={handleHashtagKeyDown}
-                    placeholder="Type hashtag and press Enter"
+                    placeholder="Type hashtag and press Enter (without #)"
                   />
+                  {hashtags.length > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {hashtags.length} hashtag{hashtags.length !== 1 ? 's' : ''} will be added to all posts
+                    </p>
+                  )}
                 </div>
 
                 {/* Media Selection */}
@@ -564,21 +697,23 @@ export default function BulkPublish() {
                   Platform Previews
                 </CardTitle>
                 <CardDescription>
-                  See how your content will appear on each platform.
+                  See how your content will appear on each platform. Click the eye icon to view/edit full content.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                {/* Added custom-scrollbar class to remove default scrollbar */}
+                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                   {availableChannels?.targetPlatforms.map((platform) => {
                     const assignment = channelAssignments.find(a => a.platform === platform);
                     const channel = availableChannels.channels[platform]?.find(
                       c => c._id === assignment?.channel
                     );
-                    const platformContent = optimizedContent[platform] || {
-                      enabled: true,
-                      content: content,
-                      hashtags: hashtags,
-                    };
+                    
+                    // Get platform content with hashtags
+                    const platformContent = optimizedContent[platform];
+                    const displayContent = platformContent?.content || content;
+                    // Always use the user's hashtags
+                    const displayHashtags = hashtags;
 
                     if (!channel) return null;
 
@@ -586,15 +721,16 @@ export default function BulkPublish() {
                       <PlatformPreviewCard
                         key={platform}
                         platform={platform as Platform}
-                        content={platformContent.content || content}
-                        title={platformContent.title}
-                        hashtags={platformContent.hashtags || hashtags}
+                        content={displayContent}
+                        title={platformContent?.title}
+                        hashtags={displayHashtags}
                         mediaUrls={mediaUrls}
                         mediaType={mediaType as 'none' | 'image' | 'video'}
                         channelName={channel.displayName}
                         channelAvatar={channel.avatar}
                         isOptimized={isOptimized && !!optimizedContent[platform]}
-                        editable={false}
+                        editable={true}
+                        onContentChange={(newContent) => handlePlatformContentChange(platform, newContent)}
                       />
                     );
                   })}
@@ -691,7 +827,7 @@ export default function BulkPublish() {
                       {content.length} characters
                     </span>
                     {hashtags.length > 0 && (
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1 text-primary">
                         <Hash className="h-4 w-4" />
                         {hashtags.length} hashtags
                       </span>

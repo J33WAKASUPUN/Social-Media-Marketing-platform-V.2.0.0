@@ -5,3 +5,4 @@ export { EditMetadataDialog } from './EditMetadataDialog';
 export { FolderManagementDialog } from './FolderManagementDialog';
 export { FolderSidebar } from './FolderSidebar';
 export { CreateFolderDialog } from './CreateFolderDialog';
+import { MediaLibrarySelector } from './MediaLibrarySelector';
