@@ -11,8 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useBrand } from '@/contexts/BrandContext';
 import { mediaApi } from '@/services/mediaApi';
 import type { Media } from '@/types';
 import { toast } from 'sonner';
@@ -28,6 +26,7 @@ import {
 interface MediaLibrarySelectorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  brandId: string; // ✅ ADD: Required brandId prop
   selectedIds: string[];
   onSelect: (ids: string[], items: Media[]) => void;
   mediaType?: 'all' | 'image' | 'video';
@@ -37,38 +36,44 @@ interface MediaLibrarySelectorProps {
 export function MediaLibrarySelector({
   open,
   onOpenChange,
+  brandId, // ✅ USE: brandId from props
   selectedIds,
   onSelect,
   mediaType = 'all',
   maxSelection = 10,
 }: MediaLibrarySelectorProps) {
-  const { currentBrand } = useBrand();
   const [media, setMedia] = useState<Media[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [localSelected, setLocalSelected] = useState<string[]>(selectedIds);
 
   useEffect(() => {
-    if (open && currentBrand) {
+    if (open && brandId) {
       loadMedia();
     }
-  }, [open, currentBrand]);
+  }, [open, brandId]);
 
   useEffect(() => {
     setLocalSelected(selectedIds);
   }, [selectedIds]);
 
   const loadMedia = async () => {
-    if (!currentBrand) return;
+    if (!brandId) {
+      console.error('❌ MediaLibrarySelector: brandId is required');
+      return;
+    }
     
     try {
       setLoading(true);
-      const response = await mediaApi.getAll(currentBrand._id, {
+      // ✅ FIX: Pass correct filter object
+      const response = await mediaApi.getAll({
+        brandId,
         type: mediaType === 'all' ? undefined : mediaType,
         limit: 100,
       });
-      setMedia(response.data);
+      setMedia(response.data || []);
     } catch (error: any) {
+      console.error('Failed to load media:', error);
       toast.error('Failed to load media');
     } finally {
       setLoading(false);
@@ -141,7 +146,7 @@ export function MediaLibrarySelector({
         )}
 
         {/* Media Grid */}
-        <ScrollArea className="h-[400px] pr-4">
+        <div className="h-[400px] overflow-y-auto pr-4 custom-scrollbar">
           {loading ? (
             <div className="grid grid-cols-4 gap-3">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -199,21 +204,19 @@ export function MediaLibrarySelector({
 
                     {/* Selection Indicator */}
                     {isSelected && (
-                      <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                        <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-                          <Check className="h-5 w-5 text-primary-foreground" />
-                        </div>
+                      <div className="absolute top-2 right-2 h-6 w-6 rounded-full bg-primary flex items-center justify-center">
+                        <Check className="h-4 w-4 text-primary-foreground" />
                       </div>
                     )}
 
-                    {/* Hover Overlay */}
+                    {/* Hover overlay */}
                     <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors" />
                   </div>
                 );
               })}
             </div>
           )}
-        </ScrollArea>
+        </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

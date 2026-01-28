@@ -277,11 +277,11 @@ export function PlatformPreviewCard({
         </CardContent>
 
         {/* Status Indicator */}
-        {isOptimized && (
+        {/* {isOptimized && (
           <div className="absolute top-2 right-12">
             <CheckCircle2 className="h-4 w-4 text-emerald-500" />
           </div>
-        )}
+        )} */}
       </Card>
 
       {/* Full View / Edit Dialog */}

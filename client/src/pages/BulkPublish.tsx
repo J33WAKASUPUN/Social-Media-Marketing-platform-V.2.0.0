@@ -8,12 +8,20 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { ContentTypeSelector } from '@/components/ContentTypeSelector';
 import { ChannelAssignment } from '@/components/ChannelAssignment';
 import { PlatformPreviewCard } from '@/components/PlatformPreviewCard';
 import { BulkPublishProgressDialog } from '@/components/BulkPublishProgressDialog';
-import { MediaLibrarySelector } from '@/components/media/MediaLibrarySelector';
+import { MediaLibrary } from '@/components/media/MediaLibrary';
 import { useBrand } from '@/contexts/BrandContext';
+import { mediaApi } from '@/services/mediaApi';
 import { 
   bulkPublishApi, 
   ContentType, 
@@ -40,6 +48,8 @@ import {
   Layers,
   FileText,
   Hash,
+  Upload,
+  FolderOpen,
 } from 'lucide-react';
 import type { Platform } from '@/lib/platformCapabilities';
 import type { Media } from '@/types';
@@ -64,9 +74,10 @@ export default function BulkPublish() {
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [isOptimized, setIsOptimized] = useState(false);
   
-  // Media
-  const [selectedMedia, setSelectedMedia] = useState<string[]>([]);
-  const [mediaItems, setMediaItems] = useState<Media[]>([]);
+  // Media - Same pattern as PostComposer
+  const [libraryMedia, setLibraryMedia] = useState<Media[]>([]);
+  const [selectedLibraryMedia, setSelectedLibraryMedia] = useState<string[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   
   // Publishing
@@ -104,6 +115,13 @@ export default function BulkPublish() {
     setOptimizedContent({});
   }, [content]);
 
+  // Fetch library media when brand changes
+  useEffect(() => {
+    if (currentBrand) {
+      fetchLibraryMedia();
+    }
+  }, [currentBrand]);
+
   // Cleanup polling on unmount
   useEffect(() => {
     return () => {
@@ -114,7 +132,20 @@ export default function BulkPublish() {
     };
   }, []);
 
-  // ✅ IMPROVED: Poll for bulk post status updates
+  // Fetch library media for preview
+  const fetchLibraryMedia = async () => {
+    try {
+      const response = await mediaApi.getAll({
+        brandId: currentBrand!._id,
+        limit: 100,
+      });
+      setLibraryMedia(response.data || []);
+    } catch (error: any) {
+      console.error('Failed to load library media:', error);
+    }
+  };
+
+  // ✅ Poll for bulk post status updates
   const pollBulkPostStatus = useCallback(async (bulkPostId: string) => {
     try {
       pollingCountRef.current += 1;
@@ -134,10 +165,10 @@ export default function BulkPublish() {
       
       setCurrentBulkPost(updatedBulkPost);
 
-      // ✅ Check if publishing is complete
+      // Check if publishing is complete
       const isComplete = ['completed', 'partial', 'failed', 'cancelled'].includes(updatedBulkPost.status);
       
-      // ✅ Also check if all results are done (backup check)
+      // Also check if all results are done (backup check)
       const allResultsDone = updatedBulkPost.publishResults?.every(
         r => ['published', 'failed', 'cancelled'].includes(r.status)
       );
@@ -165,7 +196,7 @@ export default function BulkPublish() {
     }
   }, []);
 
-  // ✅ IMPROVED: Start polling function
+  // Start polling function
   const startPolling = useCallback((bulkPostId: string) => {
     // Reset polling count
     pollingCountRef.current = 0;
@@ -185,7 +216,7 @@ export default function BulkPublish() {
       pollBulkPostStatus(bulkPostId);
     }, 2000);
 
-    // ✅ Auto-stop polling after 3 minutes (safety net)
+    // Auto-stop polling after 3 minutes (safety net)
     setTimeout(() => {
       if (pollingRef.current) {
         console.log('⏰ Polling timeout reached, stopping...');
@@ -240,7 +271,8 @@ export default function BulkPublish() {
   const handleContentTypeSelect = (type: ContentType) => {
     setSelectedContentType(type);
     setChannelAssignments([]);
-    setSelectedMedia([]);
+    setSelectedLibraryMedia([]);
+    setUploadedFiles([]);
     setIsOptimized(false);
     setOptimizedContent({});
   };
@@ -260,7 +292,7 @@ export default function BulkPublish() {
   const handleHashtagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && hashtagInput.trim()) {
       e.preventDefault();
-      // ✅ Remove # if user types it
+      // Remove # if user types it
       const newTag = hashtagInput.trim().replace(/^#/, '');
       if (newTag && !hashtags.includes(newTag)) {
         setHashtags([...hashtags, newTag]);
@@ -271,6 +303,52 @@ export default function BulkPublish() {
 
   const removeHashtag = (tag: string) => {
     setHashtags(hashtags.filter(t => t !== tag));
+  };
+
+  // ✅ Media handlers - Same as PostComposer
+  const openMediaLibrary = async () => {
+    try {
+      const response = await mediaApi.getAll({
+        brandId: currentBrand!._id,
+        type: selectedContentType === 'text-video' ? 'video' : selectedContentType === 'text-image' ? 'image' : undefined,
+        limit: 100,
+      });
+      setLibraryMedia(response.data || []);
+      setShowMediaLibrary(true);
+    } catch (error: any) {
+      toast.error('Failed to load media library');
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const allowedTypes = selectedContentType === 'text-video' ? ['video'] : ['image'];
+    
+    const validFiles = files.filter(file => {
+      if (allowedTypes.includes('image') && file.type.startsWith('image/')) return true;
+      if (allowedTypes.includes('video') && file.type.startsWith('video/')) return true;
+      return false;
+    });
+    
+    if (validFiles.length !== files.length) {
+      toast.error(`Some files were skipped. Only ${allowedTypes.join(' or ')} files are allowed.`);
+    }
+    
+    // For video, only allow 1 file
+    if (selectedContentType === 'text-video') {
+      setUploadedFiles(validFiles.slice(0, 1));
+      setSelectedLibraryMedia([]); // Clear library selection
+    } else {
+      setUploadedFiles(prev => [...prev, ...validFiles]);
+    }
+  };
+
+  const removeUploadedFile = (index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeLibraryMedia = (mediaId: string) => {
+    setSelectedLibraryMedia(prev => prev.filter(id => id !== mediaId));
   };
 
   const handleOptimizeContent = async () => {
@@ -284,15 +362,15 @@ export default function BulkPublish() {
       const response = await bulkPublishApi.optimizeContent(
         content,
         selectedContentType,
-        hashtags // ✅ Pass hashtags to optimization
+        hashtags
       );
       
-      // ✅ Merge hashtags into optimized content
+      // Merge hashtags into optimized content
       const optimizedWithHashtags: Record<string, PlatformContent> = {};
       for (const [platform, platformContent] of Object.entries(response.data.platformContent)) {
         optimizedWithHashtags[platform] = {
           ...platformContent,
-          hashtags: hashtags, // ✅ Ensure hashtags are preserved
+          hashtags: hashtags,
         };
       }
       
@@ -306,7 +384,7 @@ export default function BulkPublish() {
     }
   };
 
-  // ✅ Handle content change from preview card edit
+  // Handle content change from preview card edit
   const handlePlatformContentChange = (platform: string, newContent: string) => {
     setOptimizedContent(prev => ({
       ...prev,
@@ -360,12 +438,12 @@ export default function BulkPublish() {
     }
 
     // Media validation
-    const contentTypeInfo = contentTypes.find(t => t.id === selectedContentType);
-    if (contentTypeInfo?.supportsImages && selectedContentType === 'text-image' && selectedMedia.length === 0) {
+    const totalMedia = selectedLibraryMedia.length + uploadedFiles.length;
+    if (selectedContentType === 'text-image' && totalMedia === 0) {
       toast.error('Please select at least one image');
       return;
     }
-    if (contentTypeInfo?.supportsVideos && selectedContentType === 'text-video' && selectedMedia.length === 0) {
+    if (selectedContentType === 'text-video' && totalMedia === 0) {
       toast.error('Please select a video');
       return;
     }
@@ -374,14 +452,29 @@ export default function BulkPublish() {
       setIsPublishing(true);
       setShowProgressDialog(true);
 
+      // ✅ Upload new files first if any
+      let uploadedMediaIds: string[] = [];
+      if (uploadedFiles.length > 0) {
+        console.log('📤 Uploading files first...');
+        const uploadResponse = await mediaApi.upload(uploadedFiles, {
+          brandId: currentBrand._id,
+          folder: 'Default',
+        });
+        uploadedMediaIds = uploadResponse.data.map((m: Media) => m._id);
+        console.log('✅ Uploaded files:', uploadedMediaIds);
+      }
+
+      // Combine library + uploaded media IDs
+      const allMediaIds = [...selectedLibraryMedia, ...uploadedMediaIds];
+
       console.log('📤 Creating bulk post with hashtags:', hashtags);
 
       const response = await bulkPublishApi.create({
         brandId: currentBrand._id,
         contentType: selectedContentType,
         content,
-        hashtags, // ✅ Ensure hashtags are sent
-        mediaLibraryIds: selectedMedia,
+        hashtags,
+        mediaLibraryIds: allMediaIds,
         channelAssignments,
         publishType,
         scheduledFor: publishType === 'scheduled' ? scheduledDate : undefined,
@@ -423,10 +516,14 @@ export default function BulkPublish() {
 
   // Get media URLs for preview
   const mediaUrls = useMemo(() => {
-    return mediaItems
-      .filter(m => selectedMedia.includes(m._id))
+    const libraryUrls = libraryMedia
+      .filter(m => selectedLibraryMedia.includes(m._id))
       .map(m => m.s3Url);
-  }, [mediaItems, selectedMedia]);
+    
+    const uploadedUrls = uploadedFiles.map(file => URL.createObjectURL(file));
+    
+    return [...libraryUrls, ...uploadedUrls];
+  }, [libraryMedia, selectedLibraryMedia, uploadedFiles]);
 
   const mediaType = useMemo(() => {
     if (selectedContentType === 'text-video') return 'video';
@@ -434,15 +531,25 @@ export default function BulkPublish() {
     return 'none';
   }, [selectedContentType]);
 
+  // Total media count
+  const totalMediaCount = selectedLibraryMedia.length + uploadedFiles.length;
+
+  // Media type filter for library
+  const mediaTypeFilter = useMemo<'all' | 'image' | 'video'>(() => {
+    if (selectedContentType === 'text-video') return 'video';
+    if (selectedContentType === 'text-image') return 'image';
+    return 'all';
+  }, [selectedContentType]);
+
   // Check if ready to publish
   const canPublish = useMemo(() => {
     if (!selectedContentType || !content.trim()) return false;
     if (channelAssignments.length === 0) return false;
-    if (selectedContentType === 'text-image' && selectedMedia.length === 0) return false;
-    if (selectedContentType === 'text-video' && selectedMedia.length === 0) return false;
+    if (selectedContentType === 'text-image' && totalMediaCount === 0) return false;
+    if (selectedContentType === 'text-video' && totalMediaCount === 0) return false;
     if (publishType === 'scheduled' && !scheduledDate) return false;
     return true;
-  }, [selectedContentType, content, channelAssignments, selectedMedia, publishType, scheduledDate]);
+  }, [selectedContentType, content, channelAssignments, totalMediaCount, publishType, scheduledDate]);
 
   if (!currentBrand) {
     return (
@@ -578,7 +685,6 @@ export default function BulkPublish() {
                     <Hash className="h-4 w-4" />
                     Hashtags
                   </label>
-                  {/* ✅ Show hashtags as badges */}
                   {hashtags.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-2">
                       {hashtags.map((tag) => (
@@ -607,7 +713,7 @@ export default function BulkPublish() {
                   )}
                 </div>
 
-                {/* Media Selection */}
+                {/* ✅ Media Selection - Same pattern as PostComposer */}
                 {selectedContentType !== 'text-only' && (
                   <div>
                     <label className="text-sm font-medium mb-2 block flex items-center gap-2">
@@ -619,46 +725,105 @@ export default function BulkPublish() {
                       {selectedContentType === 'text-video' ? 'Video' : 'Images'}
                     </label>
                     
-                    {selectedMedia.length > 0 ? (
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {mediaItems
-                          .filter(m => selectedMedia.includes(m._id))
-                          .map(media => (
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 mb-3">
+                      <Button
+                        variant="outline"
+                        onClick={openMediaLibrary}
+                        className="flex-1"
+                      >
+                        <FolderOpen className="mr-2 h-4 w-4" />
+                        From Library
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => document.getElementById('bulk-file-upload')?.click()}
+                        className="flex-1"
+                      >
+                        <Upload className="mr-2 h-4 w-4" />
+                        Upload Files
+                      </Button>
+                      <input
+                        id="bulk-file-upload"
+                        type="file"
+                        multiple={selectedContentType !== 'text-video'}
+                        accept={selectedContentType === 'text-video' ? 'video/*' : 'image/*'}
+                        onChange={handleFileSelect}
+                        className="hidden"
+                      />
+                    </div>
+
+                    {/* Selected Media Preview */}
+                    {totalMediaCount > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                          Selected Media ({totalMediaCount})
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {/* Library media */}
+                          {libraryMedia
+                            .filter(m => selectedLibraryMedia.includes(m._id))
+                            .map(media => (
+                              <div
+                                key={media._id}
+                                className="relative h-16 w-16 rounded-md overflow-hidden border group"
+                              >
+                                {media.type === 'video' ? (
+                                  <video
+                                    src={`${media.s3Url}#t=0.1`}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <img
+                                    src={media.s3Url}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                  />
+                                )}
+                                <button
+                                  onClick={() => removeLibraryMedia(media._id)}
+                                  className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                                <Badge className="absolute bottom-0 left-0 text-[10px] rounded-none rounded-tr-md">
+                                  Library
+                                </Badge>
+                              </div>
+                            ))}
+
+                          {/* Uploaded files */}
+                          {uploadedFiles.map((file, index) => (
                             <div
-                              key={media._id}
-                              className="relative h-16 w-16 rounded-md overflow-hidden border"
+                              key={index}
+                              className="relative h-16 w-16 rounded-md overflow-hidden border group"
                             >
-                              {media.type === 'video' ? (
+                              {file.type.startsWith('video/') ? (
                                 <video
-                                  src={`${media.s3Url}#t=0.1`}
+                                  src={URL.createObjectURL(file)}
                                   className="h-full w-full object-cover"
                                 />
                               ) : (
                                 <img
-                                  src={media.s3Url}
+                                  src={URL.createObjectURL(file)}
                                   alt=""
                                   className="h-full w-full object-cover"
                                 />
                               )}
                               <button
-                                onClick={() => setSelectedMedia(prev => prev.filter(id => id !== media._id))}
-                                className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-white flex items-center justify-center"
+                                onClick={() => removeUploadedFile(index)}
+                                className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                               >
                                 <X className="h-3 w-3" />
                               </button>
+                              <Badge variant="secondary" className="absolute bottom-0 left-0 text-[10px] rounded-none rounded-tr-md">
+                                Upload
+                              </Badge>
                             </div>
                           ))}
+                        </div>
                       </div>
-                    ) : null}
-                    
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowMediaLibrary(true)}
-                      className="w-full"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      {selectedMedia.length > 0 ? 'Change Media' : 'Select from Library'}
-                    </Button>
+                    )}
                   </div>
                 )}
 
@@ -701,7 +866,6 @@ export default function BulkPublish() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {/* Added custom-scrollbar class to remove default scrollbar */}
                 <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                   {availableChannels?.targetPlatforms.map((platform) => {
                     const assignment = channelAssignments.find(a => a.platform === platform);
@@ -832,10 +996,10 @@ export default function BulkPublish() {
                         {hashtags.length} hashtags
                       </span>
                     )}
-                    {selectedMedia.length > 0 && (
+                    {totalMediaCount > 0 && (
                       <span className="flex items-center gap-1">
                         {mediaType === 'video' ? <Video className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
-                        {selectedMedia.length} {mediaType}
+                        {totalMediaCount} {mediaType}
                       </span>
                     )}
                   </div>
@@ -846,20 +1010,37 @@ export default function BulkPublish() {
         )}
       </div>
 
-      {/* Media Library Selector Modal */}
-      {showMediaLibrary && (
-        <MediaLibrarySelector
-          open={showMediaLibrary}
-          onOpenChange={setShowMediaLibrary}
-          selectedIds={selectedMedia}
-          onSelect={(ids, items) => {
-            setSelectedMedia(ids);
-            setMediaItems(items);
-          }}
-          mediaType={selectedContentType === 'text-video' ? 'video' : 'image'}
-          maxSelection={selectedContentType === 'text-video' ? 1 : 10}
-        />
-      )}
+      {/* ✅ Media Library Dialog - Same as PostComposer */}
+      <Dialog open={showMediaLibrary} onOpenChange={setShowMediaLibrary}>
+        <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              Select Media from Library
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                ({mediaTypeFilter === 'video' ? 'Videos only' : 
+                  mediaTypeFilter === 'image' ? 'Images only' : 'All media'})
+              </span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            <MediaLibrary
+              brandId={currentBrand._id}
+              isDialogMode={true}
+              initialSelectedIds={selectedLibraryMedia}
+              onSelectionChange={setSelectedLibraryMedia}
+              initialMediaTypeFilter={mediaTypeFilter}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMediaLibrary(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => setShowMediaLibrary(false)} className="bg-violet-600 hover:bg-violet-700">
+              Add Selected ({selectedLibraryMedia.length})
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Progress Dialog */}
       {currentBulkPost && (

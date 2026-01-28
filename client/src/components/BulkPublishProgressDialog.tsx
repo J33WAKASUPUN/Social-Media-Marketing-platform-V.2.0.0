@@ -179,7 +179,7 @@ export function BulkPublishProgressDialog({
                         rel="noopener noreferrer"
                         className="text-primary hover:underline"
                       >
-                        <ExternalLink className="h-4 w-4" />
+                        {/* <ExternalLink className="h-4 w-4" /> */}
                       </a>
                     )}
                   </div>
