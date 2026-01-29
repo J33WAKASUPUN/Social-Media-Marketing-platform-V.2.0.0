@@ -32,6 +32,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+// ✅ New Import
+import { formatDistanceToNow } from 'date-fns';
 
 // Supported Platforms
 const SUPPORTED_PLATFORMS: Array<{
@@ -70,13 +72,6 @@ const SUPPORTED_PLATFORMS: Array<{
     description: 'Upload and share video content with your audience',
     requiresOAuth: true,
   },
-  // ❌ DISABLED: WhatsApp (Coming in v2.1)
-  // {
-  //   id: 'whatsapp',
-  //   name: 'WhatsApp Business',
-  //   description: 'Enable with your audience. Send messages and templates to your customers',
-  //   requiresOAuth: false,
-  // },
 ];
 
 export default function Channels() {
@@ -100,6 +95,33 @@ export default function Channels() {
   const [deletingChannel, setDeletingChannel] = useState<Channel | null>(null);
   const [deleteImpact, setDeleteImpact] = useState<any>(null);
   const [loadingImpact, setLoadingImpact] = useState(false);
+
+  // ✅ HELPER: Get Token Status
+  const getTokenStatus = (channel: Channel) => {
+    if (channel.connectionStatus === 'expired') {
+      return { status: 'expired', message: 'Token expired - reconnect required', color: 'text-red-500' };
+    }
+    
+    if (channel.connectionStatus === 'error') {
+      return { status: 'error', message: channel.healthCheckError || 'Connection error', color: 'text-amber-500' };
+    }
+    
+    if (channel.tokenExpiresAt) {
+      const expiresAt = new Date(channel.tokenExpiresAt);
+      const now = new Date();
+      const hoursUntilExpiry = (expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60);
+      
+      if (hoursUntilExpiry < 0) {
+        return { status: 'expired', message: 'Token expired', color: 'text-red-500' };
+      }
+      
+      if (hoursUntilExpiry < 1) {
+        return { status: 'expiring', message: 'Token expiring soon', color: 'text-amber-500' };
+      }
+    }
+    
+    return { status: 'active', message: 'Connected', color: 'text-green-500' };
+  };
 
   // FETCH CHANNELS
   useEffect(() => {
@@ -145,7 +167,6 @@ export default function Channels() {
     }
   };
 
-  // HANDLE WHATSAPP CONNECT
   const handleConnectWhatsApp = async () => {
     if (!currentBrand) return;
 
@@ -205,12 +226,10 @@ export default function Channels() {
     }
   };
 
-  // OPEN DISCONNECT DIALOG
   const handleOpenDisconnectDialog = (channel: Channel) => {
     setDisconnectingChannel(channel);
   };
 
-  // CONFIRM DISCONNECT
   const handleConfirmDisconnect = async () => {
     if (!disconnectingChannel) return;
 
@@ -224,7 +243,6 @@ export default function Channels() {
     }
   };
 
-  // OPEN DELETE DIALOG
   const handleOpenDeleteDialog = async (channel: Channel) => {
     setDeletingChannel(channel);
     setLoadingImpact(true);
@@ -240,7 +258,6 @@ export default function Channels() {
     }
   };
 
-  // CONFIRM DELETE
   const handleConfirmDelete = async () => {
     if (!deletingChannel) return;
 
@@ -327,9 +344,25 @@ export default function Channels() {
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <PlatformBadge platform={channel.provider} size="lg" />
-                      <Badge className="bg-success/10 text-success border-success/20 font-medium">
-                        ● Connected
-                      </Badge>
+                      <div className="flex flex-col items-end gap-1">
+                        <Badge className="bg-success/10 text-success border-success/20 font-medium">
+                          ● Connected
+                        </Badge>
+                        
+                        {/* ✅ Token Status Warning Display */}
+                        {(() => {
+                          const tokenStatus = getTokenStatus(channel);
+                          if (tokenStatus.status !== 'active') {
+                            return (
+                              <div className={`text-[10px] ${tokenStatus.color} flex items-center gap-1 font-medium`}>
+                                <AlertTriangle className="h-2.5 w-2.5" />
+                                {tokenStatus.message}
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -341,7 +374,6 @@ export default function Channels() {
                         @{channel.platformUsername || channel.platformUserId}
                       </p>
                       
-                      {/* Standard Followers Display (Social Only) */}
                       {channel.provider !== 'whatsapp' && channel.providerData && (
                         <div className="flex gap-4 text-sm text-muted-foreground">
                           {channel.providerData.followers !== undefined && (
@@ -360,10 +392,16 @@ export default function Channels() {
                         Connected on{' '}
                         {new Date(channel.connectedAt).toLocaleDateString()}
                       </p>
+
+                      {/* ✅ Last Health Check Display */}
+                      {channel.lastHealthCheck && (
+                        <p className="text-[10px] text-muted-foreground italic">
+                          Last checked: {formatDistanceToNow(new Date(channel.lastHealthCheck), { addSuffix: true })}
+                        </p>
+                      )}
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex flex-wrap gap-2 pt-2">
                       <Button
                         variant="outline"
                         size="sm"
@@ -376,8 +414,33 @@ export default function Channels() {
                             testingChannel === channel._id ? 'animate-spin' : ''
                           }`}
                         />
-                        {testingChannel === channel._id ? 'Testing...' : 'Test Connection'}
+                        {testingChannel === channel._id ? 'Testing...' : 'Test'}
                       </Button>
+
+                      {/* ✅ Refresh Token Button (For issue resolution) */}
+                      {(getTokenStatus(channel).status !== 'active' || channel.provider === 'youtube' || channel.provider === 'linkedin') && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={async () => {
+                            try {
+                              setTestingChannel(channel._id);
+                              await channelApi.refreshToken(channel._id);
+                              toast.success('Token refreshed successfully!');
+                              fetchChannels();
+                            } catch (error: any) {
+                              toast.error(error.response?.data?.message || 'Failed to refresh token. Please reconnect.');
+                            } finally {
+                              setTestingChannel(null);
+                            }
+                          }}
+                          disabled={testingChannel === channel._id}
+                        >
+                          <RefreshCw className={`mr-2 h-3.5 w-3.5 ${testingChannel === channel._id ? 'animate-spin' : ''}`} />
+                          Refresh Token
+                        </Button>
+                      )}
 
                       <Button
                         variant="outline" 
@@ -574,7 +637,7 @@ export default function Channels() {
         </DialogContent>
       </Dialog>
 
-      {/* ✅ DISCONNECT CONFIRMATION DIALOG */}
+      {/* DISCONNECT CONFIRMATION DIALOG */}
       <AlertDialog 
         open={!!disconnectingChannel} 
         onOpenChange={(open) => !open && setDisconnectingChannel(null)}
@@ -585,8 +648,6 @@ export default function Channels() {
               <AlertTriangle className="h-5 w-5 text-amber-500" />
               Disconnect {disconnectingChannel?.displayName}?
             </AlertDialogTitle>
-            
-            {/* ✅ FIXED HTML STRUCTURE: Moved complex content outside Description */}
             <AlertDialogDescription>
               This will pause the connection to your {disconnectingChannel?.provider} account.
             </AlertDialogDescription>
@@ -644,7 +705,6 @@ export default function Channels() {
               Permanently Delete {deletingChannel?.displayName}?
             </AlertDialogTitle>
             
-            {/* ✅ FIXED HTML STRUCTURE */}
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete your channel data.
             </AlertDialogDescription>

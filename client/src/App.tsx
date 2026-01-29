@@ -34,6 +34,7 @@ import Media from "@/pages/Media";
 import Notifications from "@/pages/Notifications";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
+import BulkPublish from "@/pages/BulkPublish";
 // ❌ TEMPORARILY DISABLED: WhatsApp Pages (Coming in v2.1)
 // import WhatsAppInbox from '@/pages/whatsapp/Inbox';
 // import WhatsAppTemplates from '@/pages/whatsapp/Templates';
@@ -146,6 +147,20 @@ const App = () => (
                             <RoleProtectedRoute requiredPermission="canCreatePosts">
                               <MainLayout>
                                 <EditPost />
+                              </MainLayout>
+                            </RoleProtectedRoute>
+                          </ProtectedRoute>
+                        }
+                      />
+
+                      {/* Bulk Publish - Require canCreatePosts */}
+                      <Route
+                        path="/bulk-publish/new"
+                        element={
+                          <ProtectedRoute>
+                            <RoleProtectedRoute requiredPermission="canCreatePosts">
+                              <MainLayout>
+                                <BulkPublish />
                               </MainLayout>
                             </RoleProtectedRoute>
                           </ProtectedRoute>
