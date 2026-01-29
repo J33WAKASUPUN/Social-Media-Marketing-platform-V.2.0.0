@@ -628,7 +628,7 @@ export default function BulkPublish() {
     );
   }
 
-  // ✅ NEW: Welcome/Getting Started Component
+  // Welcome/Getting Started Component
   const WelcomeSection = () => (
     <Card className="border-dashed border-2 border-primary/20 bg-gradient-to-br from-violet-50/50 to-purple-50/50 dark:from-violet-950/20 dark:to-purple-950/20">
       <CardContent className="py-10 px-6">

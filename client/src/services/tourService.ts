@@ -43,7 +43,7 @@ interface TourStep {
     align: 'start' | 'center' | 'end';
   };
   requiredPermission?: 'canConnectChannels' | 'canViewMedia' | 'canViewAnalytics' | 'canViewPosts' | 'canCreatePosts' | 'isManager' | null;
-  // ✅ NEW: Special handling for collapsible menus
+  // Special handling for collapsible menus
   onBeforeHighlight?: () => void;
 }
 
@@ -67,6 +67,31 @@ const allWelcomeTourSteps: TourStep[] = [
       align: 'start',
     },
     requiredPermission: null,
+  },
+  // Create Post menu item
+  {
+    element: '[data-tour="menu-create-post"]',
+    popover: {
+      title: '✏️ Create Post',
+      description: '<p>Create and publish content to your social media channels:</p><ul class="list-disc pl-4 mt-2 space-y-1"><li><strong>Single Post:</strong> Create for one platform at a time</li><li><strong>Bulk Post:</strong> Publish the same content to multiple platforms at once</li></ul>',
+      side: 'right',
+      align: 'start',
+    },
+    requiredPermission: 'canCreatePosts',
+    // Open the collapsible menu before highlighting
+    onBeforeHighlight: () => {
+      const createPostButton = document.querySelector('[data-tour="menu-create-post"]') as HTMLElement;
+      if (createPostButton) {
+        // Check if it's collapsed (data-state="closed")
+        const isCollapsed = createPostButton.getAttribute('data-state') === 'closed';
+        if (isCollapsed) {
+          // Click to open
+          createPostButton.click();
+          // Wait for animation
+          return new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
+    },
   },
   {
     element: '[data-tour="menu-posts"]',
@@ -108,32 +133,6 @@ const allWelcomeTourSteps: TourStep[] = [
     },
     requiredPermission: 'canConnectChannels',
   },
-  // WhatsApp Step with special handling
-  // ❌ DISABLED: WhatsApp Tour Step (Coming in v2.1)
-  // {
-  //   element: '[data-tour="menu-whatsapp"]',
-  //   popover: {
-  //     title: '💬 WhatsApp Business',
-  //     description: '<p>Manage your WhatsApp Business messaging:</p><ul class="list-disc pl-4 mt-2 space-y-1"><li><strong>Inbox:</strong> Chat with customers</li><li><strong>Templates:</strong> Pre-approved message templates</li><li><strong>Contacts:</strong> Manage customer database</li><li><strong>Call Logs:</strong> Track call history</li></ul>',
-  //     side: 'right',
-  //     align: 'start',
-  //   },
-  //   requiredPermission: 'isManager',
-  //   // Open the collapsible menu before highlighting
-  //   onBeforeHighlight: () => {
-  //     const whatsappButton = document.querySelector('[data-tour="menu-whatsapp"]') as HTMLElement;
-  //     if (whatsappButton) {
-  //       // Check if it's collapsed
-  //       const isCollapsed = whatsappButton.getAttribute('data-state') === 'closed';
-  //       if (isCollapsed) {
-  //         // Click to open
-  //         whatsappButton.click();
-  //         // Wait for animation
-  //         return new Promise(resolve => setTimeout(resolve, 300));
-  //       }
-  //     }
-  //   },
-  // },
   {
     element: '[data-tour="menu-media"]',
     popover: {
