@@ -50,6 +50,9 @@ import {
   Hash,
   Upload,
   FolderOpen,
+  Rocket,
+  MousePointerClick,
+  Zap,
 } from 'lucide-react';
 import type { Platform } from '@/lib/platformCapabilities';
 import type { Media } from '@/types';
@@ -100,6 +103,7 @@ export default function BulkPublish() {
   // Track enabled platforms (users can toggle these)
   const [enabledPlatforms, setEnabledPlatforms] = useState<string[]>([]);
 
+  // ...existing useEffects...
 
   // Load content types on mount
   useEffect(() => {
@@ -288,7 +292,7 @@ export default function BulkPublish() {
     setOptimizedContent({});
   };
 
-    const handlePlatformToggle = (platform: string, enabled: boolean) => {
+  const handlePlatformToggle = (platform: string, enabled: boolean) => {
     setEnabledPlatforms(prev => {
       if (enabled) {
         // Enable platform and auto-assign first channel
@@ -331,7 +335,7 @@ export default function BulkPublish() {
     }
   };
 
-    const activeAssignments = useMemo(() => {
+  const activeAssignments = useMemo(() => {
     return channelAssignments.filter(a => enabledPlatforms.includes(a.platform));
   }, [channelAssignments, enabledPlatforms]);
 
@@ -464,8 +468,6 @@ export default function BulkPublish() {
       return;
     }
 
-    // ✅ REMOVED: Strict check for all platforms - now optional
-
     if (publishType === 'scheduled' && !scheduledDate) {
       toast.error('Please select a scheduled date and time');
       return;
@@ -489,7 +491,11 @@ export default function BulkPublish() {
 
     try {
       setIsPublishing(true);
-      setShowProgressDialog(true);
+      
+      // ✅ FIX: Only show progress dialog for "Publish Now", not for scheduled posts
+      if (publishType === 'now') {
+        setShowProgressDialog(true);
+      }
 
       // Upload new files first if any
       let uploadedMediaIds: string[] = [];
@@ -510,6 +516,7 @@ export default function BulkPublish() {
         hashtags,
         enabledPlatforms,
         activeAssignments: activeAssignments.length,
+        publishType,
       });
 
       // ✅ UPDATED: Only send active assignments
@@ -519,7 +526,7 @@ export default function BulkPublish() {
         content,
         hashtags,
         mediaLibraryIds: allMediaIds,
-        channelAssignments: activeAssignments, // ✅ Only enabled platforms
+        channelAssignments: activeAssignments,
         publishType,
         scheduledFor: publishType === 'scheduled' ? scheduledDate : undefined,
         settings: {
@@ -528,14 +535,25 @@ export default function BulkPublish() {
         },
       });
 
-      setCurrentBulkPost(response.data);
-      
-      // Start polling for status updates (only for immediate publish)
-      if (publishType === 'now') {
-        startPolling(response.data._id);
-      } else {
-        toast.success(`Bulk post scheduled to ${activeAssignments.length} platforms!`);
+      // ✅ FIX: Handle scheduled posts differently - redirect immediately
+      if (publishType === 'scheduled') {
+        toast.success(`🗓️ Bulk post scheduled to ${activeAssignments.length} platform${activeAssignments.length !== 1 ? 's' : ''}!`, {
+          description: `Scheduled for ${new Date(scheduledDate).toLocaleString()}`,
+          duration: 4000,
+        });
+        
+        // Redirect to posts page after a brief delay
+        setTimeout(() => {
+          navigate('/posts');
+        }, 1500);
+        
+        return;
       }
+
+      // For "Publish Now", continue with progress dialog and polling
+      setCurrentBulkPost(response.data);
+      startPolling(response.data._id);
+      
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to create bulk post');
       setShowProgressDialog(false);
@@ -610,6 +628,69 @@ export default function BulkPublish() {
     );
   }
 
+  // ✅ NEW: Welcome/Getting Started Component
+  const WelcomeSection = () => (
+    <Card className="border-dashed border-2 border-primary/20 bg-gradient-to-br from-violet-50/50 to-purple-50/50 dark:from-violet-950/20 dark:to-purple-950/20">
+      <CardContent className="py-10 px-6">
+        <div className="flex flex-col items-center justify-center text-center max-w-lg mx-auto space-y-6">
+          {/* Animated Icon */}
+          <div className="relative">
+            <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse" />
+            <div className="relative h-20 w-20 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
+              <Rocket className="h-10 w-10 text-white" />
+            </div>
+          </div>
+
+          {/* Title & Description */}
+          <div className="space-y-2">
+            <h3 className="text-2xl font-bold text-foreground">
+              Ready to Publish Everywhere?
+            </h3>
+            <p className="text-muted-foreground">
+              Create once, publish to multiple platforms instantly. Select a content type above to get started!
+            </p>
+          </div>
+
+          {/* Steps */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full pt-4">
+            <div className="flex flex-col items-center gap-2 p-4 rounded-lg bg-white/50 dark:bg-card/50 border">
+              <div className="h-10 w-10 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
+                <MousePointerClick className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+              </div>
+              <span className="text-sm font-medium">1. Select Type</span>
+              <span className="text-xs text-muted-foreground">Text, Image, or Video</span>
+            </div>
+            
+            <div className="flex flex-col items-center gap-2 p-4 rounded-lg bg-white/50 dark:bg-card/50 border">
+              <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                <Layers className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <span className="text-sm font-medium">2. Pick Platforms</span>
+              <span className="text-xs text-muted-foreground">Toggle on/off</span>
+            </div>
+            
+            <div className="flex flex-col items-center gap-2 p-4 rounded-lg bg-white/50 dark:bg-card/50 border">
+              <div className="h-10 w-10 rounded-full bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center">
+                <Zap className="h-5 w-5 text-pink-600 dark:text-pink-400" />
+              </div>
+              <span className="text-sm font-medium">3. Publish!</span>
+              <span className="text-xs text-muted-foreground">Now or scheduled</span>
+            </div>
+          </div>
+
+          {/* Hint */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2">
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+              <Sparkles className="h-3 w-3" />
+              Pro Tip
+            </span>
+            <span>Use AI optimization to tailor content for each platform!</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50/30 dark:bg-background p-4 md:p-6">
       <PageHeader
@@ -654,6 +735,9 @@ export default function BulkPublish() {
           </CardContent>
         </Card>
 
+        {/* ✅ NEW: Show Welcome Section when no content type selected */}
+        {!selectedContentType && <WelcomeSection />}
+
         {/* Step 2: Channel Assignment */}
         {selectedContentType && (
           <Card>
@@ -694,7 +778,7 @@ export default function BulkPublish() {
         )}
 
         {/* Step 3: Content & Media */}
-        {selectedContentType && channelAssignments.length > 0 && (
+        {selectedContentType && activeAssignments.length > 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Content Input */}
             <Card>
@@ -787,119 +871,113 @@ export default function BulkPublish() {
                         <FolderOpen className="mr-2 h-4 w-4" />
                         From Library
                       </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => document.getElementById('bulk-file-upload')?.click()}
-                        className="flex-1"
-                      >
-                        <Upload className="mr-2 h-4 w-4" />
-                        Upload Files
-                      </Button>
-                      <input
-                        id="bulk-file-upload"
-                        type="file"
-                        multiple={selectedContentType !== 'text-video'}
-                        accept={selectedContentType === 'text-video' ? 'video/*' : 'image/*'}
-                        onChange={handleFileSelect}
-                        className="hidden"
-                      />
+                      <div className="flex-1">
+                        <input
+                          type="file"
+                          id="file-upload"
+                          className="hidden"
+                          accept={selectedContentType === 'text-video' ? 'video/*' : 'image/*'}
+                          multiple={selectedContentType !== 'text-video'}
+                          onChange={handleFileSelect}
+                        />
+                        <Button
+                          variant="outline"
+                          onClick={() => document.getElementById('file-upload')?.click()}
+                          className="w-full"
+                        >
+                          <Upload className="mr-2 h-4 w-4" />
+                          Upload New
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Selected Media Preview */}
-                    {totalMediaCount > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-sm text-muted-foreground">
-                          Selected Media ({totalMediaCount})
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {/* Library media */}
-                          {libraryMedia
-                            .filter(m => selectedLibraryMedia.includes(m._id))
-                            .map(media => (
-                              <div
-                                key={media._id}
-                                className="relative h-16 w-16 rounded-md overflow-hidden border group"
-                              >
-                                {media.type === 'video' ? (
-                                  <video
-                                    src={`${media.s3Url}#t=0.1`}
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <img
-                                    src={media.s3Url}
-                                    alt=""
-                                    className="h-full w-full object-cover"
-                                  />
-                                )}
-                                <button
-                                  onClick={() => removeLibraryMedia(media._id)}
-                                  className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                  <X className="h-3 w-3" />
-                                </button>
-                                <Badge className="absolute bottom-0 left-0 text-[10px] rounded-none rounded-tr-md">
-                                  Library
-                                </Badge>
-                              </div>
-                            ))}
-
-                          {/* Uploaded files */}
-                          {uploadedFiles.map((file, index) => (
+                    {(selectedLibraryMedia.length > 0 || uploadedFiles.length > 0) && (
+                      <div className="flex flex-wrap gap-2">
+                        {/* Library Media */}
+                        {selectedLibraryMedia.map((mediaId) => {
+                          const media = libraryMedia.find(m => m._id === mediaId);
+                          if (!media) return null;
+                          return (
                             <div
-                              key={index}
+                              key={mediaId}
                               className="relative h-16 w-16 rounded-md overflow-hidden border group"
                             >
-                              {file.type.startsWith('video/') ? (
+                              {media.type === 'video' ? (
                                 <video
-                                  src={URL.createObjectURL(file)}
+                                  src={media.s3Url}
                                   className="h-full w-full object-cover"
                                 />
                               ) : (
                                 <img
-                                  src={URL.createObjectURL(file)}
+                                  src={media.s3Url}
                                   alt=""
                                   className="h-full w-full object-cover"
                                 />
                               )}
                               <button
-                                onClick={() => removeUploadedFile(index)}
+                                onClick={() => removeLibraryMedia(mediaId)}
                                 className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                               >
                                 <X className="h-3 w-3" />
                               </button>
                               <Badge variant="secondary" className="absolute bottom-0 left-0 text-[10px] rounded-none rounded-tr-md">
-                                Upload
+                                Library
                               </Badge>
                             </div>
-                          ))}
-                        </div>
+                          );
+                        })}
+                        
+                        {/* Uploaded Files */}
+                        {uploadedFiles.map((file, index) => (
+                          <div
+                            key={index}
+                            className="relative h-16 w-16 rounded-md overflow-hidden border group"
+                          >
+                            {file.type.startsWith('video/') ? (
+                              <video
+                                src={URL.createObjectURL(file)}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <img
+                                src={URL.createObjectURL(file)}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                            )}
+                            <button
+                              onClick={() => removeUploadedFile(index)}
+                              className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                            <Badge variant="secondary" className="absolute bottom-0 left-0 text-[10px] rounded-none rounded-tr-md">
+                              Upload
+                            </Badge>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* Optimize Button */}
+                {/* AI Optimize Button */}
                 <Button
+                  variant="outline"
                   onClick={handleOptimizeContent}
                   disabled={!content.trim() || isOptimizing}
                   className="w-full"
-                  variant={isOptimized ? 'secondary' : 'default'}
                 >
                   {isOptimizing ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Optimizing...
-                    </>
-                  ) : isOptimized ? (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Re-optimize with AI
                     </>
                   ) : (
                     <>
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Optimize with AI
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      {isOptimized ? 'Re-optimize with AI' : 'Optimize with AI'}
                     </>
                   )}
                 </Button>
@@ -960,7 +1038,7 @@ export default function BulkPublish() {
         )}
 
         {/* Step 4: Publish Options */}
-        {selectedContentType && channelAssignments.length > 0 && content.trim() && (
+        {selectedContentType && activeAssignments.length > 0 && content.trim() && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1016,7 +1094,7 @@ export default function BulkPublish() {
                     {isPublishing ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Publishing...
+                        {publishType === 'scheduled' ? 'Scheduling...' : 'Publishing...'}
                       </>
                     ) : publishType === 'now' ? (
                       <>
@@ -1100,7 +1178,7 @@ export default function BulkPublish() {
         </DialogContent>
       </Dialog>
 
-      {/* Progress Dialog */}
+      {/* Progress Dialog - Only for "Publish Now" */}
       {currentBulkPost && (
         <BulkPublishProgressDialog
           open={showProgressDialog}
